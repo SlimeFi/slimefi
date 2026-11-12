@@ -125,7 +125,7 @@
     <div class="card-title" style="margin-top:14px">🪙 Coins Do (Gift)</div>
     <div class="ref-row"><select id="gr-user"></select></div>
     <div class="ref-row"><input id="gr-amount" type="number" placeholder="Kitne coins dene hai" style="text-transform:none"><button class="small-btn" onclick="grantCoins()">Coins Do</button></div>
-    <div class="card-sub">Diye gaye coins sirf balance me judenge — level aur leaderboard par asar nahi padega. Hisaab ledger me record rahega.</div>
+    <div class="card-sub">Diye gaye coins balance + lifetime dono me judenge — player ka level aur leaderboard bhi badhega. Hisaab ledger me record rahega.</div>
     <div class="card-title" style="margin-top:14px">Naya Sponsored Task Banao</div>
     <div class="ref-row"><input id="nt-title" placeholder="Task title — jese Channel join karo" style="text-transform:none"></div>
     <div class="ref-row"><input id="nt-desc" placeholder="Description — kya karna hai" style="text-transform:none"></div>
@@ -135,7 +135,7 @@
       <input id="nt-budget" type="number" placeholder="Total budget coins (khali = unlimited)" style="text-transform:none; max-width:220px">
     </div>
     <div class="ref-row">
-      <select id="nt-mode"><option value="proof">Proof submission</option><option value="channel">Channel auto-check (proof nahi)</option></select>
+      <select id="nt-mode"><option value="proof">Direct Complete (proof nahi)</option><option value="channel">Channel auto-check (proof nahi)</option></select>
       <select id="nt-category">
         <option value="telegram">Telegram task</option>
         <option value="twitter">Twitter / X task</option>
@@ -164,10 +164,10 @@
   <button class="back-btn" onclick="go('home')">← Home</button>
   <h2 class="v2-h">Paid Tasks — Task Center</h2>
   <div class="flow-box">
-    <div class="flow-step">User completes task</div><div class="flow-arrow">↓</div>
-    <div class="flow-step">Proof submitted</div><div class="flow-arrow">↓</div>
-    <div class="flow-step">Admin / verification checks</div><div class="flow-arrow">↓</div>
-    <div class="flow-step">Reward credited to ledger</div><div class="flow-arrow">↓</div>
+    <div class="flow-step">User task karta hai — Open dabakar</div><div class="flow-arrow">↓</div>
+    <div class="flow-step">Complete / Check button dabata hai</div><div class="flow-arrow">↓</div>
+    <div class="flow-step">Channel task bot khud verify karta hai</div><div class="flow-arrow">↓</div>
+    <div class="flow-step">Reward turant credited — COMPLETED</div><div class="flow-arrow">↓</div>
     <div class="flow-step final">Eligible withdrawal</div>
   </div>
   <div class="cat-row">
@@ -364,6 +364,6 @@
 
 <div id="toast"></div>
 
-<script src="/static/app.js?v=12"></script>
+<script src="/static/app.js?v=13"></script>
 </body>
 </html>

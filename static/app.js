@@ -183,6 +183,7 @@ async function load() {
 let LAST_TASKS = [];
 let TASK_CAT = "all";
 const CAT_LABEL = { telegram: "➤ TELEGRAM", twitter: "𝕏 TWITTER", other: "▦ OTHER" };
+const CAT_ICON = { telegram: "📢", twitter: "𝕏", other: "🎯" };
 async function loadTasks() {
   const box = $("tasks-list");
   box.innerHTML = `<div class="card"><div class="card-sub">Loading…</div></div>`;
@@ -204,19 +205,23 @@ function renderTasks() {
     return;
   }
   box.innerHTML = list.map(t => `
-    <div class="card">
-      <div class="card-top"><div class="card-title">${esc(t.title)}</div><span class="cat-tag">${CAT_LABEL[t.category || "telegram"]}</span><div class="lvl">+${fmt(t.reward_coins)} coins</div></div>
-      <div class="card-sub">${esc(t.description || "")}</div>
-      ${t.link ? `<div class="ref-row"><button class="small-btn" data-u="${esc(t.link)}" onclick="openTaskLink(this.dataset.u)">🔗 Open</button><span class="card-sub">${esc(t.link)}</span></div>` : ""}
-      ${t.my_status === "approved" ? `<div class="card-sub st-paid">✅ Reward mil gaya</div>`
-        : t.my_status === "pending" ? `<div class="card-sub">⏳ Proof admin check me hai</div>`
-        : t.my_status === "rejected" ? `<div class="card-sub st-rejected">❌ Proof reject hua — sahi proof dobara bhejo</div>
-             <div class="ref-row"><input id="proof-${t.id}" placeholder="Proof — screenshot link / username" style="text-transform:none">
-             <button class="small-btn" onclick="submitProof(${t.id})">Submit</button></div>`
-        : t.verify_mode === "channel" ? `<div class="ref-row"><button class="small-btn" onclick="channelCheck(${t.id})">✅ Join Check Karo</button></div>
-             <div class="card-sub">Channel join karo, fir ye button dabao — bot khud check karke reward de dega. Proof ki zaroorat nahi hai.</div>`
-        : `<div class="ref-row"><input id="proof-${t.id}" placeholder="Proof — screenshot link / username" style="text-transform:none">
-           <button class="small-btn" onclick="submitProof(${t.id})">Submit Proof</button></div>`}
+    <div class="card task-card">
+      <div class="task-head">
+        <span class="task-ico">${CAT_ICON[t.category || "telegram"]}</span>
+        <div class="task-main">
+          <div class="task-title">${esc(t.title)}</div>
+          <div class="card-sub">${esc(t.description || "")}</div>
+        </div>
+        <div class="task-reward">+${fmt(t.reward_coins)}</div>
+      </div>
+      <div class="task-actions">
+        ${t.my_status === "approved" ? `<span class="done-pill">✅ COMPLETED</span>`
+          : t.my_status === "pending" ? `<span class="pend-pill">⏳ Admin check me hai</span>`
+          : `${t.link ? `<button class="btn-open" data-u="${esc(t.link)}" onclick="openTaskLink(this.dataset.u)">🔗 Open</button>` : ""}
+             ${t.verify_mode === "channel"
+                ? `<button class="btn-claim" onclick="channelCheck(${t.id})">✅ Check Karo</button>`
+                : `<button class="btn-claim" onclick="claimTask(${t.id})">✔ Complete Karo</button>`}`}
+      </div>
     </div>`).join("");
 }
 window.openTaskLink = (url) => {
@@ -248,6 +253,11 @@ window.unbanUser = async (userId) => {
   const r = await api("/api/owner/unban", { user_id: userId });
   toast(r.msg || "Ho gaya");
   loadOwner();
+};
+window.claimTask = async (taskId) => {
+  const r = await api("/api/tasks/" + taskId + "/claim", {});
+  toast(r.msg || (r.ok ? "Ho gaya" : "Nahi hua"));
+  if (r.ok) load();
 };
 window.submitProof = async (taskId) => {
   const v = $("proof-" + taskId).value.trim();

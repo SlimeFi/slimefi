@@ -223,3 +223,16 @@ button:disabled { opacity:.45; cursor:default; }
 .ban-card { max-width:420px; text-align:center; }
 .ban-emoji { font-size:3rem; margin-bottom:12px; }
 .ban-text { white-space:pre-line; color:#f2f5ea; font-size:1rem; line-height:1.55; }
+
+/* premium task cards */
+.task-card { border:1px solid rgba(158,240,105,.18); background:linear-gradient(160deg, rgba(158,240,105,.06), rgba(255,255,255,.02) 48%); box-shadow:0 12px 28px rgba(0,0,0,.38); }
+.task-head { display:flex; gap:11px; align-items:flex-start; }
+.task-ico { font-size:1.3rem; line-height:1; padding:10px; border-radius:13px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.09); }
+.task-main { flex:1; min-width:0; }
+.task-title { font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:1.03rem; color:#f4f8ec; }
+.task-reward { font-family:"Space Grotesk",sans-serif; font-weight:700; color:#141a08; background:linear-gradient(135deg,#ffe066,#f5b921); padding:5px 11px; border-radius:999px; font-size:.85rem; white-space:nowrap; box-shadow:0 4px 12px rgba(245,185,33,.35); }
+.task-actions { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-top:13px; }
+.btn-open { background:rgba(255,255,255,.07); color:#eaf5ff; border:1px solid rgba(255,255,255,.18); padding:9px 15px; border-radius:11px; font-weight:700; cursor:pointer; }
+.btn-claim { background:linear-gradient(135deg,#b6f34c,#7ed321); color:#101604; border:none; padding:9px 16px; border-radius:11px; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(126,211,33,.35); }
+.done-pill { background:linear-gradient(135deg,#2fbf71,#1e9e57); color:#fff; font-weight:800; padding:8px 15px; border-radius:999px; font-size:.85rem; letter-spacing:.4px; box-shadow:0 6px 16px rgba(46,191,113,.30); }
+.pend-pill { color:#ffd76a; font-weight:700; padding:8px 4px; }
