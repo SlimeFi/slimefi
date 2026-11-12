@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monetag Test — SlimeFi (separate test page)</title>
+<style>
+  body{background:#070d18;color:#e2e8f0;font-family:system-ui,sans-serif;margin:0;padding:22px;text-align:center}
+  h1{font-size:20px;margin:8px 0 2px} .sub{color:#94a3b8;font-size:13px;margin-bottom:20px}
+  button{background:linear-gradient(135deg,#facc15,#f59e0b);color:#1a1005;border:0;border-radius:14px;
+    padding:16px 30px;font-size:17px;font-weight:800;cursor:pointer;width:100%;max-width:340px}
+  button:disabled{opacity:.5}
+  #log{text-align:left;max-width:420px;margin:20px auto 0;background:#0b1526;border:1px solid #1e293b;
+    border-radius:12px;padding:14px;font-size:13px;line-height:1.65;min-height:120px;white-space:pre-wrap}
+  .ok{color:#4ade80}.err{color:#f87171}.dim{color:#94a3b8}
+</style>
+<!-- Monetag TMA SDK. 12248440 is replaced with the real zone id from the Monetag dashboard. -->
+<script src="//libtl.com/sdk.js" data-zone="12248440" data-sdk="show_12248440"></script>
+</head>
+<body>
+<h1>🟢 Monetag Test Page</h1>
+<div class="sub">Ye SlimeFi se alag test page hai — live app ko kuch nahi hoga.</div>
+<button id="btn" onclick="watchAd()">▶ Watch Ad (Test)</button>
+<div id="log"><span class="dim">Log yahan aayega…</span></div>
+<script>
+  var ZONE = "12248440";
+  var logEl = document.getElementById("log");
+  function log(msg, cls) {
+    var t = new Date().toLocaleTimeString("en-IN");
+    logEl.innerHTML += "\n[" + t + "] " + (cls ? '<span class="' + cls + '">' + msg + "</span>" : msg);
+  }
+  window.addEventListener("load", function () {
+    log("Page load ho gaya.", "dim");
+    log(typeof window["show_" + ZONE] === "function"
+      ? "SDK ready hai: show_" + ZONE + " function mil gaya." : "SDK function NAHI mila — zone id galat ho sakta hai ya SDK load nahi hua.", 
+      typeof window["show_" + ZONE] === "function" ? "ok" : "err");
+  });
+  function watchAd() {
+    var fn = window["show_" + ZONE];
+    if (typeof fn !== "function") { log("SDK ready nahi hai.", "err"); return; }
+    var btn = document.getElementById("btn");
+    btn.disabled = true;
+    log("Ad bulaya gaya… (show_" + ZONE + ")");
+    var t0 = Date.now();
+    fn().then(function (res) {
+      var secs = Math.round((Date.now() - t0) / 1000);
+      log("✅ Promise RESOLVE hua " + secs + "s me. Result: " + JSON.stringify(res || {}), "ok");
+      if (res && res.reward_event_type) log("reward_event_type = " + res.reward_event_type, res.reward_event_type === "valued" ? "ok" : "err");
+      btn.disabled = false;
+    }).catch(function (e) {
+      var secs = Math.round((Date.now() - t0) / 1000);
+      log("❌ Promise REJECT hua " + secs + "s me. Error: " + (e && (e.message || JSON.stringify(e)) || e), "err");
+      btn.disabled = false;
+    });
+    // Safety note like our AdsGram lesson: if the promise never settles, this line tells us.
+    setTimeout(function () { log("⏱ 35s ho gaye (agar upar koi result nahi aaya to promise atak gaya hai).", "dim"); }, 35000);
+  }
+</script>
+</body>
+</html>
