@@ -162,6 +162,17 @@ $("btn-ad").onclick = () => {
   setTimeout(claim, 3000);
 };
 async function loadOwner() {
+  try {
+    const st = await api("/api/owner/stats");
+    if (st.ok) {
+      $("owner-stats").textContent =
+        "Total Players: " + st.total_players + " · Aaj Join: " + st.joined_today +
+        " · Bot Starts: " + st.bot_starts;
+      $("owner-recent").innerHTML = (st.recent || []).map(x =>
+        `<div class="wd-row"><span>${x.user_id.replace("tg", "TG ")} · ${fmt(x.lifetime_coins)} coins</span>` +
+        `<span>${x.created_at ? new Date(x.created_at * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("");
+    }
+  } catch (e) {}
   const r = await api("/api/owner/withdrawals");
   if (!r.ok) return;
   $("owner-summary").textContent = "Pending: " + r.pending_count + " requests · ₹" + r.pending_rupees;
