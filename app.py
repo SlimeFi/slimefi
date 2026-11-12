@@ -487,6 +487,28 @@ def withdraw():
 def _require_owner():
     return bool(OWNER_ID) and uid() == OWNER_ID
 
+@app.get("/api/owner/stats")
+def owner_stats():
+    """Owner-only player counts for the Owner Panel."""
+    if not OWNER_ID or uid() != OWNER_ID:
+        return jsonify({"ok": False, "error": "Owner only"}), 403
+    conn = db()
+    total = conn.execute(
+        "SELECT COUNT(*) c FROM users WHERE user_id != 'owner'").fetchone()["c"]
+    ist = time.time() + 19800  # Asia/Kolkata offset, seconds
+    day_start = (ist - (ist % 86400)) - 19800
+    joined_today = conn.execute(
+        "SELECT COUNT(*) c FROM users WHERE user_id != 'owner' AND created_at >= ?",
+        (day_start,)).fetchone()["c"]
+    starts = conn.execute("SELECT COUNT(*) c FROM seen_starts").fetchone()["c"]
+    rows = conn.execute(
+        "SELECT user_id, lifetime_coins, created_at, invites FROM users "
+        "WHERE user_id != 'owner' ORDER BY created_at DESC LIMIT 10").fetchall()
+    conn.close()
+    return jsonify({"ok": True, "total_players": total, "joined_today": joined_today,
+                    "bot_starts": starts, "recent": [dict(r) for r in rows]})
+
+
 @app.get("/api/owner/withdrawals")
 def owner_withdrawals():
     if not _require_owner():
