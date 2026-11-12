@@ -199,16 +199,29 @@ function renderTasks() {
     <div class="card">
       <div class="card-top"><div class="card-title">${esc(t.title)}</div><span class="cat-tag">${CAT_LABEL[t.category || "telegram"]}</span><div class="lvl">+${fmt(t.reward_coins)} coins</div></div>
       <div class="card-sub">${esc(t.description || "")}</div>
-      ${t.link ? `<div class="card-sub">Link: ${esc(t.link)}</div>` : ""}
+      ${t.link ? `<div class="ref-row"><button class="small-btn" data-u="${esc(t.link)}" onclick="openTaskLink(this.dataset.u)">🔗 Open</button><span class="card-sub">${esc(t.link)}</span></div>` : ""}
       ${t.my_status === "approved" ? `<div class="card-sub st-paid">✅ Reward mil gaya</div>`
         : t.my_status === "pending" ? `<div class="card-sub">⏳ Proof admin check me hai</div>`
         : t.my_status === "rejected" ? `<div class="card-sub st-rejected">❌ Proof reject hua — sahi proof dobara bhejo</div>
              <div class="ref-row"><input id="proof-${t.id}" placeholder="Proof — screenshot link / username" style="text-transform:none">
              <button class="small-btn" onclick="submitProof(${t.id})">Submit</button></div>`
+        : t.verify_mode === "channel" ? `<div class="ref-row"><button class="small-btn" onclick="channelCheck(${t.id})">✅ Join Check Karo</button></div>
+             <div class="card-sub">Channel join karo, fir ye button dabao — bot khud check karke reward de dega. Proof ki zaroorat nahi hai.</div>`
         : `<div class="ref-row"><input id="proof-${t.id}" placeholder="Proof — screenshot link / username" style="text-transform:none">
            <button class="small-btn" onclick="submitProof(${t.id})">Submit Proof</button></div>`}
     </div>`).join("");
 }
+window.openTaskLink = (url) => {
+  if (!url) return;
+  try { if (url.includes("t.me/") && tg?.openTelegramLink) { tg.openTelegramLink(url); return; } } catch (e) {}
+  try { if (tg?.openLink) { tg.openLink(url); return; } } catch (e) {}
+  window.open(url, "_blank");
+};
+window.channelCheck = async (taskId) => {
+  const r = await api("/api/tasks/" + taskId + "/channel-check", {});
+  toast(r.msg || (r.ok ? "Ho gaya" : "Nahi hua"));
+  if (r.ok) load();
+};
 window.submitProof = async (taskId) => {
   const v = $("proof-" + taskId).value.trim();
   if (!v) { toast("Pehle proof dalo"); return; }
@@ -304,7 +317,7 @@ $("btn-nt").onclick = async () => {
   const body = { title: $("nt-title").value.trim(), description: $("nt-desc").value.trim(),
                  link: $("nt-link").value.trim(), reward_coins: parseInt($("nt-reward").value, 10) || 0,
                  budget_coins: parseInt($("nt-budget").value, 10) || 0,
-                 category: $("nt-category").value };
+                 category: $("nt-category").value, verify_mode: $("nt-mode").value };
   const r = await api("/api/owner/tasks", body);
   toast(r.msg || "Ho gaya");
   if (r.ok) { $("nt-title").value = ""; $("nt-desc").value = ""; $("nt-link").value = ""; $("nt-reward").value = ""; $("nt-budget").value = ""; loadOwner(); }
