@@ -702,9 +702,15 @@ def owner_stats():
         "COALESCE(NULLIF(u.username,''), "
         "(SELECT s.username FROM seen_starts s WHERE s.tg_id = u.user_id), '') AS uname "
         "FROM users u WHERE u.user_id != 'owner' ORDER BY u.created_at DESC LIMIT 10").fetchall()
+    players = conn.execute(
+        "SELECT u.user_id, u.coins, u.lifetime_coins, "
+        "COALESCE(NULLIF(u.username,''), "
+        "(SELECT s.username FROM seen_starts s WHERE s.tg_id = u.user_id), '') AS uname "
+        "FROM users u WHERE u.user_id != 'owner' ORDER BY u.created_at DESC LIMIT 50").fetchall()
     conn.close()
     return jsonify({"ok": True, "total_players": total, "joined_today": joined_today,
-                    "bot_starts": starts, "recent": [dict(r) for r in rows]})
+                    "bot_starts": starts, "recent": [dict(r) for r in rows],
+                    "players": [dict(r) for r in players]})
 
 
 @app.get("/api/owner/withdrawals")
@@ -988,6 +994,31 @@ def owner_referrals_decide():
         c.execute("UPDATE referral_reviews SET status='rejected', decided_at=? WHERE id=?",
                   (time.time(), r["id"]))
         return jsonify({"ok": True, "msg": "Reject ho gaya — reward nahi milega"})
+
+@app.post("/api/owner/grant")
+def owner_grant():
+    """Owner gifts coins to a player from the Admin Panel. Coins land in the
+    spendable balance only (levels/leaderboard run on lifetime coins, which
+    gifts do not touch), and the gift is written to the ledger."""
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    data = request.get_json(silent=True) or {}
+    try:
+        amount = int(data.get("coins") or 0)
+    except (TypeError, ValueError):
+        amount = 0
+    if amount <= 0 or amount > 1000000:
+        return jsonify({"ok": False, "msg": "Coins ki sahi matra dalo (1 se 10,00,000 tak)"})
+    target = (data.get("user_id") or "").strip()
+    with _lock, db() as c:
+        u = c.execute("SELECT * FROM users WHERE user_id=?", (target,)).fetchone()
+        if not u or target == "owner":
+            return jsonify({"ok": False, "msg": "Player nahi mila"})
+        c.execute("UPDATE users SET coins=coins+? WHERE user_id=?", (amount, target))
+        log(c, target, "owner_grant", {"coins": amount}, "Owner ne coins diye (Admin Panel se)")
+        fresh = c.execute("SELECT coins FROM users WHERE user_id=?", (target,)).fetchone()
+        return jsonify({"ok": True, "balance": fresh["coins"],
+                        "msg": f"{amount} coins de diye. Naya balance: {fresh['coins']} coins"})
 
 @app.post("/api/owner/unban")
 def owner_unban():
