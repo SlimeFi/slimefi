@@ -53,7 +53,7 @@ def verify_init_data(init_data):
 def telegram_auth():
     """Identity must be proven: verified Telegram initData or the owner's
     secret key. Bare X-User-Id is trusted only in local dev (ALLOW_DEV_AUTH)."""
-    if not request.path.startswith("/api/") or request.path == "/api/health":
+    if not request.path.startswith("/api/") or request.path in ("/api/health", "/api/payouts"):
         return None
     # Owner's personal panel link carries a secret key: it maps straight to
     # the owner's Telegram identity even when his Telegram client does not
@@ -702,8 +702,6 @@ def withdraw():
         return jsonify({"ok": False, "msg": "Sahi UPI ID dalo, jese naam@okhdfcbank"})
     if len(holder) < 3:
         return jsonify({"ok": False, "msg": "Account holder ka pura naam dalo — payment verify karne ke liye zaroori hai"})
-    if len(bank) < 2:
-        return jsonify({"ok": False, "msg": "Bank ka naam dalo — payment verify karne ke liye zaroori hai"})
     if rupees < MIN_WITHDRAW_RUPEES:
         return jsonify({"ok": False, "msg": f"Minimum withdraw Rs {MIN_WITHDRAW_RUPEES} hai"})
     with _lock, db() as c:
@@ -714,7 +712,7 @@ def withdraw():
                   (rupees * 100, u["user_id"]))
         cur = c.execute("INSERT INTO withdrawals(user_id,amount_paise,upi_id,created_at,holder_name,bank_name) VALUES(?,?,?,?,?,?)",
                         (u["user_id"], rupees * 100, upi, time.time(), holder, bank))
-        log(c, u["user_id"], "withdraw", {}, f"Withdraw request #{cur.lastrowid}: Rs {rupees} to UPI ({holder}, {bank})")
+        log(c, u["user_id"], "withdraw", {}, f"Withdraw request #{cur.lastrowid}: Rs {rupees} to UPI ({holder})")
         cash_log(c, u["user_id"], -rupees * 100, "withdraw_hold", f"Withdraw #{cur.lastrowid} requested")
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
         return jsonify({"ok": True, "state": state_payload(c, u),
@@ -1213,6 +1211,26 @@ def owner_unban():
 @app.get("/")
 def index():
     return send_from_directory("static", "index.html")
+
+@app.get("/payouts")
+def payouts_page():
+    return send_from_directory("static", "payouts.html")
+
+@app.get("/api/payouts")
+def payouts_public():
+    """Public payout proofs (AdsGram clause 8): every PAID withdrawal with
+    amount, date, holder name, masked UPI and transaction id. No login —
+    anyone (users, reviewers) can verify payouts really happened."""
+    with db() as c:
+        rows = [{"amount_rupees": round(w["amount_paise"] / 100, 2),
+                 "upi": mask_upi(w["upi_id"]), "holder_name": w["holder_name"] or "",
+                 "txn_id": w["txn_id"] or "", "ts": w["decided_at"] or w["created_at"]}
+                for w in c.execute(
+                    "SELECT * FROM withdrawals WHERE status='paid' ORDER BY id DESC LIMIT 50")]
+        tot = c.execute("SELECT COUNT(*) n, COALESCE(SUM(amount_paise),0) s "
+                        "FROM withdrawals WHERE status='paid'").fetchone()
+        return jsonify({"ok": True, "payouts": rows, "count": tot["n"],
+                        "total_rupees": round(tot["s"] / 100, 2)})
 
 
 WEBAPP_URL = os.environ.get("WEBAPP_URL", "")
