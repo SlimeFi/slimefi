@@ -189,7 +189,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT,
             amount_paise INTEGER, upi_id TEXT, status TEXT DEFAULT 'pending',
             created_at REAL, decided_at REAL,
-            holder_name TEXT DEFAULT '', bank_name TEXT DEFAULT ''
+            holder_name TEXT DEFAULT '', bank_name TEXT DEFAULT '', txn_id TEXT DEFAULT ''
         );
         CREATE TABLE IF NOT EXISTS seen_starts(
             tg_id TEXT PRIMARY KEY, username TEXT, first_name TEXT, ts REAL
@@ -241,7 +241,8 @@ def init_db():
                 c.execute(ddl)
         wcols = {r[1] for r in c.execute("PRAGMA table_info(withdrawals)")}
         for col, ddl in [("holder_name", "ALTER TABLE withdrawals ADD COLUMN holder_name TEXT DEFAULT ''"),
-                         ("bank_name", "ALTER TABLE withdrawals ADD COLUMN bank_name TEXT DEFAULT ''")]:
+                         ("bank_name", "ALTER TABLE withdrawals ADD COLUMN bank_name TEXT DEFAULT ''"),
+                         ("txn_id", "ALTER TABLE withdrawals ADD COLUMN txn_id TEXT DEFAULT ''")]:
             if col not in wcols:
                 c.execute(ddl)
 
@@ -383,7 +384,7 @@ def state_payload(c, user):
         ],
         "recent_payouts": [
             {"amount_rupees": round(w["amount_paise"] / 100, 2), "upi": mask_upi(w["upi_id"]),
-             "ts": w["decided_at"] or w["created_at"]}
+             "txn_id": w["txn_id"] or "", "ts": w["decided_at"] or w["created_at"]}
             for w in c.execute("SELECT * FROM withdrawals WHERE status='paid' ORDER BY id DESC LIMIT 10")
         ],
         "payouts_paid_count": c.execute(
@@ -394,7 +395,8 @@ def state_payload(c, user):
         "my_withdrawals": [
             {"id": w["id"], "amount_rupees": round(w["amount_paise"] / 100, 2),
              "upi_id": w["upi_id"], "status": w["status"],
-             "holder_name": w["holder_name"] or "", "bank_name": w["bank_name"] or ""}
+             "holder_name": w["holder_name"] or "", "bank_name": w["bank_name"] or "",
+             "txn_id": w["txn_id"] or ""}
             for w in c.execute("SELECT * FROM withdrawals WHERE user_id=? ORDER BY id DESC LIMIT 5",
                                (user["user_id"],))
         ],
@@ -763,7 +765,8 @@ def owner_withdrawals():
         rows = [{"id": w["id"], "user_id": w["user_id"],
                  "amount_rupees": round(w["amount_paise"] / 100, 2),
                  "upi_id": w["upi_id"], "status": w["status"],
-                 "holder_name": w["holder_name"] or "", "bank_name": w["bank_name"] or ""}
+                 "holder_name": w["holder_name"] or "", "bank_name": w["bank_name"] or "",
+                 "txn_id": w["txn_id"] or ""}
                 for w in c.execute("SELECT * FROM withdrawals ORDER BY (status='pending') DESC, id DESC LIMIT 50")]
         totals = c.execute("SELECT COUNT(*) n, COALESCE(SUM(amount_paise),0) s FROM withdrawals WHERE status='pending'").fetchone()
         return jsonify({"ok": True, "withdrawals": rows,
@@ -787,7 +790,11 @@ def owner_decide():
             log(c, w["user_id"], "withdraw_refund", {}, f"Withdraw #{w['id']} rejected, refunded")
             cash_log(c, w["user_id"], w["amount_paise"], "withdraw_refund", f"Withdraw #{w['id']} rejected, refunded")
         else:
-            cash_log(c, w["user_id"], 0, "withdraw_paid", f"Withdraw #{w['id']} paid out to UPI")
+            txn = (data.get("txn_id") or "").strip()
+            if len(txn) < 6:
+                return jsonify({"ok": False, "msg": "Transaction ID (UTR) dalo — yahi payment ka proof hai, bina iske Paid nahi hoga"})
+            c.execute("UPDATE withdrawals SET txn_id=? WHERE id=?", (txn, w["id"]))
+            cash_log(c, w["user_id"], 0, "withdraw_paid", f"Withdraw #{w['id']} paid out to UPI, txn {txn}")
         c.execute("UPDATE withdrawals SET status=?, decided_at=? WHERE id=?",
                   ("paid" if action == "paid" else "rejected", time.time(), w["id"]))
         return jsonify({"ok": True, "msg": "Ho gaya"})
