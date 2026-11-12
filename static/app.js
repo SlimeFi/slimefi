@@ -7,13 +7,11 @@ try {
 } catch (e) {}
 
 // Owner's personal panel link: t.me/SlimeFi_bot/game?startapp=<key>
-// The key arrives as the WebApp start param; remember it on this device and
-// send it with every request so the owner panel unlocks for the owner only.
+// The key can arrive four ways depending on how the game was opened:
+// Telegram start param, ?startapp=, ?k= (direct owner link), or the
+// tgWebAppStartParam in the URL hash that Telegram appends itself.
 let OKEY = "";
 try {
-  // The key can arrive four ways depending on how the game was opened:
-  // Telegram start param, ?startapp=, ?k= (direct owner link), or the
-  // tgWebAppStartParam in the URL hash that Telegram appends itself.
   const hashParams = new URLSearchParams((location.hash || "").replace(/^#/, ""));
   const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param)
     || new URLSearchParams(location.search).get("startapp")
@@ -24,6 +22,8 @@ try {
 } catch (e) {}
 
 const $ = id => document.getElementById(id);
+const fmt = n => Number(n || 0).toLocaleString("en-IN");
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let S = null;
 
 async function api(path, body) {
@@ -43,8 +43,40 @@ function fmtCost(c) {
   if (c.crystals) p.push(c.crystals + " crystals");
   return p.length ? p.join(" + ") : "Free";
 }
+
+// ---------- view navigation ----------
+function go(name) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  $("view-" + name).classList.add("active");
+  window.scrollTo(0, 0);
+  if (name === "tasks") loadTasks();
+}
+window.go = go;
+
 function render() {
   if (!S) return;
+  // home
+  $("home-cash").textContent = "₹" + Number(S.cash_rupees).toFixed(2);
+  $("home-users").textContent = fmt(S.players);
+  $("home-coins").textContent = fmt(S.coins);
+  $("home-pending").textContent = fmt(S.pending.coins + S.pending.wood + S.pending.crystals);
+  $("home-level").textContent = "Lv " + S.slime.level + " " + S.slime.name;
+  // wallet
+  $("cash-amt").textContent = "₹" + Number(S.cash_rupees).toFixed(2);
+  $("wallet-coins").textContent = fmt(S.coins);
+  $("pending-rew-line").textContent = "Pending rewards: " + fmt(S.pending_rewards_coins) + " coins (≈ ₹" +
+    (S.pending_rewards_coins / S.earn.coins_per_rupee).toFixed(2) + ") — admin approval ke baad milenge";
+  $("rate-line").textContent = S.earn.coins_per_rupee + " coins = ₹1";
+  $("min-wd").textContent = "₹" + S.earn.min_withdraw_rupees;
+  $("my-withdrawals").innerHTML = (S.my_withdrawals || []).map(w =>
+    `<div class="wd-row"><span>#${w.id} · ₹${w.amount_rupees}</span><span class="st-${w.status}">${w.status.toUpperCase()}</span></div>`).join("");
+  // referral
+  $("ref-code").textContent = S.referral_code;
+  $("ref-code2").textContent = S.referral_code;
+  $("squad-line").textContent = S.invites + " friends joined - Squad boost +" + S.squad_boost_pct + "%";
+  $("squad-line2").textContent = S.invites + " friends joined · Har dost ki pehli activity par +500 coins";
+  $("ref-link-line").textContent = "Dost ko ye link bhejo: t.me/SlimeFi_bot?start=" + S.referral_code;
+  // game header + guardian
   $("r-coins").textContent = S.coins;
   $("r-wood").textContent = S.wood;
   $("r-crystals").textContent = S.crystals;
@@ -86,17 +118,7 @@ function render() {
       <button data-quest="${q.id}" ${q.claimed || q.progress < q.target ? "disabled" : ""}>${q.claimed ? "Claimed" : "Claim Reward"}</button>
     </div>`).join("");
 
-  $("ref-code").textContent = S.referral_code;
-  $("squad-line").textContent = S.invites + " friends joined - Squad boost +" + S.squad_boost_pct + "%";
-
-  // ---- earning: cash wallet ----
-  $("cash-amt").textContent = "₹" + S.cash_rupees;
-  $("rate-line").textContent = S.earn.coins_per_rupee + " coins = ₹1";
-  $("min-wd").textContent = "₹" + S.earn.min_withdraw_rupees;
-  $("my-withdrawals").innerHTML = (S.my_withdrawals || []).map(w =>
-    `<div class="wd-row"><span>#${w.id} · ₹${w.amount_rupees}</span><span class="st-${w.status}">${w.status.toUpperCase()}</span></div>`).join("");
-
-  // ---- earning: ad card ----
+  // ad card
   const e = S.earn;
   $("ad-count").textContent = e.ads_today + "/" + e.ad_daily_limit;
   const adBtn = $("btn-ad");
@@ -105,7 +127,7 @@ function render() {
   else { adBtn.disabled = false; adBtn.textContent = "Watch Ad (+" + e.ad_reward_coins + " coins)"; }
   $("ad-note").textContent = e.ads_live ? "" : "Note: asal AdsGram ads judna baki hai — abhi reward system test mode me hai.";
 
-  // ---- owner panel ----
+  // admin panel
   if (S.is_owner) { $("owner-panel").style.display = "block"; loadOwner(); }
   else { $("owner-panel").style.display = "none"; }
 
@@ -132,6 +154,87 @@ async function load() {
   } catch (e) {}
 }
 
+// ---------- sponsored tasks ----------
+async function loadTasks() {
+  const box = $("tasks-list");
+  box.innerHTML = `<div class="card"><div class="card-sub">Loading…</div></div>`;
+  const r = await api("/api/tasks");
+  if (!r.ok) { box.innerHTML = ""; return; }
+  if (!r.tasks.length) {
+    box.innerHTML = `<div class="card"><div class="card-title">Abhi koi sponsored task nahi hai</div>
+      <div class="card-sub">Naye paid tasks yahan aayenge — businesses ke campaigns shuru hote hi.</div></div>`;
+    return;
+  }
+  box.innerHTML = r.tasks.map(t => `
+    <div class="card">
+      <div class="card-top"><div class="card-title">${esc(t.title)}</div><div class="lvl">+${fmt(t.reward_coins)} coins</div></div>
+      <div class="card-sub">${esc(t.description || "")}</div>
+      ${t.link ? `<div class="card-sub">Link: ${esc(t.link)}</div>` : ""}
+      ${t.my_status === "approved" ? `<div class="card-sub st-paid">✅ Reward mil gaya</div>`
+        : t.my_status === "pending" ? `<div class="card-sub">⏳ Proof admin check me hai</div>`
+        : t.my_status === "rejected" ? `<div class="card-sub st-rejected">❌ Proof reject hua — sahi proof dobara bhejo</div>
+             <div class="ref-row"><input id="proof-${t.id}" placeholder="Proof — screenshot link / username" style="text-transform:none">
+             <button class="small-btn" onclick="submitProof(${t.id})">Submit</button></div>`
+        : `<div class="ref-row"><input id="proof-${t.id}" placeholder="Proof — screenshot link / username" style="text-transform:none">
+           <button class="small-btn" onclick="submitProof(${t.id})">Submit Proof</button></div>`}
+    </div>`).join("");
+}
+window.submitProof = async (taskId) => {
+  const v = $("proof-" + taskId).value.trim();
+  if (!v) { toast("Pehle proof dalo"); return; }
+  const r = await api("/api/tasks/submit", { task_id: taskId, proof: v });
+  toast(r.msg || (r.ok ? "Ho gaya" : "Nahi hua"));
+  if (r.ok) { loadTasks(); S = await api("/api/state"); render(); }
+};
+
+// ---------- owner / admin ----------
+async function loadOwner() {
+  try {
+    const st = await api("/api/owner/stats");
+    if (st.ok) {
+      $("owner-stats").textContent =
+        "Total Players: " + st.total_players + " · Aaj Join: " + st.joined_today +
+        " · Bot Starts: " + st.bot_starts;
+      $("owner-recent").innerHTML = (st.recent || []).map(x =>
+        `<div class="wd-row"><span>${esc(x.user_id.replace("tg", "TG "))} · ${fmt(x.lifetime_coins)} coins</span>` +
+        `<span>${x.created_at ? new Date(x.created_at * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("");
+    }
+  } catch (e) {}
+  try {
+    const sb = await api("/api/owner/submissions");
+    if (sb.ok) {
+      $("owner-subs").innerHTML = (sb.submissions || []).map(s => `
+        <div class="owner-row">
+          <div class="wd-row"><span>#${s.id} · ${esc(s.task_title)} · ${esc(s.user_id)}</span><span class="st-${s.status}">${s.status.toUpperCase()}</span></div>
+          <div class="card-sub">Proof: ${esc(s.proof)} · Reward: ${fmt(s.reward_coins)} coins</div>
+          ${s.status === "pending" ? `<div class="ref-row"><button onclick="decideSub(${s.id},'approve')">Approve</button><button onclick="decideSub(${s.id},'reject')">Reject</button></div>` : ""}
+        </div>`).join("") || `<div class="card-sub">Koi submission nahi</div>`;
+      $("owner-tasks").innerHTML = (sb.tasks || []).map(t =>
+        `<div class="wd-row"><span>Task #${t.id} · ${esc(t.title)}</span><span>${fmt(t.reward_coins)} coins · ${t.active ? "ON" : "OFF"}</span></div>`).join("");
+    }
+  } catch (e) {}
+  const r = await api("/api/owner/withdrawals");
+  if (!r.ok) return;
+  $("owner-summary").textContent = "Pending: " + r.pending_count + " requests · ₹" + r.pending_rupees;
+  $("owner-list").innerHTML = r.withdrawals.map(w => `
+    <div class="owner-row">
+      <div class="wd-row"><span>#${w.id} · ${esc(w.user_id)}</span><span class="st-${w.status}">${w.status.toUpperCase()}</span></div>
+      <div class="card-sub">₹${w.amount_rupees} → ${esc(w.upi_id)}</div>
+      ${w.status === "pending" ? `<div class="ref-row"><button onclick="decideWd(${w.id},'paid')">Paid kar diya</button><button onclick="decideWd(${w.id},'reject')">Reject</button></div>` : ""}
+    </div>`).join("");
+}
+window.decideWd = async (id, action) => {
+  const rr = await api("/api/owner/withdrawals/decide", { id, action });
+  toast(rr.msg || "Ho gaya");
+  S = await api("/api/state"); render();
+};
+window.decideSub = async (id, action) => {
+  const rr = await api("/api/owner/submissions/decide", { id, action });
+  toast(rr.msg || "Ho gaya");
+  S = await api("/api/state"); render();
+};
+
+// ---------- wiring ----------
 $("btn-collect").onclick = () => act("/api/collect");
 $("btn-daily").onclick = () => act("/api/daily");
 $("btn-convert").onclick = () => {
@@ -156,41 +259,20 @@ $("btn-ad").onclick = () => {
       return;
     } catch (err) {}
   }
-  // Test mode (AdsGram block id abhi nahi juda): chhota sa intezar, phir reward
   $("btn-ad").disabled = true;
   toast("Ad chal raha hai...");
   setTimeout(claim, 3000);
 };
-async function loadOwner() {
-  try {
-    const st = await api("/api/owner/stats");
-    if (st.ok) {
-      $("owner-stats").textContent =
-        "Total Players: " + st.total_players + " · Aaj Join: " + st.joined_today +
-        " · Bot Starts: " + st.bot_starts;
-      $("owner-recent").innerHTML = (st.recent || []).map(x =>
-        `<div class="wd-row"><span>${x.user_id.replace("tg", "TG ")} · ${fmt(x.lifetime_coins)} coins</span>` +
-        `<span>${x.created_at ? new Date(x.created_at * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("");
-    }
-  } catch (e) {}
-  const r = await api("/api/owner/withdrawals");
-  if (!r.ok) return;
-  $("owner-summary").textContent = "Pending: " + r.pending_count + " requests · ₹" + r.pending_rupees;
-  $("owner-list").innerHTML = r.withdrawals.map(w => `
-    <div class="owner-row">
-      <div class="wd-row"><span>#${w.id} · ${w.user_id}</span><span class="st-${w.status}">${w.status.toUpperCase()}</span></div>
-      <div class="card-sub">₹${w.amount_rupees} → ${w.upi_id}</div>
-      ${w.status === "pending" ? `<div class="ref-row"><button data-decide="paid" data-wid="${w.id}">Paid kar diya</button><button data-decide="reject" data-wid="${w.id}">Reject</button></div>` : ""}
-    </div>`).join("");
-  document.querySelectorAll("[data-decide]").forEach(b => b.onclick = async () => {
-    const rr = await api("/api/owner/withdrawals/decide", { id: parseInt(b.dataset.wid, 10), action: b.dataset.decide });
-    toast(rr.msg || "Ho gaya");
-    S = await api("/api/state"); render();
-  });
-}
 $("btn-ref").onclick = () => {
   const code = $("ref-input").value.trim();
   if (code) act("/api/referral/apply", { code });
+};
+$("btn-nt").onclick = async () => {
+  const body = { title: $("nt-title").value.trim(), description: $("nt-desc").value.trim(),
+                 link: $("nt-link").value.trim(), reward_coins: parseInt($("nt-reward").value, 10) || 0 };
+  const r = await api("/api/owner/tasks", body);
+  toast(r.msg || "Ho gaya");
+  if (r.ok) { $("nt-title").value = ""; $("nt-desc").value = ""; $("nt-link").value = ""; $("nt-reward").value = ""; loadOwner(); }
 };
 document.querySelectorAll(".tabbar button").forEach(b => b.onclick = () => {
   document.querySelectorAll(".tabbar button").forEach(x => x.classList.remove("active"));
