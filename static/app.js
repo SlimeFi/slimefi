@@ -6,11 +6,22 @@ try {
   else USER = localStorage.getItem("slimefi_user") || "owner";
 } catch (e) {}
 
+// Owner's personal panel link: t.me/SlimeFi_bot/game?startapp=<key>
+// The key arrives as the WebApp start param; remember it on this device and
+// send it with every request so the owner panel unlocks for the owner only.
+let OKEY = "";
+try {
+  const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param)
+    || new URLSearchParams(location.search).get("startapp") || "";
+  if (sp) localStorage.setItem("slimefi_k", sp);
+  OKEY = localStorage.getItem("slimefi_k") || "";
+} catch (e) {}
+
 const $ = id => document.getElementById(id);
 let S = null;
 
 async function api(path, body) {
-  const opt = { headers: { "X-User-Id": USER, "Content-Type": "application/json", "X-Init-Data": tg ? (tg.initData || "") : "" } };
+  const opt = { headers: { "X-User-Id": USER, "Content-Type": "application/json", "X-Init-Data": tg ? (tg.initData || "") : "", ...(OKEY ? { "X-Owner-Key": OKEY } : {}) } };
   if (body) { opt.method = "POST"; opt.body = JSON.stringify(body); }
   const r = await fetch(path, opt);
   return r.json();
