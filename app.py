@@ -112,7 +112,7 @@ CONVERT_MIN_COINS = 1000      # convert at least Rs 1 worth at a time
 AD_REWARD_COINS = 100         # coins per rewarded ad watched
 AD_DAILY_LIMIT = 20           # max rewarded ads per user per day
 AD_COOLDOWN_SEC = 45          # gap between two ad claims
-MIN_WITHDRAW_RUPEES = 100     # minimum UPI withdrawal request
+MIN_WITHDRAW_RUPEES = 10      # minimum UPI withdrawal request
 PAYOUTS_ENABLED = os.environ.get("PAYOUTS_ENABLED", "0") == "1"  # UPI payout master switch (owner)
 ALLOW_DEV_AUTH = os.environ.get("ALLOW_DEV_AUTH", "0") == "1"    # local testing only: trust X-User-Id
 REFERRAL_REWARD_COINS = 500   # paid to the inviter when the referred user completes
