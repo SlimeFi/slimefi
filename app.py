@@ -188,7 +188,8 @@ def init_db():
                 c.execute(ddl)
         tcols = {r[1] for r in c.execute("PRAGMA table_info(tasks)")}
         for col, ddl in [("budget_coins", "ALTER TABLE tasks ADD COLUMN budget_coins INTEGER DEFAULT 0"),
-                         ("spent_coins", "ALTER TABLE tasks ADD COLUMN spent_coins INTEGER DEFAULT 0")]:
+                         ("spent_coins", "ALTER TABLE tasks ADD COLUMN spent_coins INTEGER DEFAULT 0"),
+                         ("category", "ALTER TABLE tasks ADD COLUMN category TEXT DEFAULT 'telegram'")]:
             if col not in tcols:
                 c.execute(ddl)
 
@@ -631,6 +632,7 @@ def tasks_list():
                 continue  # campaign budget over: no new workers on this task
             rows.append({"id": t["id"], "title": t["title"], "description": t["description"],
                          "link": t["link"], "reward_coins": t["reward_coins"],
+                         "category": t["category"] or "telegram",
                          "budget_left": left, "my_status": subs.get(t["id"])})
         return jsonify({"ok": True, "tasks": rows})
 
@@ -674,12 +676,15 @@ def owner_tasks_create():
         budget = int(data.get("budget_coins") or 0)
     except (TypeError, ValueError):
         budget = 0
+    category = (data.get("category") or "telegram").strip().lower()
+    if category not in ("telegram", "twitter", "other"):
+        category = "telegram"
     if not title or reward <= 0:
         return jsonify({"ok": False, "msg": "Task ka title aur reward (coins) dalo"})
     with _lock, db() as c:
-        cur = c.execute("INSERT INTO tasks(title,description,link,reward_coins,budget_coins,created_at) VALUES(?,?,?,?,?,?)",
+        cur = c.execute("INSERT INTO tasks(title,description,link,reward_coins,budget_coins,category,created_at) VALUES(?,?,?,?,?,?,?)",
                         (title, (data.get("description") or "").strip(),
-                         (data.get("link") or "").strip(), reward, budget, time.time()))
+                         (data.get("link") or "").strip(), reward, budget, category, time.time()))
         return jsonify({"ok": True, "id": cur.lastrowid, "msg": "Task ban gaya"})
 
 @app.get("/api/owner/submissions")
@@ -696,7 +701,7 @@ def owner_submissions():
                     "ORDER BY (s.status='pending') DESC, s.id DESC LIMIT 50")]
         tasks = [{"id": t["id"], "title": t["title"], "reward_coins": t["reward_coins"],
                   "budget_coins": t["budget_coins"], "spent_coins": t["spent_coins"],
-                  "active": t["active"]}
+                  "category": t["category"] or "telegram", "active": t["active"]}
                  for t in c.execute("SELECT * FROM tasks ORDER BY id DESC LIMIT 20")]
         return jsonify({"ok": True, "submissions": subs, "tasks": tasks})
 
