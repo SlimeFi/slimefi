@@ -230,6 +230,15 @@ window.channelCheck = async (taskId) => {
   toast(r.msg || (r.ok ? "Ho gaya" : "Nahi hua"));
   if (r.ok) load();
 };
+window.grantCoins = async () => {
+  const user_id = $("gr-user").value;
+  const coins = parseInt($("gr-amount").value, 10) || 0;
+  if (!user_id) { toast("Pehle player chuno"); return; }
+  if (coins <= 0) { toast("Coins ki matra dalo"); return; }
+  const r = await api("/api/owner/grant", { user_id, coins });
+  toast(r.msg || "Ho gaya");
+  if (r.ok) { $("gr-amount").value = ""; loadOwner(); }
+};
 window.revDecide = async (id, action) => {
   const r = await api("/api/owner/referrals/decide", { id, action });
   toast(r.msg || "Ho gaya");
@@ -256,6 +265,11 @@ async function loadOwner() {
       $("owner-stats").textContent =
         "Total Players: " + st.total_players + " · Aaj Join: " + st.joined_today +
         " · Bot Starts: " + st.bot_starts;
+      const sel = $("gr-user");
+      const keep = sel.value;
+      sel.innerHTML = (st.players || []).map(p =>
+        `<option value="${esc(p.user_id)}">${p.uname ? "@" + esc(p.uname) : esc(p.user_id)} — ${fmt(p.coins)} coins</option>`).join("");
+      if (keep) sel.value = keep;
       $("owner-recent").innerHTML = (st.recent || []).map(x =>
         `<div class="wd-row"><span>${x.uname ? "@" + esc(x.uname) + " · " : ""}${esc(x.user_id.replace("tg", "TG "))} · ${fmt(x.lifetime_coins)} coins</span>` +
         `<span>${x.created_at ? new Date(x.created_at * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("");
