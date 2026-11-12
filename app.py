@@ -1068,11 +1068,14 @@ def telegram_webhook():
     return jsonify({
         "method": "sendMessage",
         "chat_id": chat_id,
-        "text": ("Welcome to SlimeFi - Jura Tempest Village Builder.\n"
-                 "Apna gaon banao, buildings upgrade karo, coins kamao "
-                 "aur apne Slime ko Level 10 Slime Sovereign tak le jao."),
+        "text": ("\U0001F7E2 Welcome to SlimeFi — Earning Platform + Village Game! \U0001F3AE\n\n"
+                 "\U0001F3E1 Apna gaon banao, buildings upgrade karo\n"
+                 "\U0001F4CB Tasks pure karo, \U0001FA99 coins kamao\n"
+                 "\U0001F4B8 1000 coins = \u20B91 — UPI se withdraw karo (min \u20B910)\n"
+                 "\U0001F451 Apne Slime ko Level 10 Slime Sovereign banao\n\n"
+                 "\U0001F447 Neeche wala button dabao aur earning shuru karo!"),
         "reply_markup": {"inline_keyboard": [[
-            {"text": "Launch SlimeFi", "web_app": {"url": url}}
+            {"text": "\U0001F680 Launch SlimeFi", "web_app": {"url": url}}
         ]]},
     })
 
