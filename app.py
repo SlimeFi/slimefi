@@ -143,6 +143,8 @@ DAILY_REWARDS = [50, 75, 100, 150, 200, 300, 500]  # 7-day streak bonus table
 AD_REWARD_COINS = 100         # coins per rewarded ad watched
 AD_DAILY_LIMIT = 20           # max rewarded ads per user per day
 AD_COOLDOWN_SEC = 45          # gap between two ad claims
+AD_MIN_WATCH_SEC = 8          # a real ad cannot finish faster than this
+AD_TOKEN_TTL_SEC = 300        # an ad-start token dies after 5 minutes
 MIN_WITHDRAW_RUPEES = 10      # minimum UPI withdrawal request
 PAYOUTS_ENABLED = os.environ.get("PAYOUTS_ENABLED", "0") == "1"  # UPI payout master switch (owner)
 ALLOW_DEV_AUTH = os.environ.get("ALLOW_DEV_AUTH", "0") == "1"    # local testing only: trust X-User-Id
@@ -204,6 +206,9 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT, referrer_id TEXT, referred_id TEXT UNIQUE,
             status TEXT DEFAULT 'pending', created_at REAL, decided_at REAL
         );
+        CREATE TABLE IF NOT EXISTS ad_sessions(
+            token TEXT PRIMARY KEY, user_id TEXT, created_at REAL, used INTEGER DEFAULT 0
+        );
         CREATE TABLE IF NOT EXISTS tasks(
             id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT,
             link TEXT, reward_coins INTEGER DEFAULT 0, active INTEGER DEFAULT 1,
@@ -230,7 +235,9 @@ def init_db():
                          ("ip_fp", "ALTER TABLE users ADD COLUMN ip_fp TEXT DEFAULT ''"),
                          ("banned", "ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0"),
                          ("ban_reason", "ALTER TABLE users ADD COLUMN ban_reason TEXT DEFAULT ''"),
-                         ("ban_override", "ALTER TABLE users ADD COLUMN ban_override INTEGER DEFAULT 0")]:
+                         ("ban_override", "ALTER TABLE users ADD COLUMN ban_override INTEGER DEFAULT 0"),
+                         ("suspicious", "ALTER TABLE users ADD COLUMN suspicious INTEGER DEFAULT 0"),
+                         ("suspicious_reason", "ALTER TABLE users ADD COLUMN suspicious_reason TEXT DEFAULT ''")]:
             if col not in cols:
                 c.execute(ddl)
         tcols = {r[1] for r in c.execute("PRAGMA table_info(tasks)")}
@@ -353,6 +360,16 @@ def state_payload(c, user):
         "daily_table": DAILY_REWARDS,
         "daily_cycle_day": _daily_cycle_day(user),
         "referral_code": user["referral_code"], "invites": user["invites"],
+        "has_referrer": bool(user["referred_by"]),
+        "my_referrals": [
+            {"label": ("@" + r["uname"]) if r["uname"] else "Player " + r["user_id"][-4:],
+             "q": r["referred_qualified"] or 0}
+            for r in c.execute(
+                "SELECT u.user_id, u.referred_qualified, COALESCE(NULLIF(u.username,''), "
+                "(SELECT s.username FROM seen_starts s WHERE s.tg_id = u.user_id), '') AS uname "
+                "FROM users u WHERE u.referred_by=? ORDER BY u.created_at DESC LIMIT 20",
+                (user["user_id"],))
+        ],
         "squad_boost_pct": min(user["invites"] * 5, 50),
         "buildings": buildings, "quests": quests,
         "recipes": [{"id": k, **v} for k, v in RECIPES.items()],
@@ -449,10 +466,10 @@ def _client_fp():
                     hashlib.sha256).hexdigest()[:32]
 
 def _detect_multi_account(c, user):
-    """Owner rule: one person, one account. The OLDEST account on a network
-    is the main account and is never touched; a NEWER account arriving from
-    the same network is an extra and is banned, and sees the
-    MULTIPLE ACCOUNTS DETECTED notice. The owner is exempt."""
+    """Referral Security rule (owner, revised 2026-11-12): a shared network
+    (IP) alone NEVER makes anyone guilty. A newer account arriving from the
+    same network as an older one is only FLAGGED suspicious for the owner's
+    review — it is not banned and nothing is blocked. The owner is exempt."""
     if user["user_id"] == "owner" or (OWNER_ID and user["user_id"] == OWNER_ID):
         return
     if user["ban_override"]:
@@ -466,7 +483,7 @@ def _detect_multi_account(c, user):
         "SELECT user_id, created_at FROM users WHERE ip_fp=? AND user_id != ? AND banned=0 "
         "ORDER BY created_at ASC LIMIT 1", (fp, user["user_id"])).fetchone()
     if other and (user["created_at"] or 0) > (other["created_at"] or 0):
-        c.execute("UPDATE users SET banned=1, ban_reason='MULTIPLE ACCOUNTS DETECTED' WHERE user_id=?",
+        c.execute("UPDATE users SET suspicious=1, suspicious_reason='Same network (IP) as an older account — sirf network match hai, jaanch baki hai' WHERE user_id=?",
                   (user["user_id"],))
 
 def _pay_referral(c, user, inv):
@@ -648,20 +665,59 @@ def referral_apply():
                         "msg": "Referral lag gaya. Pehli activity puri karte hi dost ko reward milega."})
 
 # ---------------- earning routes ----------------
-@app.post("/api/ad/claim")
-def ad_claim():
-    """Reward for one watched ad. Daily cap + cooldown apply server-side,
-    so the reward cannot be farmed by tapping. When the AdsGram block is
-    connected, the frontend only calls this after a completed ad view."""
+@app.post("/api/ad/start")
+def ad_start():
+    """Issue a one-time token BEFORE an ad is shown. The reward claim must
+    carry this exact token: it works once, only for its owner, only after
+    a minimum watch time and only within a few minutes — so a bare API
+    call, a duplicate claim or a replayed old request earns nothing."""
     today = str(date.today())
     with _lock, db() as c:
         u = roll_day(c, settle(c, get_user(c, uid())))
+        if not ADSGRAM_BLOCK_ID:
+            return jsonify({"ok": False, "msg": "Ads abhi live nahi hain"})
         watched = (u["ads_today"] or 0) if u["ads_date"] == today else 0
         if watched >= AD_DAILY_LIMIT:
             return jsonify({"ok": False, "msg": f"Aaj ke {AD_DAILY_LIMIT} ads ho gaye. Kal phir try karo."})
         left = AD_COOLDOWN_SEC - (time.time() - (u["last_ad_at"] or 0))
         if left > 0:
             return jsonify({"ok": False, "msg": f"Thoda ruko, agla ad {int(left)} sec me milega."})
+        c.execute("DELETE FROM ad_sessions WHERE created_at < ?", (time.time() - 3600,))
+        token = secrets.token_urlsafe(24)
+        c.execute("INSERT INTO ad_sessions(token,user_id,created_at,used) VALUES(?,?,?,0)",
+                  (token, u["user_id"], time.time()))
+        return jsonify({"ok": True, "token": token})
+
+@app.post("/api/ad/claim")
+def ad_claim():
+    """Reward for one completed ad. A valid one-time token from
+    /api/ad/start is mandatory: no token, someone else's token, a reused
+    (duplicate/replayed) token, a too-fast claim or an expired token
+    earns nothing."""
+    data = request.get_json(silent=True) or {}
+    token = (data.get("token") or "").strip()
+    today = str(date.today())
+    with _lock, db() as c:
+        u = roll_day(c, settle(c, get_user(c, uid())))
+        row = c.execute("SELECT * FROM ad_sessions WHERE token=?", (token,)).fetchone() if token else None
+        if not row or row["user_id"] != u["user_id"]:
+            return jsonify({"ok": False, "msg": "Reward link sahi nahi hai — naya ad dekh kar try karo"})
+        if row["used"]:
+            return jsonify({"ok": False, "msg": "Is ad ka reward pehle hi mil chuka hai"})
+        age = time.time() - (row["created_at"] or 0)
+        if age < AD_MIN_WATCH_SEC:
+            return jsonify({"ok": False, "msg": "Ad pura dekho — itni jaldi reward nahi milta"})
+        if age > AD_TOKEN_TTL_SEC:
+            return jsonify({"ok": False, "msg": "Reward link expire ho gaya — naya ad dekho"})
+        watched = (u["ads_today"] or 0) if u["ads_date"] == today else 0
+        if watched >= AD_DAILY_LIMIT:
+            return jsonify({"ok": False, "msg": f"Aaj ke {AD_DAILY_LIMIT} ads ho gaye. Kal phir try karo."})
+        left = AD_COOLDOWN_SEC - (time.time() - (u["last_ad_at"] or 0))
+        if left > 0:
+            return jsonify({"ok": False, "msg": f"Thoda ruko, agla ad {int(left)} sec me milega."})
+        cur = c.execute("UPDATE ad_sessions SET used=1 WHERE token=? AND used=0", (token,))
+        if cur.rowcount != 1:
+            return jsonify({"ok": False, "msg": "Is ad ka reward pehle hi mil chuka hai"})
         c.execute("""UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+?,
                      ads_today=?, ads_date=?, last_ad_at=? WHERE user_id=?""",
                   (AD_REWARD_COINS, AD_REWARD_COINS, watched + 1, today, time.time(), u["user_id"]))
@@ -1098,7 +1154,12 @@ def owner_referrals():
             banned.append({"user_id": r["user_id"], "label": uname_of(c, r["user_id"]),
                            "reason": r["ban_reason"], "lifetime_coins": r["lifetime_coins"],
                            "created_at": r["created_at"]})
-        return jsonify({"ok": True, "reviews": reviews, "banned": banned})
+        suspicious = []
+        for r in c.execute("SELECT * FROM users WHERE suspicious=1 AND banned=0 ORDER BY created_at DESC LIMIT 20"):
+            suspicious.append({"user_id": r["user_id"], "label": uname_of(c, r["user_id"]),
+                               "reason": r["suspicious_reason"], "lifetime_coins": r["lifetime_coins"],
+                               "created_at": r["created_at"]})
+        return jsonify({"ok": True, "reviews": reviews, "banned": banned, "suspicious": suspicious})
 
 @app.post("/api/owner/referrals/decide")
 def owner_referrals_decide():
