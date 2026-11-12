@@ -435,19 +435,36 @@ $("btn-ad").onclick = () => {
   // Token fetch and ad start TOGETHER: the ad must open straight from the
   // tap — if we wait for the network first, the webview blocks the ad.
   const startP = api("/api/ad/start");
-  const claimWith = async done => {
+  const t0 = Date.now();
+  let claimed = false;
+  const tryClaim = async done => {
+    if (claimed) return; claimed = true;
     const st = await startP;
     if (!st.ok) { toast(st.msg || "Reward nahi mila — fir try karo"); return; }
     act("/api/ad/claim", { token: st.token, done: done ? 1 : 0 });
   };
-  // Middle path: some Telegram clients never deliver AdsGram's "done"
-  // signal even after a full watch. Claim either way — the server pays
-  // on the signal, or when the one-time token is old enough to prove
-  // the ad stayed open (15s+). Early closes and load failures stay
-  // unpaid because the token is too young.
+  // Some Telegram clients play the ad but NEVER answer the SDK promise
+  // (their WebApp bridge drops the completion callback) — the ad closes
+  // and nothing happens. So: claim from whichever comes first — the SDK
+  // settling after 15s+, or a 20-second timer. The server still gates
+  // every claim on the one-time token's age (15s+ without the signal),
+  // so instant closes and load failures stay unpaid.
+  let settled = false;
   window.Adsgram.init({ blockId }).show()
-    .then(res => claimWith(!!(res && res.done)))
-    .catch(() => claimWith(false));
+    .then(res => {
+      settled = true;
+      if (Date.now() - t0 >= 15000 || (res && res.done)) tryClaim(!!(res && res.done));
+      else toast("Ad pura dekho, tabhi coins milenge");
+    })
+    .catch(() => {
+      settled = true;
+      if (Date.now() - t0 >= 15000) tryClaim(false);
+      else toast("Ad load nahi hua — fir try karo");
+    });
+  const iv = setInterval(() => {
+    if (claimed || settled) { clearInterval(iv); return; }
+    if (Date.now() - t0 >= 20000) { clearInterval(iv); tryClaim(false); }
+  }, 1000);
 };
 window.openPayouts = () => {
   const url = "https://SlimeFi.pythonanywhere.com/payouts";
