@@ -17,7 +17,7 @@ import secrets
 import urllib.parse
 import urllib.request
 import re
-from datetime import date
+from datetime import date, timedelta
 from flask import Flask, request, jsonify, send_from_directory, g
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
@@ -139,6 +139,7 @@ RECIPES = {
 # Cash is tracked in paise (100 paise = 1 rupee) so money math stays exact.
 COINS_PER_RUPEE = 1000        # 10,000 coins = Rs 10
 CONVERT_MIN_COINS = 1000      # convert at least Rs 1 worth at a time
+DAILY_REWARDS = [50, 75, 100, 150, 200, 300, 500]  # 7-day streak bonus table
 AD_REWARD_COINS = 100         # coins per rewarded ad watched
 AD_DAILY_LIMIT = 20           # max rewarded ads per user per day
 AD_COOLDOWN_SEC = 45          # gap between two ad claims
@@ -192,6 +193,11 @@ def init_db():
         CREATE TABLE IF NOT EXISTS seen_starts(
             tg_id TEXT PRIMARY KEY, username TEXT, first_name TEXT, ts REAL
         );
+        CREATE TABLE IF NOT EXISTS promo_codes(
+            code TEXT PRIMARY KEY, coins INTEGER, max_uses INTEGER DEFAULT 0,
+            used_count INTEGER DEFAULT 0, active INTEGER DEFAULT 1, created_at REAL);
+        CREATE TABLE IF NOT EXISTS promo_redemptions(
+            code TEXT, user_id TEXT, created_at REAL, UNIQUE(code, user_id));
         CREATE TABLE IF NOT EXISTS referral_reviews(
             id INTEGER PRIMARY KEY AUTOINCREMENT, referrer_id TEXT, referred_id TEXT UNIQUE,
             status TEXT DEFAULT 'pending', created_at REAL, decided_at REAL
@@ -294,6 +300,18 @@ def upgrade_cost(bid, level):
     f = 1.6 ** level
     return {k: int(v * f) for k, v in base.items()}
 
+def _daily_cycle_day(user):
+    """Which day of the 7-day cycle today's claim belongs to (1..7)."""
+    today = str(date.today())
+    yday = str(date.today() - timedelta(days=1))
+    if user["last_daily"] == today:
+        ns = user["streak"] or 1
+    elif user["last_daily"] == yday:
+        ns = (user["streak"] or 0) + 1
+    else:
+        ns = 1
+    return (ns - 1) % 7 + 1
+
 def state_payload(c, user):
     levels = get_buildings(c, user["user_id"])
     lvl, lname, nxt = slime_level(user["lifetime_coins"])
@@ -322,6 +340,8 @@ def state_payload(c, user):
         "slime": {"level": lvl, "name": lname, "next_at": nxt},
         "streak": user["streak"],
         "daily_available": user["last_daily"] != today,
+        "daily_table": DAILY_REWARDS,
+        "daily_cycle_day": _daily_cycle_day(user),
         "referral_code": user["referral_code"], "invites": user["invites"],
         "squad_boost_pct": min(user["invites"] * 5, 50),
         "buildings": buildings, "quests": quests,
@@ -547,16 +567,21 @@ def daily():
     with _lock, db() as c:
         u = roll_day(c, settle(c, get_user(c, uid())))
         if u["last_daily"] == today:
-            return jsonify({"ok": False, "msg": "Aaj ka daily reward le liya hai. Kal phir aana."})
-        streak = u["streak"] + 1
-        reward = 100 + min(streak, 7) * 10
+            return jsonify({"ok": False, "msg": "Aaj ka bonus le liya hai. Kal phir aana."})
+        yday = str(date.today() - timedelta(days=1))
+        streak = (u["streak"] or 0) + 1 if u["last_daily"] == yday else 1
+        cycle_day = (streak - 1) % 7 + 1
+        reward = DAILY_REWARDS[cycle_day - 1]
         c.execute("""UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+?,
                      last_daily=?, streak=? WHERE user_id=?""",
                   (reward, reward, today, streak, u["user_id"]))
-        log(c, u["user_id"], "daily", {"coins": reward}, f"Daily reward day {streak}")
+        log(c, u["user_id"], "daily", {"coins": reward},
+            f"Daily bonus day {cycle_day} (streak {streak})")
         maybe_qualify_referral(c, u)
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
-        return jsonify({"ok": True, "reward": reward, "state": state_payload(c, u)})
+        return jsonify({"ok": True, "reward": reward,
+                        "msg": f"Day {cycle_day} bonus mila: {reward} coins! Streak: {streak} din",
+                        "state": state_payload(c, u)})
 
 @app.post("/api/quest/claim")
 def quest_claim():
@@ -707,10 +732,14 @@ def owner_stats():
         "COALESCE(NULLIF(u.username,''), "
         "(SELECT s.username FROM seen_starts s WHERE s.tg_id = u.user_id), '') AS uname "
         "FROM users u WHERE u.user_id != 'owner' ORDER BY u.created_at DESC LIMIT 50").fetchall()
+    promos = conn.execute(
+        "SELECT code, coins, max_uses, used_count, active FROM promo_codes "
+        "ORDER BY created_at DESC LIMIT 20").fetchall()
     conn.close()
     return jsonify({"ok": True, "total_players": total, "joined_today": joined_today,
                     "bot_starts": starts, "recent": [dict(r) for r in rows],
-                    "players": [dict(r) for r in players]})
+                    "players": [dict(r) for r in players],
+                    "promos": [dict(r) for r in promos]})
 
 
 @app.get("/api/owner/withdrawals")
@@ -820,6 +849,35 @@ def _tg_get_chat_member(chat_ref, tg_id_num):
             return json.loads(r.read())
     except Exception:
         return None
+
+@app.post("/api/promo/redeem")
+def promo_redeem():
+    """User redeems a promo code (from the Daily Bonus page): one use per
+    user, capped by the code's max_uses, credited with a ledger entry."""
+    code = ((request.get_json(silent=True) or {}).get("code") or "").strip().upper()
+    if not code:
+        return jsonify({"ok": False, "msg": "Promo code dalo"})
+    with _lock, db() as c:
+        user = get_user(c, uid())
+        p = c.execute("SELECT * FROM promo_codes WHERE code=?", (code,)).fetchone()
+        if not p or not p["active"]:
+            return jsonify({"ok": False, "msg": "Galat promo code hai"})
+        if p["max_uses"] and (p["used_count"] or 0) >= p["max_uses"]:
+            return jsonify({"ok": False, "msg": "Is promo code ki limit khatam ho gayi"})
+        done = c.execute("SELECT 1 FROM promo_redemptions WHERE code=? AND user_id=?",
+                         (code, user["user_id"])).fetchone()
+        if done:
+            return jsonify({"ok": False, "msg": "Tum ye code pehle hi use kar chuke ho"})
+        c.execute("INSERT INTO promo_redemptions(code,user_id,created_at) VALUES(?,?,?)",
+                  (code, user["user_id"], time.time()))
+        c.execute("UPDATE promo_codes SET used_count=used_count+1 WHERE code=?", (code,))
+        c.execute("UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+? WHERE user_id=?",
+                  (p["coins"], p["coins"], user["user_id"]))
+        log(c, user["user_id"], "promo", {"coins": p["coins"]}, f"Promo code: {code}")
+        fresh = c.execute("SELECT * FROM users WHERE user_id=?", (user["user_id"],)).fetchone()
+        maybe_qualify_referral(c, fresh)
+        return jsonify({"ok": True, "msg": f"Promo lag gaya! {p['coins']} coins mile",
+                        "state": state_payload(c, fresh)})
 
 @app.post("/api/tasks/<int:task_id>/channel-check")
 def task_channel_check(task_id):
@@ -1035,6 +1093,36 @@ def owner_referrals_decide():
         c.execute("UPDATE referral_reviews SET status='rejected', decided_at=? WHERE id=?",
                   (time.time(), r["id"]))
         return jsonify({"ok": True, "msg": "Reject ho gaya — reward nahi milega"})
+
+@app.post("/api/owner/promos")
+def owner_promo_create():
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    d = request.get_json(silent=True) or {}
+    code = (d.get("code") or "").strip().upper()
+    try:
+        coins = int(d.get("coins") or 0)
+        max_uses = int(d.get("max_uses") or 0)
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "msg": "Coins / limit sahi dalo"})
+    if not code or len(code) > 32 or coins <= 0:
+        return jsonify({"ok": False, "msg": "Code aur coins sahi dalo"})
+    with _lock, db() as c:
+        if c.execute("SELECT 1 FROM promo_codes WHERE code=?", (code,)).fetchone():
+            return jsonify({"ok": False, "msg": "Ye code pehle se hai"})
+        c.execute("INSERT INTO promo_codes(code,coins,max_uses,created_at) VALUES(?,?,?,?)",
+                  (code, coins, max_uses, time.time()))
+        return jsonify({"ok": True, "msg": f"Promo code {code} ban gaya — {coins} coins, "
+                                           f"{max_uses if max_uses else 'unlimited'} log use kar sakte hain"})
+
+@app.post("/api/owner/promos/deactivate")
+def owner_promo_deactivate():
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    code = ((request.get_json(silent=True) or {}).get("code") or "").strip().upper()
+    with _lock, db() as c:
+        c.execute("UPDATE promo_codes SET active=0 WHERE code=?", (code,))
+        return jsonify({"ok": True, "msg": f"Promo {code} band kar diya"})
 
 @app.post("/api/owner/grant")
 def owner_grant():
