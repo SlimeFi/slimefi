@@ -329,3 +329,21 @@ button:disabled { opacity:.45; cursor:default; }
 @media (prefers-reduced-motion: reduce){
   .pet-ring,.pet-circle,.pet-img{animation:none}
 }
+
+/* ===== Transformation: slime <-> slime-girl, video style ===== */
+.pet-girl{position:absolute;left:50%;top:44%;width:92px;height:92px;margin:-46px 0 0 -46px;
+  border-radius:50%;opacity:0;transform:scale(.3) rotate(-14deg);pointer-events:none;
+  box-shadow:0 0 26px rgba(147,197,253,.65),0 0 5px rgba(191,219,254,.9);
+  transition:opacity .45s ease,transform .55s cubic-bezier(.34,1.56,.64,1)}
+.pet-stage.tf-on .pet-girl{opacity:1;transform:scale(1) rotate(0deg)}
+.pet-stage.tf-on .pet-img{opacity:0;transform:scale(.25) rotate(12deg)}
+.pet-img{transition:opacity .4s ease,transform .45s ease}
+.pet-stage.tf-on .pet-ring.r1{animation-duration:.8s}
+.pet-stage.tf-on .pet-ring.r2{animation-duration:1.1s}
+.pet-stage.tf-on .pet-circle{opacity:1}
+.pet-flash{position:absolute;left:50%;top:44%;width:130px;height:130px;margin:-65px 0 0 -65px;
+  border-radius:50%;pointer-events:none;opacity:0;
+  background:radial-gradient(circle,#fff 0%,rgba(191,219,254,.85) 34%,rgba(103,232,249,.35) 58%,transparent 72%)}
+.pet-stage.tf-flash .pet-flash{animation:petFlash .65s ease-out}
+@keyframes petFlash{0%{opacity:0;transform:scale(.35)}28%{opacity:1}100%{opacity:0;transform:scale(1.5)}}
+@media (prefers-reduced-motion: reduce){.pet-girl,.pet-flash{animation:none;transition:none}}
