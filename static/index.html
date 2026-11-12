@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SlimeFi - Jura Tempest</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">SLIME<span>FI</span></div>
+  <div class="resources">
+    <div class="pill"><i class="dot gold"></i><b id="r-coins">0</b></div>
+    <div class="pill"><i class="dot wood"></i><b id="r-wood">0</b></div>
+    <div class="pill"><i class="dot crys"></i><b id="r-crystals">0</b></div>
+    <div class="pill level"><b id="r-level">Lv 1</b></div>
+  </div>
+</header>
+
+<div class="slime-strip">
+  <div>
+    <div class="slime-name" id="slime-name">Basic Slime</div>
+    <div class="slime-sub" id="slime-sub">Town Guardian</div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress"><div id="level-bar"></div></div>
+    <div class="progress-text" id="level-text"></div>
+  </div>
+</div>
+
+<main>
+  <!-- TOWN -->
+  <section id="tab-town" class="pane active">
+    <div class="hero">
+      <img src="/static/img/village.jpg" alt="Your village">
+      <button id="btn-collect" class="collect-btn">Collect Income</button>
+      <div class="pending" id="pending-line">Pending: 0 coins</div>
+    </div>
+    <button id="btn-daily" class="daily-btn">Claim Daily Reward</button>
+    <h2>Village Buildings</h2>
+    <div id="buildings" class="cards"></div>
+  </section>
+
+  <!-- WORKSHOP -->
+  <section id="tab-workshop" class="pane">
+    <div class="banner"><img src="/static/img/forge.jpg" alt="Dwarf Forge"></div>
+    <h2>Workshop - Refine Materials</h2>
+    <div id="recipes" class="cards"></div>
+    <p class="note">Raw materials ko refine karke coins banao. Building upgrades Town tab se hote hain, Dwarf Forge unki limit badhata hai.</p>
+  </section>
+
+  <!-- QUESTS -->
+  <section id="tab-quests" class="pane">
+    <div class="banner"><img src="/static/img/quests.jpg" alt="Quests"></div>
+    <h2>Daily Quests</h2>
+    <div id="quests" class="cards"></div>
+  </section>
+
+  <!-- ALLIANCE -->
+  <section id="tab-alliance" class="pane">
+    <div class="banner"><img src="/static/img/alliance.jpg" alt="Alliance"></div>
+    <h2>Alliance - Squad</h2>
+    <div class="card">
+      <div class="card-title">Your Referral Code</div>
+      <div class="ref-code" id="ref-code">-</div>
+      <div class="card-sub" id="squad-line">0 friends joined - Squad boost +0%</div>
+      <div class="card-sub">Har dost par +5% boost (max +50%). Dost ko +50 coins, tumhe +100 coins.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Dost ka code lagao</div>
+      <div class="ref-row">
+        <input id="ref-input" placeholder="SLIME-XXXXXX" maxlength="12">
+        <button id="btn-ref" class="small-btn">Apply</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast"></div>
+
+<nav class="tabbar">
+  <button data-tab="town" class="active">Town</button>
+  <button data-tab="workshop">Workshop</button>
+  <button data-tab="quests">Quests</button>
+  <button data-tab="alliance">Alliance</button>
+</nav>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
