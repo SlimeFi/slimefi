@@ -72,6 +72,26 @@ function render() {
   $("ref-code").textContent = S.referral_code;
   $("squad-line").textContent = S.invites + " friends joined - Squad boost +" + S.squad_boost_pct + "%";
 
+  // ---- earning: cash wallet ----
+  $("cash-amt").textContent = "₹" + S.cash_rupees;
+  $("rate-line").textContent = S.earn.coins_per_rupee + " coins = ₹1";
+  $("min-wd").textContent = "₹" + S.earn.min_withdraw_rupees;
+  $("my-withdrawals").innerHTML = (S.my_withdrawals || []).map(w =>
+    `<div class="wd-row"><span>#${w.id} · ₹${w.amount_rupees}</span><span class="st-${w.status}">${w.status.toUpperCase()}</span></div>`).join("");
+
+  // ---- earning: ad card ----
+  const e = S.earn;
+  $("ad-count").textContent = e.ads_today + "/" + e.ad_daily_limit;
+  const adBtn = $("btn-ad");
+  if (e.ads_today >= e.ad_daily_limit) { adBtn.disabled = true; adBtn.textContent = "Aaj ke ads khatam — kal aana"; }
+  else if (e.ad_cooldown_left > 0) { adBtn.disabled = true; adBtn.textContent = "Agla ad " + e.ad_cooldown_left + " sec me"; }
+  else { adBtn.disabled = false; adBtn.textContent = "Watch Ad (+" + e.ad_reward_coins + " coins)"; }
+  $("ad-note").textContent = e.ads_live ? "" : "Note: asal AdsGram ads judna baki hai — abhi reward system test mode me hai.";
+
+  // ---- owner panel ----
+  if (S.is_owner) { $("owner-panel").style.display = "block"; loadOwner(); }
+  else { $("owner-panel").style.display = "none"; }
+
   document.querySelectorAll("[data-upgrade]").forEach(b => b.onclick = () => act("/api/upgrade", { building_id: b.dataset.upgrade }));
   document.querySelectorAll("[data-refine]").forEach(b => b.onclick = () => act("/api/refine", { recipe_id: b.dataset.refine }));
   document.querySelectorAll("[data-quest]").forEach(b => b.onclick = () => act("/api/quest/claim", { quest_id: b.dataset.quest }));
@@ -81,7 +101,7 @@ async function act(path, body) {
   if (r.state) { S = r.state; render(); }
   if (r.msg) toast(r.msg);
   else if (r.ok && r.got) toast("Collected: " + fmtCost(r.got));
-  else if (r.ok && r.reward) toast("Daily reward: +" + r.reward + " coins");
+  else if (r.ok && r.reward) toast("Reward: +" + r.reward + " coins");
   else if (r.ok) toast("Ho gaya");
 }
 async function load() {
@@ -97,6 +117,49 @@ async function load() {
 
 $("btn-collect").onclick = () => act("/api/collect");
 $("btn-daily").onclick = () => act("/api/daily");
+$("btn-convert").onclick = () => {
+  const v = parseInt($("convert-input").value, 10);
+  if (v > 0) act("/api/convert", { coins: v });
+  else toast("Pehle coins ki sankhya dalo");
+};
+$("btn-withdraw").onclick = () => {
+  const upi = $("upi-input").value.trim();
+  const amt = parseInt($("wd-input").value, 10);
+  if (upi && amt > 0) act("/api/withdraw", { upi_id: upi, amount_rupees: amt });
+  else toast("UPI ID aur amount dono dalo");
+};
+$("btn-ad").onclick = () => {
+  const claim = () => act("/api/ad/claim");
+  const blockId = window.SLIMEFI_ADS_BLOCK_ID;
+  if (blockId && window.Adsgram) {
+    try {
+      window.Adsgram.init({ blockId }).show()
+        .then(res => { if (res && res.done) claim(); else toast("Ad pura dekho, tabhi coins milenge"); })
+        .catch(() => toast("Ad abhi nahi chal paya, thodi der baad try karo"));
+      return;
+    } catch (err) {}
+  }
+  // Test mode (AdsGram block id abhi nahi juda): chhota sa intezar, phir reward
+  $("btn-ad").disabled = true;
+  toast("Ad chal raha hai...");
+  setTimeout(claim, 3000);
+};
+async function loadOwner() {
+  const r = await api("/api/owner/withdrawals");
+  if (!r.ok) return;
+  $("owner-summary").textContent = "Pending: " + r.pending_count + " requests · ₹" + r.pending_rupees;
+  $("owner-list").innerHTML = r.withdrawals.map(w => `
+    <div class="owner-row">
+      <div class="wd-row"><span>#${w.id} · ${w.user_id}</span><span class="st-${w.status}">${w.status.toUpperCase()}</span></div>
+      <div class="card-sub">₹${w.amount_rupees} → ${w.upi_id}</div>
+      ${w.status === "pending" ? `<div class="ref-row"><button data-decide="paid" data-wid="${w.id}">Paid kar diya</button><button data-decide="reject" data-wid="${w.id}">Reject</button></div>` : ""}
+    </div>`).join("");
+  document.querySelectorAll("[data-decide]").forEach(b => b.onclick = async () => {
+    const rr = await api("/api/owner/withdrawals/decide", { id: parseInt(b.dataset.wid, 10), action: b.dataset.decide });
+    toast(rr.msg || "Ho gaya");
+    S = await api("/api/state"); render();
+  });
+}
 $("btn-ref").onclick = () => {
   const code = $("ref-input").value.trim();
   if (code) act("/api/referral/apply", { code });

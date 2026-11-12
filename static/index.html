@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SlimeFi - Jura Tempest</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+<script>window.SLIMEFI_ADS_BLOCK_ID = ""; /* AdsGram block id milne par yahan dalna hai */</script>
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -38,6 +40,28 @@
       <div class="pending" id="pending-line">Pending: 0 coins</div>
     </div>
     <button id="btn-daily" class="daily-btn">Claim Daily Reward</button>
+
+    <div class="card wallet" style="margin-top:12px">
+      <div class="card-top"><div class="card-title">Cash Wallet</div><div class="cash-amt" id="cash-amt">₹0</div></div>
+      <div class="card-sub">Rate: <span class="cost" id="rate-line">1000 coins = ₹1</span> · Minimum withdraw <span class="cost" id="min-wd">₹100</span></div>
+      <div class="ref-row">
+        <input id="convert-input" type="number" placeholder="Coins — 1000, 2000, 5000..." style="text-transform:none">
+        <button id="btn-convert" class="small-btn">Convert</button>
+      </div>
+      <div class="ref-row">
+        <input id="upi-input" placeholder="Tumhara UPI ID" style="text-transform:none">
+        <input id="wd-input" type="number" placeholder="₹ Amount" style="text-transform:none; max-width:110px">
+      </div>
+      <button id="btn-withdraw">Withdraw (UPI)</button>
+      <div id="my-withdrawals"></div>
+    </div>
+
+    <div class="card" id="owner-panel" style="display:none; margin-top:12px">
+      <div class="card-title">Owner Panel — Withdraw Requests</div>
+      <div class="card-sub" id="owner-summary"></div>
+      <div id="owner-list"></div>
+    </div>
+
     <h2>Village Buildings</h2>
     <div id="buildings" class="cards"></div>
   </section>
@@ -53,6 +77,14 @@
   <!-- QUESTS -->
   <section id="tab-quests" class="pane">
     <div class="banner"><img src="/static/img/quests.jpg" alt="Quests"></div>
+
+    <div class="card earn" style="margin-top:12px">
+      <div class="card-top"><div class="card-title">Ad Dekho, Coins Pao</div><div class="lvl" id="ad-count">0/20</div></div>
+      <div class="card-sub">Ek ad = <span class="cost">+100 coins</span>. Ad ka paisa hi sabki earning ka source hai.</div>
+      <button id="btn-ad">Watch Ad</button>
+      <div class="card-sub" id="ad-note"></div>
+    </div>
+
     <h2>Daily Quests</h2>
     <div id="quests" class="cards"></div>
   </section>
