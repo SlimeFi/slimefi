@@ -11,8 +11,14 @@ try {
 // send it with every request so the owner panel unlocks for the owner only.
 let OKEY = "";
 try {
+  // The key can arrive four ways depending on how the game was opened:
+  // Telegram start param, ?startapp=, ?k= (direct owner link), or the
+  // tgWebAppStartParam in the URL hash that Telegram appends itself.
+  const hashParams = new URLSearchParams((location.hash || "").replace(/^#/, ""));
   const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param)
-    || new URLSearchParams(location.search).get("startapp") || "";
+    || new URLSearchParams(location.search).get("startapp")
+    || new URLSearchParams(location.search).get("k")
+    || hashParams.get("tgWebAppStartParam") || "";
   if (sp) localStorage.setItem("slimefi_k", sp);
   OKEY = localStorage.getItem("slimefi_k") || "";
 } catch (e) {}
