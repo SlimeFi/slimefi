@@ -429,18 +429,20 @@ $("btn-withdraw").onclick = () => {
   if (upi && amt > 0) act("/api/withdraw", { upi_id: upi, amount_rupees: amt, holder_name });
   else toast("UPI ID aur amount dono dalo");
 };
-$("btn-ad").onclick = async () => {
+$("btn-ad").onclick = () => {
   const blockId = window.SLIMEFI_ADS_BLOCK_ID;
   if (!blockId || !window.Adsgram) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
-  const st = await api("/api/ad/start");
-  if (!st.ok) { toast(st.msg || "Ad shuru nahi ho paya"); return; }
-  try {
-    const res = await window.Adsgram.init({ blockId }).show();
-    if (res && res.done) act("/api/ad/claim", { token: st.token });
-    else toast("Ad pura dekho, tabhi coins milenge");
-  } catch (e) {
-    toast("Ad pura nahi chala — coin nahi milega. Fir try karo");
-  }
+  // Token fetch and ad start TOGETHER: the ad must open straight from the
+  // tap — if we wait for the network first, the webview blocks the ad.
+  const startP = api("/api/ad/start");
+  window.Adsgram.init({ blockId }).show()
+    .then(async res => {
+      if (!(res && res.done)) { toast("Ad pura dekho, tabhi coins milenge"); return; }
+      const st = await startP;
+      if (!st.ok) { toast(st.msg || "Reward nahi mila — fir try karo"); return; }
+      act("/api/ad/claim", { token: st.token });
+    })
+    .catch(() => toast("Ad pura nahi chala — coin nahi milega. Fir try karo"));
 };
 window.openPayouts = () => {
   const url = "https://SlimeFi.pythonanywhere.com/payouts";
