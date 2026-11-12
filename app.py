@@ -872,6 +872,47 @@ def task_channel_check(task_id):
                         "msg": f"Channel join confirm ho gaya — {t['reward_coins']} coins mil gaye!",
                         "state": state_payload(c, fresh)})
 
+@app.post("/api/tasks/<int:task_id>/claim")
+def task_claim(task_id):
+    """Direct-complete task: the owner removed proof submission. One tap on
+    Complete credits the reward at once — once per user, under the same
+    campaign-budget and ledger rules as an approved proof used to follow."""
+    with _lock, db() as c:
+        _ensure_channel_modes(c)
+        user = get_user(c, uid())
+        t = c.execute("SELECT * FROM tasks WHERE id=? AND active=1", (task_id,)).fetchone()
+        if not t:
+            return jsonify({"ok": False, "msg": "Task nahi mila"})
+        if (t["verify_mode"] or "proof") == "channel":
+            return jsonify({"ok": False, "msg": "Ye channel task hai — pehle channel join karo, fir Check Karo dabao"})
+        sub = c.execute("SELECT * FROM task_submissions WHERE task_id=? AND user_id=?",
+                        (task_id, user["user_id"])).fetchone()
+        if sub and sub["status"] == "approved":
+            return jsonify({"ok": True, "msg": "Is task ka reward pehle hi mil chuka hai"})
+        if sub and sub["status"] == "pending":
+            return jsonify({"ok": False, "msg": "Is task ka purana proof admin ke paas hai — owner se baat karo"})
+        if t["budget_coins"] and (t["spent_coins"] or 0) + t["reward_coins"] > t["budget_coins"]:
+            return jsonify({"ok": False, "msg": "Is task ka budget khatam ho gaya hai"})
+        now = time.time()
+        if sub:
+            c.execute("UPDATE task_submissions SET status='approved', proof='direct complete', decided_at=? WHERE id=?",
+                      (now, sub["id"]))
+        else:
+            c.execute("INSERT INTO task_submissions(task_id,user_id,proof,status,created_at,decided_at) VALUES(?,?,?,'approved',?,?)",
+                      (task_id, user["user_id"], "direct complete", now, now))
+        if t["budget_coins"]:
+            c.execute("UPDATE tasks SET spent_coins=spent_coins+? WHERE id=?",
+                      (t["reward_coins"], task_id))
+        c.execute("UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+? WHERE user_id=?",
+                  (t["reward_coins"], t["reward_coins"], user["user_id"]))
+        log(c, user["user_id"], "task", {"coins": t["reward_coins"]},
+            f"Task complete (direct): {t['title']}")
+        fresh = c.execute("SELECT * FROM users WHERE user_id=?", (user["user_id"],)).fetchone()
+        maybe_qualify_referral(c, fresh)
+        return jsonify({"ok": True,
+                        "msg": f"Task complete — {t['reward_coins']} coins mil gaye!",
+                        "state": state_payload(c, fresh)})
+
 @app.post("/api/owner/tasks")
 def owner_tasks_create():
     if not _require_owner():
@@ -997,9 +1038,10 @@ def owner_referrals_decide():
 
 @app.post("/api/owner/grant")
 def owner_grant():
-    """Owner gifts coins to a player from the Admin Panel. Coins land in the
-    spendable balance only (levels/leaderboard run on lifetime coins, which
-    gifts do not touch), and the gift is written to the ledger."""
+    """Owner gifts coins to a player from the Admin Panel. By the owner's
+    order the gift counts in BOTH the spendable balance and lifetime coins
+    (so the player's level and leaderboard position rise too), and the gift
+    is written to the ledger."""
     if not _require_owner():
         return jsonify({"ok": False, "msg": "Owner only"}), 403
     data = request.get_json(silent=True) or {}
@@ -1014,7 +1056,8 @@ def owner_grant():
         u = c.execute("SELECT * FROM users WHERE user_id=?", (target,)).fetchone()
         if not u or target == "owner":
             return jsonify({"ok": False, "msg": "Player nahi mila"})
-        c.execute("UPDATE users SET coins=coins+? WHERE user_id=?", (amount, target))
+        c.execute("UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+? WHERE user_id=?",
+                  (amount, amount, target))
         log(c, target, "owner_grant", {"coins": amount}, "Owner ne coins diye (Admin Panel se)")
         fresh = c.execute("SELECT coins FROM users WHERE user_id=?", (target,)).fetchone()
         return jsonify({"ok": True, "balance": fresh["coins"],
