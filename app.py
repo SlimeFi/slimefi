@@ -39,6 +39,10 @@ def verify_init_data(init_data):
         if not hmac.compare_digest(calc, received_hash):
             return None
         user = json.loads(pairs.get("user", "{}"))
+        try:
+            g.tg_username = user.get("username") or ""
+        except Exception:
+            pass
         return user.get("id")
     except Exception:
         return None
@@ -183,7 +187,8 @@ def init_db():
                          ("ads_today", "ALTER TABLE users ADD COLUMN ads_today INTEGER DEFAULT 0"),
                          ("ads_date", "ALTER TABLE users ADD COLUMN ads_date TEXT"),
                          ("referred_qualified", "ALTER TABLE users ADD COLUMN referred_qualified INTEGER DEFAULT 0"),
-                         ("last_ad_at", "ALTER TABLE users ADD COLUMN last_ad_at REAL DEFAULT 0")]:
+                         ("last_ad_at", "ALTER TABLE users ADD COLUMN last_ad_at REAL DEFAULT 0"),
+                         ("username", "ALTER TABLE users ADD COLUMN username TEXT DEFAULT ''")]:
             if col not in cols:
                 c.execute(ddl)
         tcols = {r[1] for r in c.execute("PRAGMA table_info(tasks)")}
@@ -196,6 +201,10 @@ def init_db():
 def get_user(c, user_id):
     row = c.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
     if row:
+        uname = getattr(g, "tg_username", "")
+        if uname and row["username"] != uname:
+            c.execute("UPDATE users SET username=? WHERE user_id=?", (uname, user_id))
+            row = c.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
         return row
     code = "SLIME-" + secrets.token_hex(3).upper()
     now = time.time()
@@ -302,6 +311,15 @@ def state_payload(c, user):
             "referral_reward_coins": REFERRAL_REWARD_COINS,
             "payouts_enabled": PAYOUTS_ENABLED,
         },
+        "leaderboard": [
+            {"label": ("@" + r["uname"]) if r["uname"] else "Player " + r["user_id"][-4:],
+             "coins": r["lifetime_coins"], "level": slime_level(r["lifetime_coins"])[0]}
+            for r in c.execute(
+                "SELECT u.user_id, u.lifetime_coins, COALESCE(NULLIF(u.username,''), "
+                "(SELECT s.username FROM seen_starts s WHERE s.tg_id = u.user_id), '') AS uname "
+                "FROM users u WHERE u.user_id != 'owner' "
+                "ORDER BY u.lifetime_coins DESC, u.created_at ASC LIMIT 10")
+        ],
         "recent_payouts": [
             {"amount_rupees": round(w["amount_paise"] / 100, 2), "upi": mask_upi(w["upi_id"]),
              "ts": w["decided_at"] or w["created_at"]}
@@ -588,8 +606,10 @@ def owner_stats():
         (day_start,)).fetchone()["c"]
     starts = conn.execute("SELECT COUNT(*) c FROM seen_starts").fetchone()["c"]
     rows = conn.execute(
-        "SELECT user_id, lifetime_coins, created_at, invites FROM users "
-        "WHERE user_id != 'owner' ORDER BY created_at DESC LIMIT 10").fetchall()
+        "SELECT u.user_id, u.lifetime_coins, u.created_at, u.invites, "
+        "COALESCE(NULLIF(u.username,''), "
+        "(SELECT s.username FROM seen_starts s WHERE s.tg_id = u.user_id), '') AS uname "
+        "FROM users u WHERE u.user_id != 'owner' ORDER BY u.created_at DESC LIMIT 10").fetchall()
     conn.close()
     return jsonify({"ok": True, "total_players": total, "joined_today": joined_today,
                     "bot_starts": starts, "recent": [dict(r) for r in rows]})
