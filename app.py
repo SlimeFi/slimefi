@@ -72,7 +72,31 @@ def telegram_auth():
         return None
     if not ALLOW_DEV_AUTH:
         return jsonify({"ok": False, "msg": "Open SlimeFi from its Telegram bot"}), 401
+    g.tg_user_id = request.headers.get("X-User-Id") or "owner"
     return None
+@app.before_request
+def ban_guard():
+    """A banned (extra) account cannot perform actions. Owner routes stay
+    reachable so the owner can review and unban; /api/state returns the
+    notice itself."""
+    if request.method != "POST":
+        return None
+    p = request.path
+    if not p.startswith("/api/") or p.startswith("/api/owner/"):
+        return None
+    user_id = getattr(g, "tg_user_id", None)
+    if not user_id:
+        return None
+    conn = db()
+    try:
+        row = conn.execute("SELECT banned FROM users WHERE user_id=?", (user_id,)).fetchone()
+    finally:
+        conn.close()
+    if row and row["banned"]:
+        return jsonify({"ok": False, "banned": True,
+                        "msg": "MULTIPLE ACCOUNTS DETECTED — ye account band hai. Sirf apna main (pehla) account chalao."}), 403
+    return None
+
 DB_PATH = __file__.rsplit("/", 1)[0] + "/slimefi.db"
 _lock = threading.Lock()
 
@@ -168,6 +192,10 @@ def init_db():
         CREATE TABLE IF NOT EXISTS seen_starts(
             tg_id TEXT PRIMARY KEY, username TEXT, first_name TEXT, ts REAL
         );
+        CREATE TABLE IF NOT EXISTS referral_reviews(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, referrer_id TEXT, referred_id TEXT UNIQUE,
+            status TEXT DEFAULT 'pending', created_at REAL, decided_at REAL
+        );
         CREATE TABLE IF NOT EXISTS tasks(
             id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT,
             link TEXT, reward_coins INTEGER DEFAULT 0, active INTEGER DEFAULT 1,
@@ -190,7 +218,11 @@ def init_db():
                          ("ads_date", "ALTER TABLE users ADD COLUMN ads_date TEXT"),
                          ("referred_qualified", "ALTER TABLE users ADD COLUMN referred_qualified INTEGER DEFAULT 0"),
                          ("last_ad_at", "ALTER TABLE users ADD COLUMN last_ad_at REAL DEFAULT 0"),
-                         ("username", "ALTER TABLE users ADD COLUMN username TEXT DEFAULT ''")]:
+                         ("username", "ALTER TABLE users ADD COLUMN username TEXT DEFAULT ''"),
+                         ("ip_fp", "ALTER TABLE users ADD COLUMN ip_fp TEXT DEFAULT ''"),
+                         ("banned", "ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0"),
+                         ("ban_reason", "ALTER TABLE users ADD COLUMN ban_reason TEXT DEFAULT ''"),
+                         ("ban_override", "ALTER TABLE users ADD COLUMN ban_override INTEGER DEFAULT 0")]:
             if col not in cols:
                 c.execute(ddl)
         tcols = {r[1] for r in c.execute("PRAGMA table_info(tasks)")}
@@ -370,19 +402,63 @@ def task_budget_left(t):
         return None
     return t["budget_coins"] - (t["spent_coins"] or 0)
 
+def _client_fp():
+    """Keyed fingerprint of the client network. The raw IP is NEVER stored —
+    only an HMAC of it, which can link accounts from one network without
+    keeping anyone's address."""
+    xff = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+    ip = xff or (request.remote_addr or "")
+    if not ip:
+        return ""
+    return hmac.new((BOT_TOKEN or "slimefi").encode(), ip.encode(),
+                    hashlib.sha256).hexdigest()[:32]
+
+def _detect_multi_account(c, user):
+    """Owner rule: one person, one account. The OLDEST account on a network
+    is the main account and is never touched; a NEWER account arriving from
+    the same network is an extra and is banned, and sees the
+    MULTIPLE ACCOUNTS DETECTED notice. The owner is exempt."""
+    if user["user_id"] == "owner" or (OWNER_ID and user["user_id"] == OWNER_ID):
+        return
+    if user["ban_override"]:
+        return  # the owner personally cleared this account; never auto-ban it again
+    fp = _client_fp()
+    if not fp:
+        return
+    if user["ip_fp"] != fp:
+        c.execute("UPDATE users SET ip_fp=? WHERE user_id=?", (fp, user["user_id"]))
+    other = c.execute(
+        "SELECT user_id, created_at FROM users WHERE ip_fp=? AND user_id != ? AND banned=0 "
+        "ORDER BY created_at ASC LIMIT 1", (fp, user["user_id"])).fetchone()
+    if other and (user["created_at"] or 0) > (other["created_at"] or 0):
+        c.execute("UPDATE users SET banned=1, ban_reason='MULTIPLE ACCOUNTS DETECTED' WHERE user_id=?",
+                  (user["user_id"],))
+
+def _pay_referral(c, user, inv):
+    c.execute("UPDATE users SET referred_qualified=1 WHERE user_id=?", (user["user_id"],))
+    c.execute("UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+? WHERE user_id=?",
+              (REFERRAL_REWARD_COINS, REFERRAL_REWARD_COINS, inv["user_id"]))
+    log(c, inv["user_id"], "referral", {"coins": REFERRAL_REWARD_COINS},
+        "Referral reward: dost ne pehli qualifying activity puri ki")
+
 def maybe_qualify_referral(c, user):
     """Referral rule (owner, 2026-11-12): the inviter earns REFERRAL_REWARD_COINS
     only when the referred user completes a first qualifying activity — never
-    on join alone. Runs at most once per referred user."""
+    on join alone. Runs at most once per referred user. If inviter and
+    referred share one network, the reward is HELD for the owner's review
+    (referral_reviews) instead of being paid automatically."""
     if not user["referred_by"] or user["referred_qualified"]:
         return
-    c.execute("UPDATE users SET referred_qualified=1 WHERE user_id=?", (user["user_id"],))
     inv = c.execute("SELECT * FROM users WHERE user_id=?", (user["referred_by"],)).fetchone()
-    if inv:
-        c.execute("UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+? WHERE user_id=?",
-                  (REFERRAL_REWARD_COINS, REFERRAL_REWARD_COINS, inv["user_id"]))
-        log(c, inv["user_id"], "referral", {"coins": REFERRAL_REWARD_COINS},
-            "Referral reward: dost ne pehli qualifying activity puri ki")
+    if not inv:
+        c.execute("UPDATE users SET referred_qualified=1 WHERE user_id=?", (user["user_id"],))
+        return
+    if user["ip_fp"] and inv["ip_fp"] and user["ip_fp"] == inv["ip_fp"]:
+        c.execute("UPDATE users SET referred_qualified=2 WHERE user_id=?", (user["user_id"],))
+        c.execute("INSERT OR IGNORE INTO referral_reviews(referrer_id,referred_id,status,created_at) "
+                  "VALUES(?,?,'pending',?)", (inv["user_id"], user["user_id"], time.time()))
+        return
+    _pay_referral(c, user, inv)
 
 # ---------------- routes ----------------
 @app.get("/api/health")
@@ -393,6 +469,15 @@ def health():
 def state():
     with _lock, db() as c:
         u = roll_day(c, settle(c, get_user(c, uid())))
+        _detect_multi_account(c, u)
+        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone() or u
+        if u["banned"]:
+            return jsonify({"ok": True, "banned": True, "ban_notice":
+                            "MULTIPLE ACCOUNTS DETECTED\n\n"
+                            "Tumhare ek se zyada SlimeFi accounts mile hain. Niyam ke hisaab se "
+                            "sirf pehla (main) account chal sakta hai — ye extra account band kar "
+                            "diya gaya hai.\n\nAgar ye galti se hua hai, to official channel par "
+                            "support se baat karo."})
         return jsonify(state_payload(c, u))
 
 @app.post("/api/collect")
@@ -505,9 +590,13 @@ def referral_apply():
         u = get_user(c, uid())
         if u["referred_by"]:
             return jsonify({"ok": False, "msg": "Referral code pehle hi lag chuka hai"})
+        if time.time() - (u["created_at"] or 0) > 48 * 3600:
+            return jsonify({"ok": False, "msg": "Referral code sirf account banne ke 48 ghante ke andar lag sakta hai — tumhara samay nikal gaya"})
         inv = c.execute("SELECT * FROM users WHERE referral_code=?", (code,)).fetchone()
         if not inv or inv["user_id"] == u["user_id"]:
             return jsonify({"ok": False, "msg": "Code sahi nahi hai"})
+        if (inv["created_at"] or 0) > (u["created_at"] or 0):
+            return jsonify({"ok": False, "msg": "Ye code tumse naye account ka hai — referral code sirf pehle bane (purane) account ka lag sakta hai"})
         # New rule: no instant coins. The inviter earns REFERRAL_REWARD_COINS
         # only when this user completes a first qualifying activity.
         c.execute("UPDATE users SET referred_by=? WHERE user_id=?",
@@ -851,6 +940,64 @@ def owner_submissions_decide():
         c.execute("UPDATE task_submissions SET status=?, decided_at=? WHERE id=?",
                   ("approved" if action == "approve" else "rejected", time.time(), s["id"]))
         return jsonify({"ok": True, "msg": "Ho gaya"})
+
+@app.get("/api/owner/referrals")
+def owner_referrals():
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    with db() as c:
+        def uname_of(c, user_id):
+            r = c.execute(
+                "SELECT COALESCE(NULLIF(username,''), "
+                "(SELECT s.username FROM seen_starts s WHERE s.tg_id=users.user_id), '') u "
+                "FROM users WHERE user_id=?", (user_id,)).fetchone()
+            return ("@" + r["u"]) if r and r["u"] else user_id
+        reviews = []
+        for r in c.execute("SELECT * FROM referral_reviews WHERE status='pending' ORDER BY created_at DESC LIMIT 20"):
+            reviews.append({"id": r["id"], "referrer": uname_of(c, r["referrer_id"]),
+                            "referred": uname_of(c, r["referred_id"]),
+                            "reward_coins": REFERRAL_REWARD_COINS, "created_at": r["created_at"]})
+        banned = []
+        for r in c.execute("SELECT * FROM users WHERE banned=1 ORDER BY created_at DESC LIMIT 20"):
+            banned.append({"user_id": r["user_id"], "label": uname_of(c, r["user_id"]),
+                           "reason": r["ban_reason"], "lifetime_coins": r["lifetime_coins"],
+                           "created_at": r["created_at"]})
+        return jsonify({"ok": True, "reviews": reviews, "banned": banned})
+
+@app.post("/api/owner/referrals/decide")
+def owner_referrals_decide():
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    data = request.get_json(silent=True) or {}
+    action = data.get("action")
+    if action not in ("approve", "reject"):
+        return jsonify({"ok": False, "msg": "Unknown action"})
+    with _lock, db() as c:
+        r = c.execute("SELECT * FROM referral_reviews WHERE id=?", (data.get("id"),)).fetchone()
+        if not r or r["status"] != "pending":
+            return jsonify({"ok": False, "msg": "Review pending nahi hai"})
+        referred = c.execute("SELECT * FROM users WHERE user_id=?", (r["referred_id"],)).fetchone()
+        inv = c.execute("SELECT * FROM users WHERE user_id=?", (r["referrer_id"],)).fetchone()
+        if action == "approve":
+            if referred and inv:
+                _pay_referral(c, referred, inv)
+            c.execute("UPDATE referral_reviews SET status='approved', decided_at=? WHERE id=?",
+                      (time.time(), r["id"]))
+            return jsonify({"ok": True, "msg": "Approve ho gaya — reward de diya"})
+        c.execute("UPDATE users SET referred_qualified=3 WHERE user_id=?", (r["referred_id"],))
+        c.execute("UPDATE referral_reviews SET status='rejected', decided_at=? WHERE id=?",
+                  (time.time(), r["id"]))
+        return jsonify({"ok": True, "msg": "Reject ho gaya — reward nahi milega"})
+
+@app.post("/api/owner/unban")
+def owner_unban():
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    data = request.get_json(silent=True) or {}
+    with _lock, db() as c:
+        c.execute("UPDATE users SET banned=0, ban_reason='', ban_override=1 WHERE user_id=?",
+                  (data.get("user_id") or "",))
+        return jsonify({"ok": True, "msg": "Account unban ho gaya"})
 
 @app.get("/")
 def index():
