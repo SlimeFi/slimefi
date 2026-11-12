@@ -148,7 +148,7 @@ function render() {
   if (e.ads_today >= e.ad_daily_limit) { adBtn.disabled = true; adBtn.textContent = "Aaj ke ads khatam — kal aana"; }
   else if (e.ad_cooldown_left > 0) { adBtn.disabled = true; adBtn.textContent = "Agla ad " + e.ad_cooldown_left + " sec me"; }
   else { adBtn.disabled = false; adBtn.textContent = "▶ Watch Ad (+" + e.ad_reward_coins + " coins)"; }
-  $("ad-note").textContent = e.ads_live ? "" : "Note: asal AdsGram ads judna baki hai — abhi reward system test mode me hai.";
+  $("ad-note").textContent = e.ads_live ? "" : "Note: ads judna baki hai — abhi reward system test mode me hai.";
 
   // admin panel
   if (S.is_owner) { $("owner-panel").style.display = "block"; loadOwner(); }
@@ -430,18 +430,25 @@ $("btn-withdraw").onclick = () => {
   else toast("UPI ID aur amount dono dalo");
 };
 $("btn-ad").onclick = () => {
+  const monetagFn = window.show_12248440;
   const blockId = window.SLIMEFI_ADS_BLOCK_ID;
-  if (!blockId || !window.Adsgram) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
+  const useMonetag = typeof monetagFn === "function";
+  if (!useMonetag && (!blockId || !window.Adsgram)) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
   // Token fetch and ad start TOGETHER: the ad must open straight from the
   // tap — if we wait for the network first, the webview blocks the ad.
-  const startP = api("/api/ad/start", { v: 26 });
+  const startP = api("/api/ad/start", { v: 28 });
   const t0 = Date.now();
   let claimed = false;
   const tryClaim = async done => {
     if (claimed) return; claimed = true;
     const st = await startP;
     if (!st.ok) { toast(st.msg || "Reward nahi mila — fir try karo"); return; }
-    act("/api/ad/claim", { token: st.token, done: done ? 1 : 0 });
+    // The server rejects claims whose one-time token is too young (done:
+    // under 8s, no-signal: under 15s) WITHOUT burning the token — wait
+    // out the margin here so a genuine claim is not lost.
+    const need = (done ? 10000 : 17000) - (Date.now() - t0);
+    const send = () => act("/api/ad/claim", { token: st.token, done: done ? 1 : 0 });
+    if (need > 0) setTimeout(send, need); else send();
   };
   // Some Telegram clients play the ad but NEVER answer the SDK promise
   // (their WebApp bridge drops the completion callback) — the ad closes
@@ -450,17 +457,36 @@ $("btn-ad").onclick = () => {
   // every claim on the one-time token's age (15s+ without the signal),
   // so instant closes and load failures stay unpaid.
   let settled = false;
-  window.Adsgram.init({ blockId }).show()
-    .then(res => {
-      settled = true;
-      if (Date.now() - t0 >= 15000 || (res && res.done)) tryClaim(!!(res && res.done));
-      else toast("Ad pura dekho, tabhi coins milenge");
-    })
-    .catch(() => {
-      settled = true;
-      if (Date.now() - t0 >= 15000) tryClaim(false);
-      else toast("Ad load nahi hua — fir try karo");
-    });
+  const onDone = isDone => { settled = true; tryClaim(isDone); };
+  const onFail = () => {
+    settled = true;
+    if (Date.now() - t0 >= 15000) tryClaim(false);
+    else toast("Ad load nahi hua — fir try karo");
+  };
+  if (useMonetag) {
+    // Monetag Rewarded Interstitial, zone 12248440. Its promise resolves
+    // after the ad closes: reward_event_type 'valued' means the view is
+    // paid; 'non_valued' means this ad earns nothing — no claim then.
+    monetagFn()
+      .then(res => {
+        if (res && res.reward_event_type === "non_valued") {
+          settled = true;
+          toast("Is ad ka reward nahi bana — ek aur try karo");
+          return;
+        }
+        onDone(true);
+      })
+      .catch(onFail);
+  } else {
+    // AdsGram fallback (test block).
+    window.Adsgram.init({ blockId }).show()
+      .then(res => {
+        settled = true;
+        if (Date.now() - t0 >= 15000 || (res && res.done)) tryClaim(!!(res && res.done));
+        else toast("Ad pura dekho, tabhi coins milenge");
+      })
+      .catch(onFail);
+  }
   const iv = setInterval(() => {
     if (claimed || settled) { clearInterval(iv); return; }
     if (Date.now() - t0 >= 20000) { clearInterval(iv); tryClaim(false); }
