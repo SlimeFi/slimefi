@@ -188,7 +188,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS withdrawals(
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT,
             amount_paise INTEGER, upi_id TEXT, status TEXT DEFAULT 'pending',
-            created_at REAL, decided_at REAL
+            created_at REAL, decided_at REAL,
+            holder_name TEXT DEFAULT '', bank_name TEXT DEFAULT ''
         );
         CREATE TABLE IF NOT EXISTS seen_starts(
             tg_id TEXT PRIMARY KEY, username TEXT, first_name TEXT, ts REAL
@@ -237,6 +238,11 @@ def init_db():
                          ("category", "ALTER TABLE tasks ADD COLUMN category TEXT DEFAULT 'telegram'"),
                          ("verify_mode", "ALTER TABLE tasks ADD COLUMN verify_mode TEXT DEFAULT 'proof'")]:
             if col not in tcols:
+                c.execute(ddl)
+        wcols = {r[1] for r in c.execute("PRAGMA table_info(withdrawals)")}
+        for col, ddl in [("holder_name", "ALTER TABLE withdrawals ADD COLUMN holder_name TEXT DEFAULT ''"),
+                         ("bank_name", "ALTER TABLE withdrawals ADD COLUMN bank_name TEXT DEFAULT ''")]:
+            if col not in wcols:
                 c.execute(ddl)
 
 def get_user(c, user_id):
@@ -387,7 +393,8 @@ def state_payload(c, user):
         ).fetchone()["s"] / 100, 2),
         "my_withdrawals": [
             {"id": w["id"], "amount_rupees": round(w["amount_paise"] / 100, 2),
-             "upi_id": w["upi_id"], "status": w["status"]}
+             "upi_id": w["upi_id"], "status": w["status"],
+             "holder_name": w["holder_name"] or "", "bank_name": w["bank_name"] or ""}
             for w in c.execute("SELECT * FROM withdrawals WHERE user_id=? ORDER BY id DESC LIMIT 5",
                                (user["user_id"],))
         ],
@@ -683,12 +690,18 @@ def withdraw():
     if not PAYOUTS_ENABLED:
         return jsonify({"ok": False, "msg": "Withdraw abhi band hai — jald shuru hoga"})
     upi = (data.get("upi_id") or "").strip()
+    holder = (data.get("holder_name") or "").strip()
+    bank = (data.get("bank_name") or "").strip()
     try:
         rupees = int(data.get("amount_rupees") or 0)
     except (TypeError, ValueError):
         rupees = 0
     if "@" not in upi or len(upi) < 5:
         return jsonify({"ok": False, "msg": "Sahi UPI ID dalo, jese naam@okhdfcbank"})
+    if len(holder) < 3:
+        return jsonify({"ok": False, "msg": "Account holder ka pura naam dalo — payment verify karne ke liye zaroori hai"})
+    if len(bank) < 2:
+        return jsonify({"ok": False, "msg": "Bank ka naam dalo — payment verify karne ke liye zaroori hai"})
     if rupees < MIN_WITHDRAW_RUPEES:
         return jsonify({"ok": False, "msg": f"Minimum withdraw Rs {MIN_WITHDRAW_RUPEES} hai"})
     with _lock, db() as c:
@@ -697,9 +710,9 @@ def withdraw():
             return jsonify({"ok": False, "msg": "Cash balance kam hai"})
         c.execute("UPDATE users SET cash_paise=cash_paise-? WHERE user_id=?",
                   (rupees * 100, u["user_id"]))
-        cur = c.execute("INSERT INTO withdrawals(user_id,amount_paise,upi_id,created_at) VALUES(?,?,?,?)",
-                        (u["user_id"], rupees * 100, upi, time.time()))
-        log(c, u["user_id"], "withdraw", {}, f"Withdraw request #{cur.lastrowid}: Rs {rupees} to UPI")
+        cur = c.execute("INSERT INTO withdrawals(user_id,amount_paise,upi_id,created_at,holder_name,bank_name) VALUES(?,?,?,?,?,?)",
+                        (u["user_id"], rupees * 100, upi, time.time(), holder, bank))
+        log(c, u["user_id"], "withdraw", {}, f"Withdraw request #{cur.lastrowid}: Rs {rupees} to UPI ({holder}, {bank})")
         cash_log(c, u["user_id"], -rupees * 100, "withdraw_hold", f"Withdraw #{cur.lastrowid} requested")
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
         return jsonify({"ok": True, "state": state_payload(c, u),
@@ -749,7 +762,8 @@ def owner_withdrawals():
     with _lock, db() as c:
         rows = [{"id": w["id"], "user_id": w["user_id"],
                  "amount_rupees": round(w["amount_paise"] / 100, 2),
-                 "upi_id": w["upi_id"], "status": w["status"]}
+                 "upi_id": w["upi_id"], "status": w["status"],
+                 "holder_name": w["holder_name"] or "", "bank_name": w["bank_name"] or ""}
                 for w in c.execute("SELECT * FROM withdrawals ORDER BY (status='pending') DESC, id DESC LIMIT 50")]
         totals = c.execute("SELECT COUNT(*) n, COALESCE(SUM(amount_paise),0) s FROM withdrawals WHERE status='pending'").fetchone()
         return jsonify({"ok": True, "withdrawals": rows,
