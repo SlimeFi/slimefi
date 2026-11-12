@@ -65,6 +65,10 @@ function render() {
   $("home-lifetime").textContent = fmt(S.lifetime_coins);
   $("home-pending-rew").textContent = "₹" + (S.pending_rewards_coins / S.earn.coins_per_rupee).toFixed(2);
   $("payouts-total").textContent = S.payouts_paid_count ? (S.payouts_paid_count + " payouts · ₹" + fmt(S.payouts_paid_rupees)) : "";
+  const medals = ["🥇", "🥈", "🥉"];
+  $("leaderboard-list").innerHTML = (S.leaderboard || []).map((p, i) =>
+    `<div class="wd-row"><span>${medals[i] || (i + 1) + "."} ${esc(p.label)} · Lv ${p.level}</span><span>${fmt(p.coins)} coins</span></div>`).join("")
+    || `<div class="card-sub">Abhi koi player nahi hai — pehle tum bano!</div>`;
   $("payouts-list").innerHTML = (S.recent_payouts || []).map(p =>
     `<div class="wd-row"><span>✅ ₹${p.amount_rupees} → ${esc(p.upi)}</span><span>${p.ts ? new Date(p.ts * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("")
     || `<div class="card-sub">Abhi tak koi payout nahi hua — pehla payout yahin dikhega.</div>`;
@@ -222,7 +226,7 @@ async function loadOwner() {
         "Total Players: " + st.total_players + " · Aaj Join: " + st.joined_today +
         " · Bot Starts: " + st.bot_starts;
       $("owner-recent").innerHTML = (st.recent || []).map(x =>
-        `<div class="wd-row"><span>${esc(x.user_id.replace("tg", "TG "))} · ${fmt(x.lifetime_coins)} coins</span>` +
+        `<div class="wd-row"><span>${x.uname ? "@" + esc(x.uname) + " · " : ""}${esc(x.user_id.replace("tg", "TG "))} · ${fmt(x.lifetime_coins)} coins</span>` +
         `<span>${x.created_at ? new Date(x.created_at * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("");
     }
   } catch (e) {}
