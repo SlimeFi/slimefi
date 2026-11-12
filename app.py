@@ -302,6 +302,16 @@ def state_payload(c, user):
             "referral_reward_coins": REFERRAL_REWARD_COINS,
             "payouts_enabled": PAYOUTS_ENABLED,
         },
+        "recent_payouts": [
+            {"amount_rupees": round(w["amount_paise"] / 100, 2), "upi": mask_upi(w["upi_id"]),
+             "ts": w["decided_at"] or w["created_at"]}
+            for w in c.execute("SELECT * FROM withdrawals WHERE status='paid' ORDER BY id DESC LIMIT 10")
+        ],
+        "payouts_paid_count": c.execute(
+            "SELECT COUNT(*) n FROM withdrawals WHERE status='paid'").fetchone()["n"],
+        "payouts_paid_rupees": round(c.execute(
+            "SELECT COALESCE(SUM(amount_paise),0) s FROM withdrawals WHERE status='paid'"
+        ).fetchone()["s"] / 100, 2),
         "my_withdrawals": [
             {"id": w["id"], "amount_rupees": round(w["amount_paise"] / 100, 2),
              "upi_id": w["upi_id"], "status": w["status"]}
@@ -326,6 +336,12 @@ def cash_log(c, user_id, delta_paise, kind, note):
     the cash balance is never edited without an audit entry)."""
     c.execute("INSERT INTO cash_ledger(user_id,delta_paise,kind,note,ts) VALUES(?,?,?,?,?)",
               (user_id, delta_paise, kind, note, time.time()))
+
+def mask_upi(upi):
+    """Public payout proof must never expose a full UPI id."""
+    local, _, domain = (upi or "").partition("@")
+    head = local[:2] if len(local) > 2 else local[:1]
+    return f"{head}***@{domain}" if domain else "***"
 
 def task_budget_left(t):
     """Budget coins still available on a task; None means unlimited."""
