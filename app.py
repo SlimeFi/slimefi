@@ -364,6 +364,36 @@ def referral_apply():
 def index():
     return send_from_directory("static", "index.html")
 
+
+WEBAPP_URL = os.environ.get("WEBAPP_URL", "")
+
+
+@app.post("/webhook")
+def telegram_webhook():
+    """Telegram bot webhook: answers /start with the Launch button.
+    The reply is returned as the webhook response itself, so the server
+    needs no outbound call to Telegram for this."""
+    upd = request.get_json(silent=True) or {}
+    msg = upd.get("message") or {}
+    text = (msg.get("text") or "").strip()
+    chat_id = (msg.get("chat") or {}).get("id")
+    if not chat_id or not text.startswith("/start"):
+        return jsonify({"ok": True})
+    url = WEBAPP_URL
+    parts = text.split(maxsplit=1)
+    if len(parts) > 1 and parts[1].startswith("SLIME-"):
+        url = WEBAPP_URL + ("&" if "?" in WEBAPP_URL else "?") + "ref=" + parts[1]
+    return jsonify({
+        "method": "sendMessage",
+        "chat_id": chat_id,
+        "text": ("Welcome to SlimeFi - Jura Tempest Village Builder.\n"
+                 "Apna gaon banao, buildings upgrade karo, coins kamao "
+                 "aur apne Slime ko Level 10 Slime Sovereign tak le jao."),
+        "reply_markup": {"inline_keyboard": [[
+            {"text": "Launch SlimeFi", "web_app": {"url": url}}
+        ]]},
+    })
+
 init_db()
 
 if __name__ == "__main__":
