@@ -1,7 +1,8 @@
 """SlimeFi - Jura Tempest Village Builder
-Flask + SQLite backend. Virtual in-game economy only:
-coins are NOT real money. Cash withdrawal / token value needs
-separate funding, rules and security (future phase).
+Flask + SQLite backend. Earning phase (added 2026-11-12 on the owner's
+decision): coins convert to a rupee cash wallet funded by rewarded-ad
+revenue; withdrawals are UPI requests the owner approves and pays
+manually from the owner panel.
 Income accrues from server timestamps, so it keeps building
 even while the player is offline.
 """
@@ -93,6 +94,17 @@ RECIPES = {
     "smelt_crystal": {"title": "Smelt crystals into coins","give": {"crystals": 10}, "get": {"coins": 120}},
 }
 
+# ---------------- earning config ----------------
+# Cash is tracked in paise (100 paise = 1 rupee) so money math stays exact.
+COINS_PER_RUPEE = 1000        # 10,000 coins = Rs 10
+CONVERT_MIN_COINS = 1000      # convert at least Rs 1 worth at a time
+AD_REWARD_COINS = 100         # coins per rewarded ad watched
+AD_DAILY_LIMIT = 20           # max rewarded ads per user per day
+AD_COOLDOWN_SEC = 45          # gap between two ad claims
+MIN_WITHDRAW_RUPEES = 100     # minimum UPI withdrawal request
+OWNER_ID = os.environ.get("OWNER_ID", "")          # Telegram user key of the owner, e.g. "tg123456789"
+ADSGRAM_BLOCK_ID = os.environ.get("ADSGRAM_BLOCK_ID", "")  # set when the AdsGram block is live
+
 # ---------------- db ----------------
 def db():
     conn = sqlite3.connect(DB_PATH)
@@ -125,7 +137,20 @@ def init_db():
             coins INTEGER DEFAULT 0, wood INTEGER DEFAULT 0, crystals INTEGER DEFAULT 0,
             note TEXT, ts REAL
         );
+        CREATE TABLE IF NOT EXISTS withdrawals(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT,
+            amount_paise INTEGER, upi_id TEXT, status TEXT DEFAULT 'pending',
+            created_at REAL, decided_at REAL
+        );
         """)
+        # Earning columns added after the first release: add them to old DBs too.
+        cols = {r[1] for r in c.execute("PRAGMA table_info(users)")}
+        for col, ddl in [("cash_paise", "ALTER TABLE users ADD COLUMN cash_paise INTEGER DEFAULT 0"),
+                         ("ads_today", "ALTER TABLE users ADD COLUMN ads_today INTEGER DEFAULT 0"),
+                         ("ads_date", "ALTER TABLE users ADD COLUMN ads_date TEXT"),
+                         ("last_ad_at", "ALTER TABLE users ADD COLUMN last_ad_at REAL DEFAULT 0")]:
+            if col not in cols:
+                c.execute(ddl)
 
 def get_user(c, user_id):
     row = c.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
@@ -216,6 +241,25 @@ def state_payload(c, user):
         "squad_boost_pct": min(user["invites"] * 5, 50),
         "buildings": buildings, "quests": quests,
         "recipes": [{"id": k, **v} for k, v in RECIPES.items()],
+        "cash_paise": user["cash_paise"] or 0,
+        "cash_rupees": round((user["cash_paise"] or 0) / 100, 2),
+        "is_owner": bool(OWNER_ID) and user["user_id"] == OWNER_ID,
+        "earn": {
+            "coins_per_rupee": COINS_PER_RUPEE,
+            "convert_min_coins": CONVERT_MIN_COINS,
+            "min_withdraw_rupees": MIN_WITHDRAW_RUPEES,
+            "ad_reward_coins": AD_REWARD_COINS,
+            "ad_daily_limit": AD_DAILY_LIMIT,
+            "ads_today": (user["ads_today"] or 0) if user["ads_date"] == today else 0,
+            "ad_cooldown_left": max(0, int(AD_COOLDOWN_SEC - (time.time() - (user["last_ad_at"] or 0)))),
+            "ads_live": bool(ADSGRAM_BLOCK_ID),
+        },
+        "my_withdrawals": [
+            {"id": w["id"], "amount_rupees": round(w["amount_paise"] / 100, 2),
+             "upi_id": w["upi_id"], "status": w["status"]}
+            for w in c.execute("SELECT * FROM withdrawals WHERE user_id=? ORDER BY id DESC LIMIT 5",
+                               (user["user_id"],))
+        ],
     }
 
 def uid():
@@ -359,6 +403,110 @@ def referral_apply():
         log(c, inv["user_id"], "referral", {"coins": 100}, "Friend joined via referral")
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
         return jsonify({"ok": True, "state": state_payload(c, roll_day(c, settle(c, u)))})
+
+# ---------------- earning routes ----------------
+@app.post("/api/ad/claim")
+def ad_claim():
+    """Reward for one watched ad. Daily cap + cooldown apply server-side,
+    so the reward cannot be farmed by tapping. When the AdsGram block is
+    connected, the frontend only calls this after a completed ad view."""
+    today = str(date.today())
+    with _lock, db() as c:
+        u = roll_day(c, settle(c, get_user(c, uid())))
+        watched = (u["ads_today"] or 0) if u["ads_date"] == today else 0
+        if watched >= AD_DAILY_LIMIT:
+            return jsonify({"ok": False, "msg": f"Aaj ke {AD_DAILY_LIMIT} ads ho gaye. Kal phir try karo."})
+        left = AD_COOLDOWN_SEC - (time.time() - (u["last_ad_at"] or 0))
+        if left > 0:
+            return jsonify({"ok": False, "msg": f"Thoda ruko, agla ad {int(left)} sec me milega."})
+        c.execute("""UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+?,
+                     ads_today=?, ads_date=?, last_ad_at=? WHERE user_id=?""",
+                  (AD_REWARD_COINS, AD_REWARD_COINS, watched + 1, today, time.time(), u["user_id"]))
+        log(c, u["user_id"], "ad", {"coins": AD_REWARD_COINS}, f"Rewarded ad #{watched + 1}")
+        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
+        return jsonify({"ok": True, "reward": AD_REWARD_COINS, "state": state_payload(c, u)})
+
+@app.post("/api/convert")
+def convert():
+    data = request.get_json(silent=True) or {}
+    try:
+        coins = int(data.get("coins") or 0)
+    except (TypeError, ValueError):
+        coins = 0
+    if coins < CONVERT_MIN_COINS or coins % COINS_PER_RUPEE != 0:
+        return jsonify({"ok": False, "msg": f"Convert {COINS_PER_RUPEE} coins ke hisab se hota hai, kam se kam {CONVERT_MIN_COINS} coins."})
+    rupees_paise = (coins // COINS_PER_RUPEE) * 100
+    with _lock, db() as c:
+        u = roll_day(c, settle(c, get_user(c, uid())))
+        if u["coins"] < coins:
+            return jsonify({"ok": False, "msg": "Coins kam hain"})
+        c.execute("UPDATE users SET coins=coins-?, cash_paise=cash_paise+? WHERE user_id=?",
+                  (coins, rupees_paise, u["user_id"]))
+        log(c, u["user_id"], "convert", {"coins": -coins}, f"Converted to Rs {rupees_paise // 100}")
+        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
+        return jsonify({"ok": True, "state": state_payload(c, u),
+                        "msg": f"{coins} coins cash me badal gaye"})
+
+@app.post("/api/withdraw")
+def withdraw():
+    data = request.get_json(silent=True) or {}
+    upi = (data.get("upi_id") or "").strip()
+    try:
+        rupees = int(data.get("amount_rupees") or 0)
+    except (TypeError, ValueError):
+        rupees = 0
+    if "@" not in upi or len(upi) < 5:
+        return jsonify({"ok": False, "msg": "Sahi UPI ID dalo, jese naam@okhdfcbank"})
+    if rupees < MIN_WITHDRAW_RUPEES:
+        return jsonify({"ok": False, "msg": f"Minimum withdraw Rs {MIN_WITHDRAW_RUPEES} hai"})
+    with _lock, db() as c:
+        u = roll_day(c, settle(c, get_user(c, uid())))
+        if (u["cash_paise"] or 0) < rupees * 100:
+            return jsonify({"ok": False, "msg": "Cash balance kam hai"})
+        c.execute("UPDATE users SET cash_paise=cash_paise-? WHERE user_id=?",
+                  (rupees * 100, u["user_id"]))
+        cur = c.execute("INSERT INTO withdrawals(user_id,amount_paise,upi_id,created_at) VALUES(?,?,?,?)",
+                        (u["user_id"], rupees * 100, upi, time.time()))
+        log(c, u["user_id"], "withdraw", {}, f"Withdraw request #{cur.lastrowid}: Rs {rupees} to UPI")
+        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
+        return jsonify({"ok": True, "state": state_payload(c, u),
+                        "msg": f"Request bhej di. Rs {rupees} jald hi tumhare UPI par aayega."})
+
+def _require_owner():
+    return bool(OWNER_ID) and uid() == OWNER_ID
+
+@app.get("/api/owner/withdrawals")
+def owner_withdrawals():
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    with _lock, db() as c:
+        rows = [{"id": w["id"], "user_id": w["user_id"],
+                 "amount_rupees": round(w["amount_paise"] / 100, 2),
+                 "upi_id": w["upi_id"], "status": w["status"]}
+                for w in c.execute("SELECT * FROM withdrawals ORDER BY (status='pending') DESC, id DESC LIMIT 50")]
+        totals = c.execute("SELECT COUNT(*) n, COALESCE(SUM(amount_paise),0) s FROM withdrawals WHERE status='pending'").fetchone()
+        return jsonify({"ok": True, "withdrawals": rows,
+                        "pending_count": totals["n"], "pending_rupees": round(totals["s"] / 100, 2)})
+
+@app.post("/api/owner/withdrawals/decide")
+def owner_decide():
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    data = request.get_json(silent=True) or {}
+    action = data.get("action")
+    if action not in ("paid", "reject"):
+        return jsonify({"ok": False, "msg": "Unknown action"})
+    with _lock, db() as c:
+        w = c.execute("SELECT * FROM withdrawals WHERE id=?", (data.get("id"),)).fetchone()
+        if not w or w["status"] != "pending":
+            return jsonify({"ok": False, "msg": "Request pending nahi hai"})
+        if action == "reject":
+            c.execute("UPDATE users SET cash_paise=cash_paise+? WHERE user_id=?",
+                      (w["amount_paise"], w["user_id"]))
+            log(c, w["user_id"], "withdraw_refund", {}, f"Withdraw #{w['id']} rejected, refunded")
+        c.execute("UPDATE withdrawals SET status=?, decided_at=? WHERE id=?",
+                  ("paid" if action == "paid" else "rejected", time.time(), w["id"]))
+        return jsonify({"ok": True, "msg": "Ho gaya"})
 
 @app.get("/")
 def index():
