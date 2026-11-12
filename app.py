@@ -1063,6 +1063,34 @@ def owner_grant():
         return jsonify({"ok": True, "balance": fresh["coins"],
                         "msg": f"{amount} coins de diye. Naya balance: {fresh['coins']} coins"})
 
+@app.post("/api/owner/reduce")
+def owner_reduce():
+    """Owner cuts coins from a player (correction / abuse recovery). The cut
+    applies to both the spendable balance and lifetime coins, never below
+    zero, and is written to the ledger."""
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    data = request.get_json(silent=True) or {}
+    try:
+        amount = int(data.get("coins") or 0)
+    except (TypeError, ValueError):
+        amount = 0
+    if amount <= 0 or amount > 1000000:
+        return jsonify({"ok": False, "msg": "Coins ki sahi matra dalo (1 se 10,00,000 tak)"})
+    target = (data.get("user_id") or "").strip()
+    with _lock, db() as c:
+        u = c.execute("SELECT * FROM users WHERE user_id=?", (target,)).fetchone()
+        if not u or target == "owner":
+            return jsonify({"ok": False, "msg": "Player nahi mila"})
+        new_coins = max(0, (u["coins"] or 0) - amount)
+        new_life = max(0, (u["lifetime_coins"] or 0) - amount)
+        cut = (u["coins"] or 0) - new_coins
+        c.execute("UPDATE users SET coins=?, lifetime_coins=? WHERE user_id=?",
+                  (new_coins, new_life, target))
+        log(c, target, "owner_reduce", {"coins": -cut}, "Owner ne coins kaate (Admin Panel se)")
+        return jsonify({"ok": True, "balance": new_coins,
+                        "msg": f"{cut} coins kaat liye. Naya balance: {new_coins} coins"})
+
 @app.post("/api/owner/unban")
 def owner_unban():
     if not _require_owner():
