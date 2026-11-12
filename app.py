@@ -110,6 +110,9 @@ AD_REWARD_COINS = 100         # coins per rewarded ad watched
 AD_DAILY_LIMIT = 20           # max rewarded ads per user per day
 AD_COOLDOWN_SEC = 45          # gap between two ad claims
 MIN_WITHDRAW_RUPEES = 100     # minimum UPI withdrawal request
+REFERRAL_REWARD_COINS = 500   # paid to the inviter when the referred user completes
+                              # their first qualifying activity (ad / quest / daily /
+                              # approved sponsored task) — never on join alone
 OWNER_ID = os.environ.get("OWNER_ID", "")          # Telegram user key of the owner, e.g. "tg123456789"
 OWNER_KEY = os.environ.get("OWNER_KEY", "")        # secret in the owner's personal panel link (startapp param)
 ADSGRAM_BLOCK_ID = os.environ.get("ADSGRAM_BLOCK_ID", "")  # set when the AdsGram block is live
@@ -154,12 +157,23 @@ def init_db():
         CREATE TABLE IF NOT EXISTS seen_starts(
             tg_id TEXT PRIMARY KEY, username TEXT, first_name TEXT, ts REAL
         );
+        CREATE TABLE IF NOT EXISTS tasks(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT,
+            link TEXT, reward_coins INTEGER DEFAULT 0, active INTEGER DEFAULT 1,
+            created_at REAL
+        );
+        CREATE TABLE IF NOT EXISTS task_submissions(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER, user_id TEXT,
+            proof TEXT, status TEXT DEFAULT 'pending', created_at REAL, decided_at REAL,
+            UNIQUE(task_id, user_id)
+        );
         """)
         # Earning columns added after the first release: add them to old DBs too.
         cols = {r[1] for r in c.execute("PRAGMA table_info(users)")}
         for col, ddl in [("cash_paise", "ALTER TABLE users ADD COLUMN cash_paise INTEGER DEFAULT 0"),
                          ("ads_today", "ALTER TABLE users ADD COLUMN ads_today INTEGER DEFAULT 0"),
                          ("ads_date", "ALTER TABLE users ADD COLUMN ads_date TEXT"),
+                         ("referred_qualified", "ALTER TABLE users ADD COLUMN referred_qualified INTEGER DEFAULT 0"),
                          ("last_ad_at", "ALTER TABLE users ADD COLUMN last_ad_at REAL DEFAULT 0")]:
             if col not in cols:
                 c.execute(ddl)
@@ -255,6 +269,11 @@ def state_payload(c, user):
         "recipes": [{"id": k, **v} for k, v in RECIPES.items()],
         "cash_paise": user["cash_paise"] or 0,
         "cash_rupees": round((user["cash_paise"] or 0) / 100, 2),
+        "players": c.execute("SELECT COUNT(*) n FROM users WHERE user_id != 'owner'").fetchone()["n"],
+        "pending_rewards_coins": c.execute(
+            "SELECT COALESCE(SUM(t.reward_coins),0) s FROM task_submissions s "
+            "JOIN tasks t ON t.id = s.task_id WHERE s.user_id=? AND s.status='pending'",
+            (user["user_id"],)).fetchone()["s"],
         "is_owner": bool(OWNER_ID) and user["user_id"] == OWNER_ID,
         "earn": {
             "coins_per_rupee": COINS_PER_RUPEE,
@@ -265,6 +284,7 @@ def state_payload(c, user):
             "ads_today": (user["ads_today"] or 0) if user["ads_date"] == today else 0,
             "ad_cooldown_left": max(0, int(AD_COOLDOWN_SEC - (time.time() - (user["last_ad_at"] or 0)))),
             "ads_live": bool(ADSGRAM_BLOCK_ID),
+            "referral_reward_coins": REFERRAL_REWARD_COINS,
         },
         "my_withdrawals": [
             {"id": w["id"], "amount_rupees": round(w["amount_paise"] / 100, 2),
@@ -284,6 +304,20 @@ def uid():
 def log(c, user_id, kind, d, note):
     c.execute("INSERT INTO ledger(user_id,kind,coins,wood,crystals,note,ts) VALUES(?,?,?,?,?,?,?)",
               (user_id, kind, d.get("coins", 0), d.get("wood", 0), d.get("crystals", 0), note, time.time()))
+
+def maybe_qualify_referral(c, user):
+    """Referral rule (owner, 2026-11-12): the inviter earns REFERRAL_REWARD_COINS
+    only when the referred user completes a first qualifying activity — never
+    on join alone. Runs at most once per referred user."""
+    if not user["referred_by"] or user["referred_qualified"]:
+        return
+    c.execute("UPDATE users SET referred_qualified=1 WHERE user_id=?", (user["user_id"],))
+    inv = c.execute("SELECT * FROM users WHERE user_id=?", (user["referred_by"],)).fetchone()
+    if inv:
+        c.execute("UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+? WHERE user_id=?",
+                  (REFERRAL_REWARD_COINS, REFERRAL_REWARD_COINS, inv["user_id"]))
+        log(c, inv["user_id"], "referral", {"coins": REFERRAL_REWARD_COINS},
+            "Referral reward: dost ne pehli qualifying activity puri ki")
 
 # ---------------- routes ----------------
 @app.get("/api/health")
@@ -370,6 +404,7 @@ def daily():
                      last_daily=?, streak=? WHERE user_id=?""",
                   (reward, reward, today, streak, u["user_id"]))
         log(c, u["user_id"], "daily", {"coins": reward}, f"Daily reward day {streak}")
+        maybe_qualify_referral(c, u)
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
         return jsonify({"ok": True, "reward": reward, "state": state_payload(c, u)})
 
@@ -393,6 +428,7 @@ def quest_claim():
         c.execute(f"UPDATE users SET {sets}, lifetime_coins=lifetime_coins+? WHERE user_id=?",
                   (*r.values(), r.get("coins", 0), u["user_id"]))
         log(c, u["user_id"], "quest", r, q["title"])
+        maybe_qualify_referral(c, u)
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
         return jsonify({"ok": True, "state": state_payload(c, u)})
 
@@ -407,14 +443,15 @@ def referral_apply():
         inv = c.execute("SELECT * FROM users WHERE referral_code=?", (code,)).fetchone()
         if not inv or inv["user_id"] == u["user_id"]:
             return jsonify({"ok": False, "msg": "Code sahi nahi hai"})
-        c.execute("UPDATE users SET referred_by=?, coins=coins+50, lifetime_coins=lifetime_coins+50 WHERE user_id=?",
+        # New rule: no instant coins. The inviter earns REFERRAL_REWARD_COINS
+        # only when this user completes a first qualifying activity.
+        c.execute("UPDATE users SET referred_by=? WHERE user_id=?",
                   (inv["user_id"], u["user_id"]))
-        c.execute("UPDATE users SET invites=invites+1, coins=coins+100, lifetime_coins=lifetime_coins+100 WHERE user_id=?",
-                  (inv["user_id"],))
-        log(c, u["user_id"], "referral", {"coins": 50}, "Welcome bonus via referral")
-        log(c, inv["user_id"], "referral", {"coins": 100}, "Friend joined via referral")
+        c.execute("UPDATE users SET invites=invites+1 WHERE user_id=?", (inv["user_id"],))
+        log(c, u["user_id"], "referral", {}, "Referral code laga (reward qualifying activity par)")
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
-        return jsonify({"ok": True, "state": state_payload(c, roll_day(c, settle(c, u)))})
+        return jsonify({"ok": True, "state": state_payload(c, roll_day(c, settle(c, u))),
+                        "msg": "Referral lag gaya. Pehli activity puri karte hi dost ko reward milega."})
 
 # ---------------- earning routes ----------------
 @app.post("/api/ad/claim")
@@ -435,6 +472,7 @@ def ad_claim():
                      ads_today=?, ads_date=?, last_ad_at=? WHERE user_id=?""",
                   (AD_REWARD_COINS, AD_REWARD_COINS, watched + 1, today, time.time(), u["user_id"]))
         log(c, u["user_id"], "ad", {"coins": AD_REWARD_COINS}, f"Rewarded ad #{watched + 1}")
+        maybe_qualify_referral(c, u)
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
         return jsonify({"ok": True, "reward": AD_REWARD_COINS, "state": state_payload(c, u)})
 
@@ -540,6 +578,104 @@ def owner_decide():
             log(c, w["user_id"], "withdraw_refund", {}, f"Withdraw #{w['id']} rejected, refunded")
         c.execute("UPDATE withdrawals SET status=?, decided_at=? WHERE id=?",
                   ("paid" if action == "paid" else "rejected", time.time(), w["id"]))
+        return jsonify({"ok": True, "msg": "Ho gaya"})
+
+# ---------------- sponsored tasks (Task Center) ----------------
+@app.get("/api/tasks")
+def tasks_list():
+    """Active sponsored tasks + this user's submission status per task.
+    Flow (owner's plan): complete -> submit proof -> admin checks ->
+    reward credited to the ledger -> eligible for withdrawal."""
+    with _lock, db() as c:
+        u = get_user(c, uid())
+        subs = {s["task_id"]: s["status"] for s in
+                c.execute("SELECT * FROM task_submissions WHERE user_id=?", (u["user_id"],))}
+        rows = [{"id": t["id"], "title": t["title"], "description": t["description"],
+                 "link": t["link"], "reward_coins": t["reward_coins"],
+                 "my_status": subs.get(t["id"])}
+                for t in c.execute("SELECT * FROM tasks WHERE active=1 ORDER BY id DESC")]
+        return jsonify({"ok": True, "tasks": rows})
+
+@app.post("/api/tasks/submit")
+def tasks_submit():
+    data = request.get_json(silent=True) or {}
+    proof = (data.get("proof") or "").strip()
+    if len(proof) < 3:
+        return jsonify({"ok": False, "msg": "Proof dalo — screenshot link, username ya kaam ki detail"})
+    with _lock, db() as c:
+        u = get_user(c, uid())
+        t = c.execute("SELECT * FROM tasks WHERE id=? AND active=1", (data.get("task_id"),)).fetchone()
+        if not t:
+            return jsonify({"ok": False, "msg": "Task nahi mila"})
+        old = c.execute("SELECT * FROM task_submissions WHERE task_id=? AND user_id=?",
+                        (t["id"], u["user_id"])).fetchone()
+        if old and old["status"] != "rejected":
+            return jsonify({"ok": False, "msg": "Is task ka proof pehle se submit hai (duplicate nahi chalega)"})
+        if old:  # a rejected proof may be submitted once more, corrected
+            c.execute("UPDATE task_submissions SET proof=?, status='pending', created_at=?, decided_at=NULL WHERE id=?",
+                      (proof, time.time(), old["id"]))
+        else:
+            c.execute("INSERT INTO task_submissions(task_id,user_id,proof,created_at) VALUES(?,?,?,?)",
+                      (t["id"], u["user_id"], proof, time.time()))
+        return jsonify({"ok": True, "msg": "Proof submit ho gaya. Admin check ke baad reward milega."})
+
+@app.post("/api/owner/tasks")
+def owner_tasks_create():
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    data = request.get_json(silent=True) or {}
+    title = (data.get("title") or "").strip()
+    try:
+        reward = int(data.get("reward_coins") or 0)
+    except (TypeError, ValueError):
+        reward = 0
+    if not title or reward <= 0:
+        return jsonify({"ok": False, "msg": "Task ka title aur reward (coins) dalo"})
+    with _lock, db() as c:
+        cur = c.execute("INSERT INTO tasks(title,description,link,reward_coins,created_at) VALUES(?,?,?,?,?)",
+                        (title, (data.get("description") or "").strip(),
+                         (data.get("link") or "").strip(), reward, time.time()))
+        return jsonify({"ok": True, "id": cur.lastrowid, "msg": "Task ban gaya"})
+
+@app.get("/api/owner/submissions")
+def owner_submissions():
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    with _lock, db() as c:
+        subs = [{"id": s["id"], "task_id": s["task_id"], "task_title": s["title"],
+                 "user_id": s["user_id"], "proof": s["proof"], "status": s["status"],
+                 "reward_coins": s["reward_coins"]}
+                for s in c.execute(
+                    "SELECT s.*, t.title, t.reward_coins FROM task_submissions s "
+                    "JOIN tasks t ON t.id = s.task_id "
+                    "ORDER BY (s.status='pending') DESC, s.id DESC LIMIT 50")]
+        tasks = [{"id": t["id"], "title": t["title"], "reward_coins": t["reward_coins"],
+                  "active": t["active"]}
+                 for t in c.execute("SELECT * FROM tasks ORDER BY id DESC LIMIT 20")]
+        return jsonify({"ok": True, "submissions": subs, "tasks": tasks})
+
+@app.post("/api/owner/submissions/decide")
+def owner_submissions_decide():
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    data = request.get_json(silent=True) or {}
+    action = data.get("action")
+    if action not in ("approve", "reject"):
+        return jsonify({"ok": False, "msg": "Unknown action"})
+    with _lock, db() as c:
+        s = c.execute("SELECT s.*, t.reward_coins, t.title FROM task_submissions s "
+                      "JOIN tasks t ON t.id = s.task_id WHERE s.id=?", (data.get("id"),)).fetchone()
+        if not s or s["status"] != "pending":
+            return jsonify({"ok": False, "msg": "Submission pending nahi hai"})
+        if action == "approve":
+            c.execute("UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+? WHERE user_id=?",
+                      (s["reward_coins"], s["reward_coins"], s["user_id"]))
+            log(c, s["user_id"], "task", {"coins": s["reward_coins"]},
+                f"Sponsored task approved: {s['title']}")
+            submitter = c.execute("SELECT * FROM users WHERE user_id=?", (s["user_id"],)).fetchone()
+            maybe_qualify_referral(c, submitter)
+        c.execute("UPDATE task_submissions SET status=?, decided_at=? WHERE id=?",
+                  ("approved" if action == "approve" else "rejected", time.time(), s["id"]))
         return jsonify({"ok": True, "msg": "Ho gaya"})
 
 @app.get("/")
