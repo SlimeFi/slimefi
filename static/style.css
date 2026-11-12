@@ -165,13 +165,13 @@ button:disabled { opacity:.45; cursor:default; }
 /* bottom nav */
 .bottom-nav { position:fixed; z-index:30; bottom:0; left:50%; transform:translateX(-50%);
   width:min(520px,100%); padding:9px 8px calc(10px + env(safe-area-inset-bottom));
-  display:grid; grid-template-columns:repeat(5,1fr);
+  display:grid; grid-template-columns:repeat(7,1fr);
   background:rgba(12,18,31,.94); border-top:1px solid var(--line); backdrop-filter:blur(18px); }
 .nav-item { border:0; background:none; color:#7f8ca4; display:grid; justify-items:center; gap:4px; padding:3px 0; width:100%; }
-.nav-item span { font-size:1.2rem; line-height:1.4; }
-.nav-item small { font-size:.62rem; font-weight:700; }
+.nav-item span { font-size:1.08rem; line-height:1.35; }
+.nav-item small { font-size:.54rem; font-weight:700; white-space:nowrap; }
 .nav-item.active { color:var(--green); }
-.nav-main span { width:44px; height:34px; border-radius:11px; display:grid; place-items:center; color:#231a02;
+.nav-main span { width:38px; height:32px; border-radius:11px; display:grid; place-items:center; color:#231a02;
   background:linear-gradient(145deg,#ffe27a,#f5a623); box-shadow:0 4px 15px rgba(245,197,66,.4); }
 .nav-main.active small { color:var(--gold); }
 
@@ -264,3 +264,9 @@ button:disabled { opacity:.45; cursor:default; }
 .duo-btn.gold { background:linear-gradient(135deg,#ffe066,#f5b921); color:#241a02; box-shadow:0 6px 16px rgba(245,185,33,.30); }
 .duo-sub { margin-top:9px; font-size:.68rem; color:#a6b8b6; line-height:1.45; }
 .duo-sub b { color:#eaf5ff; font-size:.8rem; }
+
+/* daily check-in coins + claim */
+.daily-coins-wrap { text-align:center; margin:12px 0 2px; }
+.daily-coins-label { font-size:.7rem; letter-spacing:1.2px; color:#9fb4c7; font-weight:700; }
+.daily-coins { font-family:"Space Grotesk",sans-serif; font-size:2.15rem; font-weight:700; color:#ffd94d; text-shadow:0 2px 16px rgba(245,185,33,.4); line-height:1.15; }
+#daily-claim { margin:10px 0 4px; }

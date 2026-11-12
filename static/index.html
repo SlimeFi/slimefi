@@ -9,7 +9,7 @@
 <script>window.SLIMEFI_ADS_BLOCK_ID = "59318"; /* AdsGram Reward block (platform 56007) */</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=16">
+<link rel="stylesheet" href="/static/style.css?v=17">
 </head>
 <body>
 
@@ -68,16 +68,6 @@
     <div class="ec-card" onclick="go('referral')">
       <div class="ec-ico">👥</div>
       <div class="ec-title">Referral</div>
-      <span class="ec-btn">Explore</span>
-    </div>
-    <div class="ec-card" onclick="go('daily')">
-      <div class="ec-ico">🎁</div>
-      <div class="ec-title">Daily Bonus<span id="daily-dot" class="claim-dot" hidden></span></div>
-      <span class="ec-btn">Claim</span>
-    </div>
-    <div class="ec-card" onclick="go('leaderboard')">
-      <div class="ec-ico">🏆</div>
-      <div class="ec-title">Leaderboard</div>
       <span class="ec-btn">Explore</span>
     </div>
     <div class="ec-card dim">
@@ -175,12 +165,16 @@
 </section>
 
 <section id="view-daily" class="view">
-  <h2 class="v2-h">🎁 Daily Bonus</h2>
+  <h2 class="v2-h">🎁 Daily Check-In</h2>
   <div class="card">
     <div class="card-top"><div class="card-title">7-Day Streak Bonus</div><div class="lvl" id="daily-streak">Streak: 0 din</div></div>
-    <div class="card-sub">Roz aao, roz bonus lo. Ek din miss kiya to streak Day 1 se shuru ho jayegi. Day 7 par sabse bada bonus — 500 coins!</div>
+    <div class="daily-coins-wrap">
+      <div class="daily-coins-label">🪙 MERE COINS</div>
+      <div class="daily-coins" id="daily-coins">0</div>
+    </div>
+    <button class="gold-btn" id="daily-claim" onclick="claimDaily()">🎁 Claim</button>
     <div id="daily-cal" class="daily-cal"></div>
-    <button class="gold-btn" id="daily-claim" onclick="claimDaily()">🎁 Aaj Ka Bonus Lo</button>
+    <div class="card-sub">Roz aao, roz bonus lo. Ek din miss kiya to streak Day 1 se shuru ho jayegi. Day 7 par sabse bada bonus — 500 coins!</div>
   </div>
   <div class="card" style="margin-top:14px">
     <div class="card-top"><div class="card-title">🎟️ Promo Code</div></div>
@@ -398,14 +392,16 @@
 <!-- ================= BOTTOM NAV ================= -->
 <nav class="bottom-nav">
   <button class="nav-item active" data-go="home"><span>🏠</span><small>Home</small></button>
+  <button class="nav-item" data-go="daily"><span>🎁</span><small>Check-In</small></button>
   <button class="nav-item" data-go="tasks"><span>✅</span><small>Tasks</small></button>
   <button class="nav-item nav-main" data-go="ads"><span>▶</span><small>Watch Ads</small></button>
+  <button class="nav-item" data-go="leaderboard"><span>🏆</span><small>Leaderboard</small></button>
   <button class="nav-item" data-go="referral"><span>👥</span><small>Refer</small></button>
   <button class="nav-item" data-go="wallet"><span>👛</span><small>Wallet</small></button>
 </nav>
 
 <div id="toast"></div>
 
-<script src="/static/app.js?v=16"></script>
+<script src="/static/app.js?v=17"></script>
 </body>
 </html>

@@ -69,7 +69,6 @@ function render() {
   $("leaderboard-list").innerHTML = (S.leaderboard || []).map((p, i) =>
     `<div class="wd-row"><span>${medals[i] || (i + 1) + "."} ${esc(p.label)} · Lv ${p.level}</span><span>${fmt(p.coins)} coins</span></div>`).join("")
     || `<div class="card-sub">Abhi koi player nahi hai — pehle tum bano!</div>`;
-  $("daily-dot").hidden = !S.daily_available;
   renderDaily();
   $("payouts-list").innerHTML = (S.recent_payouts || []).map(p =>
     `<div class="wd-row"><span>✅ ₹${p.amount_rupees} → ${esc(p.upi)}</span><span>${p.ts ? new Date(p.ts * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("")
@@ -187,6 +186,7 @@ function renderDaily() {
   const cd = S.daily_cycle_day || 1;
   const claimed = !S.daily_available;
   $("daily-streak").textContent = "Streak: " + fmt(S.streak || 0) + " din";
+  $("daily-coins").textContent = fmt(S.coins);
   $("daily-cal").innerHTML = table.map((amt, i) => {
     const d = i + 1;
     const cls = d < cd || (claimed && d === cd) ? "done" : (!claimed && d === cd ? "current" : "");
@@ -194,8 +194,8 @@ function renderDaily() {
     return `<div class="day-cell ${cls}"><small>Day ${d}</small><b>${mark}</b><span>+${amt}</span></div>`;
   }).join("");
   const btn = $("daily-claim");
-  if (claimed) { btn.textContent = "✅ Aaj Ka Bonus Mil Gaya — Kal Phir Aana"; btn.disabled = true; btn.classList.add("done-btn"); }
-  else { btn.textContent = "🎁 Aaj Ka Bonus Lo — Day " + cd + " · +" + table[cd - 1] + " coins"; btn.disabled = false; btn.classList.remove("done-btn"); }
+  if (claimed) { btn.textContent = "Claimed ✅"; btn.disabled = true; btn.classList.add("done-btn"); }
+  else { btn.textContent = "🎁 Claim — Day " + cd + " · +" + table[cd - 1] + " coins"; btn.disabled = false; btn.classList.remove("done-btn"); }
 }
 window.claimDaily = async () => {
   const r = await api("/api/daily", {});
