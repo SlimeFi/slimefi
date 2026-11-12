@@ -435,14 +435,19 @@ $("btn-ad").onclick = () => {
   // Token fetch and ad start TOGETHER: the ad must open straight from the
   // tap — if we wait for the network first, the webview blocks the ad.
   const startP = api("/api/ad/start");
+  const claimWith = async done => {
+    const st = await startP;
+    if (!st.ok) { toast(st.msg || "Reward nahi mila — fir try karo"); return; }
+    act("/api/ad/claim", { token: st.token, done: done ? 1 : 0 });
+  };
+  // Middle path: some Telegram clients never deliver AdsGram's "done"
+  // signal even after a full watch. Claim either way — the server pays
+  // on the signal, or when the one-time token is old enough to prove
+  // the ad stayed open (15s+). Early closes and load failures stay
+  // unpaid because the token is too young.
   window.Adsgram.init({ blockId }).show()
-    .then(async res => {
-      if (!(res && res.done)) { toast("Ad pura dekho, tabhi coins milenge"); return; }
-      const st = await startP;
-      if (!st.ok) { toast(st.msg || "Reward nahi mila — fir try karo"); return; }
-      act("/api/ad/claim", { token: st.token });
-    })
-    .catch(() => toast("Ad pura nahi chala — coin nahi milega. Fir try karo"));
+    .then(res => claimWith(!!(res && res.done)))
+    .catch(() => claimWith(false));
 };
 window.openPayouts = () => {
   const url = "https://SlimeFi.pythonanywhere.com/payouts";
