@@ -300,3 +300,32 @@ button:disabled { opacity:.45; cursor:default; }
 @media (prefers-reduced-motion: reduce){
   .pet-track,.pet-bob,.pet-shadow,.pet-spark{animation:none}
 }
+
+/* ===== Magic transformation effect (from the user's video): orbiting
+   light rings, a glowing magic circle under the slime, more sparkles ===== */
+.pet-bob{position:relative}
+.pet-ring{position:absolute;left:50%;top:44%;width:118px;height:118px;margin:-59px 0 0 -59px;
+  border-radius:50%;pointer-events:none;
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));
+          mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))}
+.pet-ring.r1{background:conic-gradient(from 0deg,transparent 0 34%,rgba(165,243,252,.95) 47%,#fff 50%,rgba(165,243,252,.95) 53%,transparent 66% 100%);
+  transform:rotateX(64deg);animation:petSpin 2.8s linear infinite}
+.pet-ring.r2{background:conic-gradient(from 180deg,transparent 0 38%,rgba(253,230,138,.9) 49%,#fff 51%,rgba(253,230,138,.9) 54%,transparent 64% 100%);
+  transform:rotateX(64deg) rotateY(-18deg);animation:petSpinR 3.9s linear infinite;opacity:.85}
+.pet-circle{position:absolute;left:50%;bottom:-7px;width:104px;height:26px;margin-left:-52px;border-radius:50%;
+  pointer-events:none;opacity:.8;
+  background:conic-gradient(from 0deg,transparent 0 8%,rgba(103,232,249,.85) 10% 13%,transparent 15% 25%,rgba(103,232,249,.85) 27% 30%,transparent 32% 44%,rgba(165,243,252,.9) 46% 49%,transparent 51% 63%,rgba(103,232,249,.85) 65% 68%,transparent 70% 82%,rgba(165,243,252,.9) 84% 87%,transparent 89% 100%);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));
+          mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));
+  animation:petSpin 7s linear infinite, petCirclePulse 1.9s ease-in-out infinite}
+.pet-img{animation:petGlow 2.6s ease-in-out infinite}
+.pet-spark.s4{left:30%;top:38px;animation-delay:.7s;font-size:10px}
+.pet-spark.s5{left:64%;top:44px;animation-delay:1.8s;font-size:13px;color:#bae6fd}
+.pet-spark.s6{left:44%;top:12px;animation-delay:2.9s;font-size:9px;color:#fde68a}
+@keyframes petSpin{from{transform:rotateX(64deg) rotate(0deg)}to{transform:rotateX(64deg) rotate(360deg)}}
+@keyframes petSpinR{from{transform:rotateX(64deg) rotateY(-18deg) rotate(360deg)}to{transform:rotateX(64deg) rotateY(-18deg) rotate(0deg)}}
+@keyframes petCirclePulse{0%,100%{opacity:.55}50%{opacity:.95}}
+@keyframes petGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.14)}}
+@media (prefers-reduced-motion: reduce){
+  .pet-ring,.pet-circle,.pet-img{animation:none}
+}
