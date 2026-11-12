@@ -210,6 +210,9 @@ def init_db():
         CREATE TABLE IF NOT EXISTS ad_sessions(
             token TEXT PRIMARY KEY, user_id TEXT, created_at REAL, used INTEGER DEFAULT 0
         );
+        CREATE TABLE IF NOT EXISTS ad_log(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, event TEXT, detail TEXT, ts REAL
+        );
         CREATE TABLE IF NOT EXISTS tasks(
             id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT,
             link TEXT, reward_coins INTEGER DEFAULT 0, active INTEGER DEFAULT 1,
@@ -436,6 +439,15 @@ def uid():
 def log(c, user_id, kind, d, note):
     c.execute("INSERT INTO ledger(user_id,kind,coins,wood,crystals,note,ts) VALUES(?,?,?,?,?,?,?)",
               (user_id, kind, d.get("coins", 0), d.get("wood", 0), d.get("crystals", 0), note, time.time()))
+
+def adlog(c, user_id, event, detail=""):
+    """Diagnostic trail for ad starts/claims (owner-only readout), so a
+    client whose reward never arrives can be traced server-side."""
+    try:
+        c.execute("INSERT INTO ad_log(user_id,event,detail,ts) VALUES(?,?,?,?)",
+                  (user_id, event, detail, time.time()))
+    except Exception:
+        pass
 
 def cash_log(c, user_id, delta_paise, kind, note):
     """Every rupee movement gets a cash_ledger row (owner's ledger rule:
@@ -673,20 +685,25 @@ def ad_start():
     a minimum watch time and only within a few minutes — so a bare API
     call, a duplicate claim or a replayed old request earns nothing."""
     today = str(date.today())
+    data = request.get_json(silent=True) or {}
     with _lock, db() as c:
         u = roll_day(c, settle(c, get_user(c, uid())))
         if not ADSGRAM_BLOCK_ID:
+            adlog(c, u["user_id"], "start_reject", "no_block")
             return jsonify({"ok": False, "msg": "Ads abhi live nahi hain"})
         watched = (u["ads_today"] or 0) if u["ads_date"] == today else 0
         if watched >= AD_DAILY_LIMIT:
+            adlog(c, u["user_id"], "start_reject", "cap")
             return jsonify({"ok": False, "msg": f"Aaj ke {AD_DAILY_LIMIT} ads ho gaye. Kal phir try karo."})
         left = AD_COOLDOWN_SEC - (time.time() - (u["last_ad_at"] or 0))
         if left > 0:
+            adlog(c, u["user_id"], "start_reject", f"cooldown {int(left)}")
             return jsonify({"ok": False, "msg": f"Thoda ruko, agla ad {int(left)} sec me milega."})
         c.execute("DELETE FROM ad_sessions WHERE created_at < ?", (time.time() - 3600,))
         token = secrets.token_urlsafe(24)
         c.execute("INSERT INTO ad_sessions(token,user_id,created_at,used) VALUES(?,?,?,0)",
                   (token, u["user_id"], time.time()))
+        adlog(c, u["user_id"], "start", f"v={data.get('v')}")
         return jsonify({"ok": True, "token": token})
 
 @app.post("/api/ad/claim")
@@ -702,20 +719,26 @@ def ad_claim():
         u = roll_day(c, settle(c, get_user(c, uid())))
         row = c.execute("SELECT * FROM ad_sessions WHERE token=?", (token,)).fetchone() if token else None
         if not row or row["user_id"] != u["user_id"]:
+            adlog(c, u["user_id"], "claim_reject", "bad_token")
             return jsonify({"ok": False, "msg": "Reward link sahi nahi hai — naya ad dekh kar try karo"})
         if row["used"]:
+            adlog(c, u["user_id"], "claim_reject", "used")
             return jsonify({"ok": False, "msg": "Is ad ka reward pehle hi mil chuka hai"})
         age = time.time() - (row["created_at"] or 0)
         min_age = AD_MIN_WATCH_SEC if data.get("done") else AD_MIN_OPEN_SEC
         if age < min_age:
+            adlog(c, u["user_id"], "claim_reject", f"young age={int(age)} min={min_age} done={1 if data.get('done') else 0}")
             return jsonify({"ok": False, "msg": "Ad pura dekho — itni jaldi reward nahi milta"})
         if age > AD_TOKEN_TTL_SEC:
+            adlog(c, u["user_id"], "claim_reject", "expired")
             return jsonify({"ok": False, "msg": "Reward link expire ho gaya — naya ad dekho"})
         watched = (u["ads_today"] or 0) if u["ads_date"] == today else 0
         if watched >= AD_DAILY_LIMIT:
+            adlog(c, u["user_id"], "claim_reject", "cap")
             return jsonify({"ok": False, "msg": f"Aaj ke {AD_DAILY_LIMIT} ads ho gaye. Kal phir try karo."})
         left = AD_COOLDOWN_SEC - (time.time() - (u["last_ad_at"] or 0))
         if left > 0:
+            adlog(c, u["user_id"], "claim_reject", f"cooldown {int(left)}")
             return jsonify({"ok": False, "msg": f"Thoda ruko, agla ad {int(left)} sec me milega."})
         cur = c.execute("UPDATE ad_sessions SET used=1 WHERE token=? AND used=0", (token,))
         if cur.rowcount != 1:
@@ -726,6 +749,7 @@ def ad_claim():
         log(c, u["user_id"], "ad", {"coins": AD_REWARD_COINS}, f"Rewarded ad #{watched + 1}")
         maybe_qualify_referral(c, u)
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
+        adlog(c, u["user_id"], "claim_ok", f"done={1 if data.get('done') else 0} age={int(age)}")
         return jsonify({"ok": True, "reward": AD_REWARD_COINS, "state": state_payload(c, u)})
 
 @app.post("/api/convert")
@@ -818,6 +842,17 @@ def owner_stats():
                     "players": [dict(r) for r in players],
                     "promos": [dict(r) for r in promos]})
 
+
+@app.get("/api/owner/adlog")
+def owner_adlog():
+    """Owner-only: recent ad start/claim attempts, for diagnosing
+    clients whose ad reward never arrives."""
+    if not OWNER_ID or uid() != OWNER_ID:
+        return jsonify({"ok": False, "error": "Owner only"}), 403
+    conn = db()
+    rows = conn.execute(
+        "SELECT user_id, event, detail, ts FROM ad_log ORDER BY id DESC LIMIT 60").fetchall()
+    return jsonify({"ok": True, "log": [dict(r) for r in rows]})
 
 @app.get("/api/owner/withdrawals")
 def owner_withdrawals():
