@@ -144,6 +144,7 @@ AD_REWARD_COINS = 100         # coins per rewarded ad watched
 AD_DAILY_LIMIT = 20           # max rewarded ads per user per day
 AD_COOLDOWN_SEC = 45          # gap between two ad claims
 AD_MIN_WATCH_SEC = 8          # a real ad cannot finish faster than this
+AD_MIN_OPEN_SEC = 15          # middle path: no 'done' signal -> token must be this old (ad stayed open)
 AD_TOKEN_TTL_SEC = 300        # an ad-start token dies after 5 minutes
 MIN_WITHDRAW_RUPEES = 10      # minimum UPI withdrawal request
 PAYOUTS_ENABLED = os.environ.get("PAYOUTS_ENABLED", "0") == "1"  # UPI payout master switch (owner)
@@ -705,7 +706,8 @@ def ad_claim():
         if row["used"]:
             return jsonify({"ok": False, "msg": "Is ad ka reward pehle hi mil chuka hai"})
         age = time.time() - (row["created_at"] or 0)
-        if age < AD_MIN_WATCH_SEC:
+        min_age = AD_MIN_WATCH_SEC if data.get("done") else AD_MIN_OPEN_SEC
+        if age < min_age:
             return jsonify({"ok": False, "msg": "Ad pura dekho — itni jaldi reward nahi milta"})
         if age > AD_TOKEN_TTL_SEC:
             return jsonify({"ok": False, "msg": "Reward link expire ho gaya — naya ad dekho"})
