@@ -268,9 +268,12 @@
       <div class="ec-title">UPI</div>
       <span class="phase-badge p1">Phase 1</span>
       <div class="stat-label">Verified eligible account par payout. Minimum <span id="min-wd">₹10</span> · Processing: 24–72 hours</div>
+      <input id="wd-name" placeholder="Account Holder ka Naam (bank wala naam)" style="text-transform:none">
+      <input id="wd-bank" placeholder="Bank ka Naam (jaise SBI, HDFC, Paytm)" style="text-transform:none">
       <input id="upi-input" placeholder="Tumhara UPI ID" style="text-transform:none">
       <input id="wd-input" type="number" placeholder="₹ Amount" style="text-transform:none">
       <button id="btn-withdraw">Withdraw (UPI)</button>
+      <div class="stat-label">Payment sirf isi naam wale account par jayega — admin pehle naam aur bank verify karega.</div>
     </div>
     <div class="stat-card align-left dim">
       <div class="stat-ico">₿</div>
@@ -402,6 +405,6 @@
 
 <div id="toast"></div>
 
-<script src="/static/app.js?v=17"></script>
+<script src="/static/app.js?v=18"></script>
 </body>
 </html>
