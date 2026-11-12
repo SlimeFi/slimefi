@@ -244,6 +244,15 @@ window.grantCoins = async () => {
   toast(r.msg || "Ho gaya");
   if (r.ok) { $("gr-amount").value = ""; loadOwner(); }
 };
+window.reduceCoins = async () => {
+  const user_id = $("gr-user").value;
+  const coins = parseInt($("gr-amount").value, 10) || 0;
+  if (!user_id) { toast("Pehle player chuno"); return; }
+  if (coins <= 0) { toast("Coins ki matra dalo"); return; }
+  const r = await api("/api/owner/reduce", { user_id, coins });
+  toast(r.msg || "Ho gaya");
+  if (r.ok) { $("gr-amount").value = ""; loadOwner(); }
+};
 window.revDecide = async (id, action) => {
   const r = await api("/api/owner/referrals/decide", { id, action });
   toast(r.msg || "Ho gaya");

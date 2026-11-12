@@ -236,3 +236,5 @@ button:disabled { opacity:.45; cursor:default; }
 .btn-claim { background:linear-gradient(135deg,#b6f34c,#7ed321); color:#101604; border:none; padding:9px 16px; border-radius:11px; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(126,211,33,.35); }
 .done-pill { background:linear-gradient(135deg,#2fbf71,#1e9e57); color:#fff; font-weight:800; padding:8px 15px; border-radius:999px; font-size:.85rem; letter-spacing:.4px; box-shadow:0 6px 16px rgba(46,191,113,.30); }
 .pend-pill { color:#ffd76a; font-weight:700; padding:8px 4px; }
+
+.danger-btn { background:#3a1620 !important; color:#ff9db0 !important; border:1px solid rgba(255,120,150,.35) !important; }

@@ -122,10 +122,10 @@
     <div id="owner-referrals"></div>
     <div class="card-title" style="margin-top:14px">🚫 Banned Accounts</div>
     <div id="owner-banned"></div>
-    <div class="card-title" style="margin-top:14px">🪙 Coins Do (Gift)</div>
+    <div class="card-title" style="margin-top:14px">🪙 Coins Do / Kato</div>
     <div class="ref-row"><select id="gr-user"></select></div>
-    <div class="ref-row"><input id="gr-amount" type="number" placeholder="Kitne coins dene hai" style="text-transform:none"><button class="small-btn" onclick="grantCoins()">Coins Do</button></div>
-    <div class="card-sub">Diye gaye coins balance + lifetime dono me judenge — player ka level aur leaderboard bhi badhega. Hisaab ledger me record rahega.</div>
+    <div class="ref-row"><input id="gr-amount" type="number" placeholder="Coins ki matra" style="text-transform:none"><button class="small-btn" onclick="grantCoins()">Coins Do</button><button class="small-btn danger-btn" onclick="reduceCoins()">Coins Kato</button></div>
+    <div class="card-sub">Dene se balance + lifetime badhega (level aur leaderboard bhi). Kaatne se dono ghatega, 0 se neeche nahi jayega. Hisaab ledger me record rahega.</div>
     <div class="card-title" style="margin-top:14px">Naya Sponsored Task Banao</div>
     <div class="ref-row"><input id="nt-title" placeholder="Task title — jese Channel join karo" style="text-transform:none"></div>
     <div class="ref-row"><input id="nt-desc" placeholder="Description — kya karna hai" style="text-transform:none"></div>
@@ -364,6 +364,6 @@
 
 <div id="toast"></div>
 
-<script src="/static/app.js?v=13"></script>
+<script src="/static/app.js?v=14"></script>
 </body>
 </html>
