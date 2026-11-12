@@ -45,8 +45,8 @@ def verify_init_data(init_data):
 
 @app.before_request
 def telegram_auth():
-    """If the request carries Telegram initData, it MUST verify.
-    Requests without initData are local browser tests (fallback user)."""
+    """Identity must be proven: verified Telegram initData or the owner's
+    secret key. Bare X-User-Id is trusted only in local dev (ALLOW_DEV_AUTH)."""
     if not request.path.startswith("/api/") or request.path == "/api/health":
         return None
     # Owner's personal panel link carries a secret key: it maps straight to
@@ -63,6 +63,9 @@ def telegram_auth():
         if tg_id is None:
             return jsonify({"ok": False, "msg": "Telegram verification failed"}), 401
         g.tg_user_id = f"tg{tg_id}"
+        return None
+    if not ALLOW_DEV_AUTH:
+        return jsonify({"ok": False, "msg": "Open SlimeFi from its Telegram bot"}), 401
     return None
 DB_PATH = __file__.rsplit("/", 1)[0] + "/slimefi.db"
 _lock = threading.Lock()
@@ -110,6 +113,8 @@ AD_REWARD_COINS = 100         # coins per rewarded ad watched
 AD_DAILY_LIMIT = 20           # max rewarded ads per user per day
 AD_COOLDOWN_SEC = 45          # gap between two ad claims
 MIN_WITHDRAW_RUPEES = 100     # minimum UPI withdrawal request
+PAYOUTS_ENABLED = os.environ.get("PAYOUTS_ENABLED", "0") == "1"  # UPI payout master switch (owner)
+ALLOW_DEV_AUTH = os.environ.get("ALLOW_DEV_AUTH", "0") == "1"    # local testing only: trust X-User-Id
 REFERRAL_REWARD_COINS = 500   # paid to the inviter when the referred user completes
                               # their first qualifying activity (ad / quest / daily /
                               # approved sponsored task) — never on join alone
@@ -167,6 +172,10 @@ def init_db():
             proof TEXT, status TEXT DEFAULT 'pending', created_at REAL, decided_at REAL,
             UNIQUE(task_id, user_id)
         );
+        CREATE TABLE IF NOT EXISTS cash_ledger(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT,
+            delta_paise INTEGER DEFAULT 0, kind TEXT, note TEXT, ts REAL
+        );
         """)
         # Earning columns added after the first release: add them to old DBs too.
         cols = {r[1] for r in c.execute("PRAGMA table_info(users)")}
@@ -176,6 +185,11 @@ def init_db():
                          ("referred_qualified", "ALTER TABLE users ADD COLUMN referred_qualified INTEGER DEFAULT 0"),
                          ("last_ad_at", "ALTER TABLE users ADD COLUMN last_ad_at REAL DEFAULT 0")]:
             if col not in cols:
+                c.execute(ddl)
+        tcols = {r[1] for r in c.execute("PRAGMA table_info(tasks)")}
+        for col, ddl in [("budget_coins", "ALTER TABLE tasks ADD COLUMN budget_coins INTEGER DEFAULT 0"),
+                         ("spent_coins", "ALTER TABLE tasks ADD COLUMN spent_coins INTEGER DEFAULT 0")]:
+            if col not in tcols:
                 c.execute(ddl)
 
 def get_user(c, user_id):
@@ -285,6 +299,7 @@ def state_payload(c, user):
             "ad_cooldown_left": max(0, int(AD_COOLDOWN_SEC - (time.time() - (user["last_ad_at"] or 0)))),
             "ads_live": bool(ADSGRAM_BLOCK_ID),
             "referral_reward_coins": REFERRAL_REWARD_COINS,
+            "payouts_enabled": PAYOUTS_ENABLED,
         },
         "my_withdrawals": [
             {"id": w["id"], "amount_rupees": round(w["amount_paise"] / 100, 2),
@@ -304,6 +319,18 @@ def uid():
 def log(c, user_id, kind, d, note):
     c.execute("INSERT INTO ledger(user_id,kind,coins,wood,crystals,note,ts) VALUES(?,?,?,?,?,?,?)",
               (user_id, kind, d.get("coins", 0), d.get("wood", 0), d.get("crystals", 0), note, time.time()))
+
+def cash_log(c, user_id, delta_paise, kind, note):
+    """Every rupee movement gets a cash_ledger row (owner's ledger rule:
+    the cash balance is never edited without an audit entry)."""
+    c.execute("INSERT INTO cash_ledger(user_id,delta_paise,kind,note,ts) VALUES(?,?,?,?,?)",
+              (user_id, delta_paise, kind, note, time.time()))
+
+def task_budget_left(t):
+    """Budget coins still available on a task; None means unlimited."""
+    if not t["budget_coins"]:
+        return None
+    return t["budget_coins"] - (t["spent_coins"] or 0)
 
 def maybe_qualify_referral(c, user):
     """Referral rule (owner, 2026-11-12): the inviter earns REFERRAL_REWARD_COINS
@@ -493,6 +520,7 @@ def convert():
         c.execute("UPDATE users SET coins=coins-?, cash_paise=cash_paise+? WHERE user_id=?",
                   (coins, rupees_paise, u["user_id"]))
         log(c, u["user_id"], "convert", {"coins": -coins}, f"Converted to Rs {rupees_paise // 100}")
+        cash_log(c, u["user_id"], rupees_paise, "convert", f"{coins} coins converted to cash")
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
         return jsonify({"ok": True, "state": state_payload(c, u),
                         "msg": f"{coins} coins cash me badal gaye"})
@@ -500,6 +528,8 @@ def convert():
 @app.post("/api/withdraw")
 def withdraw():
     data = request.get_json(silent=True) or {}
+    if not PAYOUTS_ENABLED:
+        return jsonify({"ok": False, "msg": "Withdraw abhi band hai — jald shuru hoga"})
     upi = (data.get("upi_id") or "").strip()
     try:
         rupees = int(data.get("amount_rupees") or 0)
@@ -518,6 +548,7 @@ def withdraw():
         cur = c.execute("INSERT INTO withdrawals(user_id,amount_paise,upi_id,created_at) VALUES(?,?,?,?)",
                         (u["user_id"], rupees * 100, upi, time.time()))
         log(c, u["user_id"], "withdraw", {}, f"Withdraw request #{cur.lastrowid}: Rs {rupees} to UPI")
+        cash_log(c, u["user_id"], -rupees * 100, "withdraw_hold", f"Withdraw #{cur.lastrowid} requested")
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
         return jsonify({"ok": True, "state": state_payload(c, u),
                         "msg": f"Request bhej di. Rs {rupees} jald hi tumhare UPI par aayega."})
@@ -576,6 +607,9 @@ def owner_decide():
             c.execute("UPDATE users SET cash_paise=cash_paise+? WHERE user_id=?",
                       (w["amount_paise"], w["user_id"]))
             log(c, w["user_id"], "withdraw_refund", {}, f"Withdraw #{w['id']} rejected, refunded")
+            cash_log(c, w["user_id"], w["amount_paise"], "withdraw_refund", f"Withdraw #{w['id']} rejected, refunded")
+        else:
+            cash_log(c, w["user_id"], 0, "withdraw_paid", f"Withdraw #{w['id']} paid out to UPI")
         c.execute("UPDATE withdrawals SET status=?, decided_at=? WHERE id=?",
                   ("paid" if action == "paid" else "rejected", time.time(), w["id"]))
         return jsonify({"ok": True, "msg": "Ho gaya"})
@@ -590,10 +624,14 @@ def tasks_list():
         u = get_user(c, uid())
         subs = {s["task_id"]: s["status"] for s in
                 c.execute("SELECT * FROM task_submissions WHERE user_id=?", (u["user_id"],))}
-        rows = [{"id": t["id"], "title": t["title"], "description": t["description"],
-                 "link": t["link"], "reward_coins": t["reward_coins"],
-                 "my_status": subs.get(t["id"])}
-                for t in c.execute("SELECT * FROM tasks WHERE active=1 ORDER BY id DESC")]
+        rows = []
+        for t in c.execute("SELECT * FROM tasks WHERE active=1 ORDER BY id DESC"):
+            left = task_budget_left(t)
+            if left is not None and left < t["reward_coins"] and t["id"] not in subs:
+                continue  # campaign budget over: no new workers on this task
+            rows.append({"id": t["id"], "title": t["title"], "description": t["description"],
+                         "link": t["link"], "reward_coins": t["reward_coins"],
+                         "budget_left": left, "my_status": subs.get(t["id"])})
         return jsonify({"ok": True, "tasks": rows})
 
 @app.post("/api/tasks/submit")
@@ -607,6 +645,9 @@ def tasks_submit():
         t = c.execute("SELECT * FROM tasks WHERE id=? AND active=1", (data.get("task_id"),)).fetchone()
         if not t:
             return jsonify({"ok": False, "msg": "Task nahi mila"})
+        left = task_budget_left(t)
+        if left is not None and left < t["reward_coins"]:
+            return jsonify({"ok": False, "msg": "Is task ka campaign budget khatam ho gaya hai"})
         old = c.execute("SELECT * FROM task_submissions WHERE task_id=? AND user_id=?",
                         (t["id"], u["user_id"])).fetchone()
         if old and old["status"] != "rejected":
@@ -629,12 +670,16 @@ def owner_tasks_create():
         reward = int(data.get("reward_coins") or 0)
     except (TypeError, ValueError):
         reward = 0
+    try:
+        budget = int(data.get("budget_coins") or 0)
+    except (TypeError, ValueError):
+        budget = 0
     if not title or reward <= 0:
         return jsonify({"ok": False, "msg": "Task ka title aur reward (coins) dalo"})
     with _lock, db() as c:
-        cur = c.execute("INSERT INTO tasks(title,description,link,reward_coins,created_at) VALUES(?,?,?,?,?)",
+        cur = c.execute("INSERT INTO tasks(title,description,link,reward_coins,budget_coins,created_at) VALUES(?,?,?,?,?,?)",
                         (title, (data.get("description") or "").strip(),
-                         (data.get("link") or "").strip(), reward, time.time()))
+                         (data.get("link") or "").strip(), reward, budget, time.time()))
         return jsonify({"ok": True, "id": cur.lastrowid, "msg": "Task ban gaya"})
 
 @app.get("/api/owner/submissions")
@@ -650,6 +695,7 @@ def owner_submissions():
                     "JOIN tasks t ON t.id = s.task_id "
                     "ORDER BY (s.status='pending') DESC, s.id DESC LIMIT 50")]
         tasks = [{"id": t["id"], "title": t["title"], "reward_coins": t["reward_coins"],
+                  "budget_coins": t["budget_coins"], "spent_coins": t["spent_coins"],
                   "active": t["active"]}
                  for t in c.execute("SELECT * FROM tasks ORDER BY id DESC LIMIT 20")]
         return jsonify({"ok": True, "submissions": subs, "tasks": tasks})
@@ -663,11 +709,16 @@ def owner_submissions_decide():
     if action not in ("approve", "reject"):
         return jsonify({"ok": False, "msg": "Unknown action"})
     with _lock, db() as c:
-        s = c.execute("SELECT s.*, t.reward_coins, t.title FROM task_submissions s "
+        s = c.execute("SELECT s.*, t.reward_coins, t.title, t.budget_coins, t.spent_coins FROM task_submissions s "
                       "JOIN tasks t ON t.id = s.task_id WHERE s.id=?", (data.get("id"),)).fetchone()
         if not s or s["status"] != "pending":
             return jsonify({"ok": False, "msg": "Submission pending nahi hai"})
         if action == "approve":
+            if s["budget_coins"] and (s["spent_coins"] or 0) + s["reward_coins"] > s["budget_coins"]:
+                return jsonify({"ok": False, "msg": "Campaign budget khatam — ye approve nahi ho sakta"})
+            if s["budget_coins"]:
+                c.execute("UPDATE tasks SET spent_coins=spent_coins+? WHERE id=?",
+                          (s["reward_coins"], s["task_id"]))
             c.execute("UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+? WHERE user_id=?",
                       (s["reward_coins"], s["reward_coins"], s["user_id"]))
             log(c, s["user_id"], "task", {"coins": s["reward_coins"]},
