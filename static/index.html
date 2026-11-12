@@ -63,6 +63,16 @@
       <div class="ec-title">Referral</div>
       <span class="ec-btn">Explore</span>
     </div>
+    <div class="ec-card" onclick="go('daily')">
+      <div class="ec-ico">🎁</div>
+      <div class="ec-title">Daily Bonus<span id="daily-dot" class="claim-dot" hidden></span></div>
+      <span class="ec-btn">Claim</span>
+    </div>
+    <div class="ec-card" onclick="go('leaderboard')">
+      <div class="ec-ico">🏆</div>
+      <div class="ec-title">Leaderboard</div>
+      <span class="ec-btn">Explore</span>
+    </div>
     <div class="ec-card dim">
       <div class="ec-ico">🏪</div>
       <div class="ec-title">Marketplace</div>
@@ -98,12 +108,6 @@
   </div>
 
   <div class="card" style="margin-top:14px">
-    <div class="card-top"><div class="card-title">👑 Leaderboard</div><div class="lvl">Top Players</div></div>
-    <div id="leaderboard-list"></div>
-    <div class="card-sub">Sabse zyada lifetime coins wale players — list roz update hoti hai.</div>
-  </div>
-
-  <div class="card" style="margin-top:14px">
     <div class="card-top"><div class="card-title">🏆 Recent Payouts</div><div class="lvl" id="payouts-total"></div></div>
     <div id="payouts-list"></div>
     <div class="card-sub">Har payout UPI se verify karke bheja jata hai — ye public list sabke liye saboot hai ki SlimeFi sach me pay karta hai.</div>
@@ -126,6 +130,10 @@
     <div class="ref-row"><select id="gr-user"></select></div>
     <div class="ref-row"><input id="gr-amount" type="number" placeholder="Coins ki matra" style="text-transform:none"><button class="small-btn" onclick="grantCoins()">Coins Do</button><button class="small-btn danger-btn" onclick="reduceCoins()">Coins Kato</button></div>
     <div class="card-sub">Dene se balance + lifetime badhega (level aur leaderboard bhi). Kaatne se dono ghatega, 0 se neeche nahi jayega. Hisaab ledger me record rahega.</div>
+    <div class="card-title" style="margin-top:14px">🎟️ Promo Code Banao</div>
+    <div class="ref-row"><input id="np-code" placeholder="CODE (jaise WELCOME100)" style="text-transform:uppercase"></div>
+    <div class="ref-row"><input id="np-coins" type="number" placeholder="Coins" style="text-transform:none"><input id="np-uses" type="number" placeholder="Kitne log (0 = unlimited)" style="text-transform:none"><button class="small-btn" onclick="createPromo()">Banao</button></div>
+    <div id="owner-promos"></div>
     <div class="card-title" style="margin-top:14px">Naya Sponsored Task Banao</div>
     <div class="ref-row"><input id="nt-title" placeholder="Task title — jese Channel join karo" style="text-transform:none"></div>
     <div class="ref-row"><input id="nt-desc" placeholder="Description — kya karna hai" style="text-transform:none"></div>
@@ -148,6 +156,33 @@
 </section>
 
 <!-- ================= ADS ================= -->
+<section id="view-leaderboard" class="view">
+  <h2 class="v2-h">🏆 Leaderboard</h2>
+  <div class="card" style="margin-top:14px">
+    <div class="card-top"><div class="card-title">👑 Leaderboard</div><div class="lvl">Top Players</div></div>
+    <div id="leaderboard-list"></div>
+    <div class="card-sub">Sabse zyada lifetime coins wale players — list roz update hoti hai.</div>
+  </div>
+
+  <div class="card-sub" style="text-align:center">Top par aana hai? Tasks, daily bonus aur referrals se lifetime coins badhao.</div>
+</section>
+
+<section id="view-daily" class="view">
+  <h2 class="v2-h">🎁 Daily Bonus</h2>
+  <div class="card">
+    <div class="card-top"><div class="card-title">7-Day Streak Bonus</div><div class="lvl" id="daily-streak">Streak: 0 din</div></div>
+    <div class="card-sub">Roz aao, roz bonus lo. Ek din miss kiya to streak Day 1 se shuru ho jayegi. Day 7 par sabse bada bonus — 500 coins!</div>
+    <div id="daily-cal" class="daily-cal"></div>
+    <button class="gold-btn" id="daily-claim" onclick="claimDaily()">🎁 Aaj Ka Bonus Lo</button>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="card-top"><div class="card-title">🎟️ Promo Code</div></div>
+    <div class="card-sub">Koi promo code mila hai? Yahan dalo aur turant coins pao.</div>
+    <div class="ref-row"><input id="promo-code" placeholder="PROMO CODE dalo" style="text-transform:uppercase">
+    <button class="small-btn" onclick="redeemPromo()">Lagao</button></div>
+  </div>
+</section>
+
 <section id="view-ads" class="view">
   <button class="back-btn" onclick="go('home')">← Home</button>
   <h2 class="v2-h">Sponsored Ads</h2>
@@ -364,6 +399,6 @@
 
 <div id="toast"></div>
 
-<script src="/static/app.js?v=14"></script>
+<script src="/static/app.js?v=15"></script>
 </body>
 </html>

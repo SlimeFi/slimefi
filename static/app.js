@@ -69,6 +69,8 @@ function render() {
   $("leaderboard-list").innerHTML = (S.leaderboard || []).map((p, i) =>
     `<div class="wd-row"><span>${medals[i] || (i + 1) + "."} ${esc(p.label)} · Lv ${p.level}</span><span>${fmt(p.coins)} coins</span></div>`).join("")
     || `<div class="card-sub">Abhi koi player nahi hai — pehle tum bano!</div>`;
+  $("daily-dot").hidden = !S.daily_available;
+  renderDaily();
   $("payouts-list").innerHTML = (S.recent_payouts || []).map(p =>
     `<div class="wd-row"><span>✅ ₹${p.amount_rupees} → ${esc(p.upi)}</span><span>${p.ts ? new Date(p.ts * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("")
     || `<div class="card-sub">Abhi tak koi payout nahi hua — pehla payout yahin dikhega.</div>`;
@@ -179,6 +181,35 @@ async function load() {
   } catch (e) {}
 }
 
+// ---------- daily bonus + promo ----------
+function renderDaily() {
+  const table = S.daily_table || [50, 75, 100, 150, 200, 300, 500];
+  const cd = S.daily_cycle_day || 1;
+  const claimed = !S.daily_available;
+  $("daily-streak").textContent = "Streak: " + fmt(S.streak || 0) + " din";
+  $("daily-cal").innerHTML = table.map((amt, i) => {
+    const d = i + 1;
+    const cls = d < cd || (claimed && d === cd) ? "done" : (!claimed && d === cd ? "current" : "");
+    const mark = cls === "done" ? "✅" : (d === 7 ? "👑" : "🎁");
+    return `<div class="day-cell ${cls}"><small>Day ${d}</small><b>${mark}</b><span>+${amt}</span></div>`;
+  }).join("");
+  const btn = $("daily-claim");
+  if (claimed) { btn.textContent = "✅ Aaj Ka Bonus Mil Gaya — Kal Phir Aana"; btn.disabled = true; btn.classList.add("done-btn"); }
+  else { btn.textContent = "🎁 Aaj Ka Bonus Lo — Day " + cd + " · +" + table[cd - 1] + " coins"; btn.disabled = false; btn.classList.remove("done-btn"); }
+}
+window.claimDaily = async () => {
+  const r = await api("/api/daily", {});
+  toast(r.msg || (r.ok ? "Bonus mil gaya" : "Nahi hua"));
+  if (r.ok) load();
+};
+window.redeemPromo = async () => {
+  const code = $("promo-code").value.trim();
+  if (!code) { toast("Pehle promo code dalo"); return; }
+  const r = await api("/api/promo/redeem", { code });
+  toast(r.msg || "Ho gaya");
+  if (r.ok) { $("promo-code").value = ""; load(); }
+};
+
 // ---------- sponsored tasks ----------
 let LAST_TASKS = [];
 let TASK_CAT = "all";
@@ -244,6 +275,20 @@ window.grantCoins = async () => {
   toast(r.msg || "Ho gaya");
   if (r.ok) { $("gr-amount").value = ""; loadOwner(); }
 };
+window.createPromo = async () => {
+  const code = $("np-code").value.trim();
+  const coins = parseInt($("np-coins").value, 10) || 0;
+  const max_uses = parseInt($("np-uses").value, 10) || 0;
+  if (!code || coins <= 0) { toast("Code aur coins dalo"); return; }
+  const r = await api("/api/owner/promos", { code, coins, max_uses });
+  toast(r.msg || "Ho gaya");
+  if (r.ok) { $("np-code").value = ""; $("np-coins").value = ""; $("np-uses").value = ""; loadOwner(); }
+};
+window.deactivatePromo = async (code) => {
+  const r = await api("/api/owner/promos/deactivate", { code });
+  toast(r.msg || "Ho gaya");
+  loadOwner();
+};
 window.reduceCoins = async () => {
   const user_id = $("gr-user").value;
   const coins = parseInt($("gr-amount").value, 10) || 0;
@@ -289,6 +334,9 @@ async function loadOwner() {
       sel.innerHTML = (st.players || []).map(p =>
         `<option value="${esc(p.user_id)}">${p.uname ? "@" + esc(p.uname) : esc(p.user_id)} — ${fmt(p.coins)} coins</option>`).join("");
       if (keep) sel.value = keep;
+      $("owner-promos").innerHTML = (st.promos || []).map(p =>
+        `<div class="wd-row"><span>🎟️ ${esc(p.code)} · ${fmt(p.coins)} coins</span><span>${p.active ? "ON" : "BAND"} · ${fmt(p.used_count)}/${p.max_uses ? fmt(p.max_uses) : "∞"} use${p.active ? ` · <a href="#" onclick="deactivatePromo('${p.code}');return false;">band karo</a>` : ""}</span></div>`).join("")
+        || `<div class="card-sub">Abhi koi promo code nahi hai.</div>`;
       $("owner-recent").innerHTML = (st.recent || []).map(x =>
         `<div class="wd-row"><span>${x.uname ? "@" + esc(x.uname) + " · " : ""}${esc(x.user_id.replace("tg", "TG "))} · ${fmt(x.lifetime_coins)} coins</span>` +
         `<span>${x.created_at ? new Date(x.created_at * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("");

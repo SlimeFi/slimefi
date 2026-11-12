@@ -238,3 +238,16 @@ button:disabled { opacity:.45; cursor:default; }
 .pend-pill { color:#ffd76a; font-weight:700; padding:8px 4px; }
 
 .danger-btn { background:#3a1620 !important; color:#ff9db0 !important; border:1px solid rgba(255,120,150,.35) !important; }
+
+/* daily bonus */
+.daily-cal { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:12px 0; }
+.day-cell { text-align:center; padding:10px 4px; border-radius:13px; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.08); display:flex; flex-direction:column; gap:2px; }
+.day-cell small { color:#9fb4c7; font-size:.68rem; text-transform:uppercase; letter-spacing:.5px; }
+.day-cell b { font-size:1.05rem; }
+.day-cell span { font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:.8rem; color:#cfe6a8; }
+.day-cell.done { border-color:rgba(88,214,141,.45); background:rgba(88,214,141,.10); }
+.day-cell.current { border-color:#f5b921; background:rgba(245,185,33,.12); box-shadow:0 0 0 1px #f5b921, 0 8px 20px rgba(245,185,33,.22); animation:daypulse 1.6s infinite; }
+@keyframes daypulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.04); } }
+.gold-btn.done-btn { background:rgba(255,255,255,.08) !important; color:#9fe8bb !important; box-shadow:none !important; }
+.claim-dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:#ff5470; margin-left:7px; vertical-align:middle; box-shadow:0 0 10px #ff5470; animation:daypulse 1.2s infinite; }
+.claim-dot[hidden] { display:none; }
