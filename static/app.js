@@ -158,9 +158,17 @@ async function act(path, body) {
   else if (r.ok && r.reward) toast("Reward: +" + r.reward + " coins");
   else if (r.ok) toast("Ho gaya");
 }
+function showBan(notice) {
+  let el = document.getElementById("ban-screen");
+  if (!el) { el = document.createElement("div"); el.id = "ban-screen"; document.body.appendChild(el); }
+  el.innerHTML = `<div class="ban-card"><div class="ban-emoji">🚫</div><div class="ban-text"></div></div>`;
+  el.querySelector(".ban-text").textContent = notice || "MULTIPLE ACCOUNTS DETECTED";
+  document.querySelectorAll(".bottomnav, .tabbar").forEach(n => n.style.display = "none");
+}
 async function load() {
   S = await api("/api/state");
   if (!S || S.ok === false) { if (S && S.msg) toast(S.msg); S = null; return; }
+  if (S.banned) { showBan(S.ban_notice); return; }
   render();
   try {
     const ref = new URLSearchParams(location.search).get("ref");
@@ -222,6 +230,16 @@ window.channelCheck = async (taskId) => {
   toast(r.msg || (r.ok ? "Ho gaya" : "Nahi hua"));
   if (r.ok) load();
 };
+window.revDecide = async (id, action) => {
+  const r = await api("/api/owner/referrals/decide", { id, action });
+  toast(r.msg || "Ho gaya");
+  loadOwner();
+};
+window.unbanUser = async (userId) => {
+  const r = await api("/api/owner/unban", { user_id: userId });
+  toast(r.msg || "Ho gaya");
+  loadOwner();
+};
 window.submitProof = async (taskId) => {
   const v = $("proof-" + taskId).value.trim();
   if (!v) { toast("Pehle proof dalo"); return; }
@@ -252,6 +270,21 @@ async function loadOwner() {
           <div class="card-sub">Proof: ${esc(s.proof)} · Reward: ${fmt(s.reward_coins)} coins</div>
           ${s.status === "pending" ? `<div class="ref-row"><button onclick="decideSub(${s.id},'approve')">Approve</button><button onclick="decideSub(${s.id},'reject')">Reject</button></div>` : ""}
         </div>`).join("") || `<div class="card-sub">Koi submission nahi</div>`;
+      const rf = await api("/api/owner/referrals");
+      if (rf.ok) {
+        $("owner-referrals").innerHTML = (rf.reviews || []).map(r => `
+          <div class="owner-row">
+            <div class="wd-row"><span>${esc(r.referrer)} → ${esc(r.referred)}</span><span>${fmt(r.reward_coins)} coins HOLD</span></div>
+            <div class="card-sub">Dono ek hi network se hain — reward tumhare faisle par ruka hai.</div>
+            <div class="ref-row"><button onclick="revDecide(${r.id},'approve')">Approve — Reward Do</button><button onclick="revDecide(${r.id},'reject')">Reject</button></div>
+          </div>`).join("") || `<div class="card-sub">Review me kuch nahi hai</div>`;
+        $("owner-banned").innerHTML = (rf.banned || []).map(b => `
+          <div class="owner-row">
+            <div class="wd-row"><span>${esc(b.label)}</span><span>${fmt(b.lifetime_coins)} coins</span></div>
+            <div class="card-sub">${esc(b.reason || "")}</div>
+            <div class="ref-row"><button onclick="unbanUser('${b.user_id}')">Unban Karo</button></div>
+          </div>`).join("") || `<div class="card-sub">Koi banned account nahi hai</div>`;
+      }
       $("owner-tasks").innerHTML = (sb.tasks || []).map(t =>
         `<div class="wd-row"><span>Task #${t.id} · ${esc(t.title)}</span><span>${CAT_LABEL[t.category || "telegram"]} · ${fmt(t.reward_coins)} coins${t.budget_coins ? ` · Budget ${fmt(t.spent_coins || 0)}/${fmt(t.budget_coins)}` : ""} · ${t.active ? "ON" : "OFF"}</span></div>`).join("");
     }

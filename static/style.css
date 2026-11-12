@@ -217,3 +217,9 @@ button:disabled { opacity:.45; cursor:default; }
   background:#e9f7df; color:#122019; padding:10px 15px; border-radius:12px; font-size:.85rem; font-weight:700;
   z-index:50; transition:.2s; max-width:90%; text-align:center; }
 #toast.show { opacity:1; transform:translate(-50%,0); }
+
+/* ban screen */
+#ban-screen { position:fixed; inset:0; z-index:99; background:#090d18; display:flex; align-items:center; justify-content:center; padding:22px; }
+.ban-card { max-width:420px; text-align:center; }
+.ban-emoji { font-size:3rem; margin-bottom:12px; }
+.ban-text { white-space:pre-line; color:#f2f5ea; font-size:1rem; line-height:1.55; }
