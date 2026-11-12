@@ -434,7 +434,7 @@ $("btn-ad").onclick = () => {
   if (!blockId || !window.Adsgram) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
   // Token fetch and ad start TOGETHER: the ad must open straight from the
   // tap — if we wait for the network first, the webview blocks the ad.
-  const startP = api("/api/ad/start");
+  const startP = api("/api/ad/start", { v: 26 });
   const t0 = Date.now();
   let claimed = false;
   const tryClaim = async done => {
