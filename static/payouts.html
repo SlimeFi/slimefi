@@ -54,7 +54,7 @@
     list.innerHTML = d.payouts.map(p => `
       <div class="row">
         <div class="top"><span class="amt">₹${p.amount_rupees} <span class="badge">PAID ✅</span></span><span class="date">${p.ts ? new Date(p.ts * 1000).toLocaleDateString("en-IN", {day: "numeric", month: "short", year: "numeric"}) : ""}</span></div>
-        <div class="meta"><span class="k">Naam:</span> ${esc(p.holder_name || "—")}<br><span class="k">UPI:</span> ${esc(p.upi)}<br><span class="k">Transaction ID:</span> ${esc(p.txn_id || "—")}</div>
+        <div class="meta"><span class="k">Naam:</span> ${esc(p.holder_name || "—")}<br><span class="k">UPI:</span> ${esc(p.upi)}<br><span class="k">Transaction ID:</span> ${esc(p.txn_id || "—")}<br><span class="k">UTR / UPI Ref:</span> ${esc(p.utr || "—")}<br><span class="k">Payment Date:</span> ${esc(p.payment_date || (p.ts ? new Date(p.ts * 1000).toLocaleDateString("en-IN") : "—"))}<br><span class="k">Status:</span> Paid ✅</div>
       </div>`).join("");
   }).catch(() => {
     document.getElementById("list").innerHTML = '<div class="empty">Abhi load nahi ho paya — thodi der baad fir kholo.</div>';

@@ -71,7 +71,7 @@ function render() {
     || `<div class="card-sub">Abhi koi player nahi hai — pehle tum bano!</div>`;
   renderDaily();
   $("payouts-list").innerHTML = (S.recent_payouts || []).map(p =>
-    `<div class="wd-row"><span>✅ ₹${p.amount_rupees} → ${esc(p.upi)}${p.txn_id ? " · 🧾 " + esc(p.txn_id) : ""}</span><span>${p.ts ? new Date(p.ts * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("")
+    `<div class="wd-row"><span>✅ ₹${p.amount_rupees} → ${esc(p.upi)}${p.txn_id ? " · 🧾 " + esc(p.txn_id) : ""}${p.utr ? " · UTR " + esc(p.utr) : ""}</span><span>${p.ts ? new Date(p.ts * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("")
     || `<div class="card-sub">Abhi tak koi payout nahi hua — pehla payout yahin dikhega.</div>`;
   $("home-pending").textContent = fmt(S.pending.coins + S.pending.wood + S.pending.crystals);
   $("home-level").textContent = "Lv " + S.slime.level + " " + S.slime.name;
@@ -85,7 +85,7 @@ function render() {
   if (!S.earn.payouts_enabled) { $("btn-withdraw").disabled = true; $("btn-withdraw").textContent = "Withdraw abhi band hai"; }
   else { $("btn-withdraw").disabled = false; $("btn-withdraw").textContent = "Withdraw Request bhejo"; }
   $("my-withdrawals").innerHTML = (S.my_withdrawals || []).map(w =>
-    `<div class="wd-row"><span>#${w.id} · ₹${w.amount_rupees}</span><span class="st-${w.status}">${w.status.toUpperCase()}</span></div>${w.holder_name ? `<div class="card-sub">👤 ${esc(w.holder_name)}</div>` : ""}${w.txn_id ? `<div class="card-sub">🧾 Txn: ${esc(w.txn_id)}</div>` : ""}`).join("");
+    `<div class="wd-row"><span>#${w.id} · ₹${w.amount_rupees}</span><span class="st-${w.status}">${w.status === "rejected" ? "FAILED" : w.status.toUpperCase()}</span></div>${w.holder_name ? `<div class="card-sub">👤 ${esc(w.holder_name)}</div>` : ""}${w.txn_id ? `<div class="card-sub">🧾 Txn: ${esc(w.txn_id)}</div>` : ""}${w.utr ? `<div class="card-sub">🏦 UTR: ${esc(w.utr)}</div>` : ""}${w.payment_date ? `<div class="card-sub">📅 Payment Date: ${esc(w.payment_date)}</div>` : ""}`).join("");
   // referral
   $("ref-code").textContent = S.referral_code;
   $("ref-code2").textContent = S.referral_code;
@@ -375,21 +375,23 @@ async function loadOwner() {
   $("owner-summary").textContent = "Pending: " + r.pending_count + " requests · ₹" + r.pending_rupees;
   $("owner-list").innerHTML = r.withdrawals.map(w => `
     <div class="owner-row">
-      <div class="wd-row"><span>#${w.id} · ${esc(w.user_id)}</span><span class="st-${w.status}">${w.status.toUpperCase()}</span></div>
+      <div class="wd-row"><span>#${w.id} · ${esc(w.user_id)}</span><span class="st-${w.status}">${w.status === "rejected" ? "FAILED" : w.status.toUpperCase()}</span></div>
       <div class="card-sub">₹${w.amount_rupees} → ${esc(w.upi_id)}</div>
       ${w.holder_name ? `<div class="card-sub">👤 ${esc(w.holder_name)}</div>` : `<div class="card-sub">👤 Naam nahi diya (purani request)</div>`}
       ${w.txn_id ? `<div class="card-sub">🧾 Txn: ${esc(w.txn_id)}</div>` : ""}
-      ${w.status === "pending" ? `<input id="txn-${w.id}" placeholder="Transaction ID / UTR — payment ke baad dalo" style="text-transform:none"><div class="ref-row"><button onclick="decideWd(${w.id},'paid')">Paid kar diya</button><button onclick="decideWd(${w.id},'reject')">Reject</button></div>` : ""}
+      ${w.utr ? `<div class="card-sub">🏦 UTR: ${esc(w.utr)}</div>` : ""}
+      ${w.payment_date ? `<div class="card-sub">📅 Payment Date: ${esc(w.payment_date)}</div>` : ""}
+      ${w.status === "pending" ? `<input id="txn-${w.id}" placeholder="Transaction ID — payment ke baad dalo" style="text-transform:none"><input id="utr-${w.id}" placeholder="UTR / UPI Reference Number" style="text-transform:none"><input id="pdate-${w.id}" type="date"><div class="ref-row"><button onclick="decideWd(${w.id},'paid')">Paid kar diya</button><button onclick="decideWd(${w.id},'reject')">Reject / Failed</button></div>` : ""}
     </div>`).join("");
 }
 window.decideWd = async (id, action) => {
-  let txn_id = "";
+  let txn_id = "", utr = "", payment_date = "";
   if (action === "paid") {
-    const elx = $("txn-" + id);
-    txn_id = elx ? elx.value.trim() : "";
-    if (!txn_id) { toast("Pehle Transaction ID (UTR) dalo — wahi payment ka proof hai"); return; }
+    const gx = p => { const e = $(p + "-" + id); return e ? e.value.trim() : ""; };
+    txn_id = gx("txn"); utr = gx("utr"); payment_date = gx("pdate");
+    if (!txn_id && !utr) { toast("Transaction ID ya UTR dalo — wahi payment ka proof hai"); return; }
   }
-  const rr = await api("/api/owner/withdrawals/decide", { id, action, txn_id });
+  const rr = await api("/api/owner/withdrawals/decide", { id, action, txn_id, utr, payment_date });
   toast(rr.msg || "Ho gaya");
   S = await api("/api/state"); render();
 };
