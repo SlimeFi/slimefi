@@ -15,6 +15,8 @@ import time
 import threading
 import secrets
 import urllib.parse
+import urllib.request
+import re
 from datetime import date
 from flask import Flask, request, jsonify, send_from_directory, g
 
@@ -194,7 +196,8 @@ def init_db():
         tcols = {r[1] for r in c.execute("PRAGMA table_info(tasks)")}
         for col, ddl in [("budget_coins", "ALTER TABLE tasks ADD COLUMN budget_coins INTEGER DEFAULT 0"),
                          ("spent_coins", "ALTER TABLE tasks ADD COLUMN spent_coins INTEGER DEFAULT 0"),
-                         ("category", "ALTER TABLE tasks ADD COLUMN category TEXT DEFAULT 'telegram'")]:
+                         ("category", "ALTER TABLE tasks ADD COLUMN category TEXT DEFAULT 'telegram'"),
+                         ("verify_mode", "ALTER TABLE tasks ADD COLUMN verify_mode TEXT DEFAULT 'proof'")]:
             if col not in tcols:
                 c.execute(ddl)
 
@@ -661,6 +664,7 @@ def tasks_list():
         u = get_user(c, uid())
         subs = {s["task_id"]: s["status"] for s in
                 c.execute("SELECT * FROM task_submissions WHERE user_id=?", (u["user_id"],))}
+        _ensure_channel_modes(c)
         rows = []
         for t in c.execute("SELECT * FROM tasks WHERE active=1 ORDER BY id DESC"):
             left = task_budget_left(t)
@@ -669,6 +673,7 @@ def tasks_list():
             rows.append({"id": t["id"], "title": t["title"], "description": t["description"],
                          "link": t["link"], "reward_coins": t["reward_coins"],
                          "category": t["category"] or "telegram",
+                         "verify_mode": t["verify_mode"] or "proof",
                          "budget_left": left, "my_status": subs.get(t["id"])})
         return jsonify({"ok": True, "tasks": rows})
 
@@ -698,6 +703,80 @@ def tasks_submit():
                       (t["id"], u["user_id"], proof, time.time()))
         return jsonify({"ok": True, "msg": "Proof submit ho gaya. Admin check ke baad reward milega."})
 
+def _ensure_channel_modes(c):
+    """The official-channel task is verified by bot membership, never proof."""
+    c.execute("UPDATE tasks SET verify_mode='channel' "
+              "WHERE link LIKE '%t.me/SlimeFi_official%' AND COALESCE(verify_mode,'proof') != 'channel'")
+
+def _channel_ref(link):
+    m = re.search(r"t\.me/([A-Za-z0-9_]+)", link or "")
+    return "@" + m.group(1) if m else None
+
+def _tg_get_chat_member(chat_ref, tg_id_num):
+    """Ask Telegram (via the bot) whether a user is in a channel. The bot
+    must be a member/admin of that channel for this to work."""
+    if not BOT_TOKEN:
+        return None
+    try:
+        data = urllib.parse.urlencode({"chat_id": chat_ref, "user_id": tg_id_num}).encode()
+        req = urllib.request.Request(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember", data=data)
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return json.loads(r.read())
+    except Exception:
+        return None
+
+@app.post("/api/tasks/<int:task_id>/channel-check")
+def task_channel_check(task_id):
+    """Channel-join task: no proof. The bot verifies membership itself and
+    the reward is credited at once, under the same budget/ledger rules."""
+    with _lock, db() as c:
+        _ensure_channel_modes(c)
+        user = get_user(c, uid())
+        t = c.execute("SELECT * FROM tasks WHERE id=? AND active=1", (task_id,)).fetchone()
+        if not t:
+            return jsonify({"ok": False, "msg": "Task nahi mila"})
+        if (t["verify_mode"] or "proof") != "channel":
+            return jsonify({"ok": False, "msg": "Is task ke liye proof bhejo"})
+        ref = _channel_ref(t["link"])
+        if not ref:
+            return jsonify({"ok": False, "msg": "Channel link set nahi hai"})
+        sub = c.execute("SELECT * FROM task_submissions WHERE task_id=? AND user_id=?",
+                        (task_id, user["user_id"])).fetchone()
+        if sub and sub["status"] == "approved":
+            return jsonify({"ok": True, "msg": "Is task ka reward pehle hi mil chuka hai"})
+        if not user["user_id"].startswith("tg"):
+            return jsonify({"ok": False, "msg": "Ye check sirf Telegram account par hota hai"})
+        resp = _tg_get_chat_member(ref, int(user["user_id"][2:]))
+        if not resp or not resp.get("ok"):
+            return jsonify({"ok": False, "msg": "Check nahi ho paya — pehle bot ko channel me admin bana kar add karo, fir try karo"})
+        result = resp.get("result") or {}
+        st = result.get("status")
+        member = st in ("member", "administrator", "creator") or (st == "restricted" and result.get("is_member"))
+        if not member:
+            return jsonify({"ok": False, "msg": "Tum channel me nahi mile — pehle channel join karo, fir check karo"})
+        if t["budget_coins"] and (t["spent_coins"] or 0) + t["reward_coins"] > t["budget_coins"]:
+            return jsonify({"ok": False, "msg": "Is task ka budget khatam ho gaya hai"})
+        now = time.time()
+        if sub:
+            c.execute("UPDATE task_submissions SET status='approved', proof='channel auto-check', decided_at=? WHERE id=?",
+                      (now, sub["id"]))
+        else:
+            c.execute("INSERT INTO task_submissions(task_id,user_id,proof,status,created_at,decided_at) VALUES(?,?,?,'approved',?,?)",
+                      (task_id, user["user_id"], "channel auto-check", now, now))
+        if t["budget_coins"]:
+            c.execute("UPDATE tasks SET spent_coins=spent_coins+? WHERE id=?",
+                      (t["reward_coins"], task_id))
+        c.execute("UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+? WHERE user_id=?",
+                  (t["reward_coins"], t["reward_coins"], user["user_id"]))
+        log(c, user["user_id"], "task", {"coins": t["reward_coins"]},
+            f"Channel task auto-approved: {t['title']}")
+        fresh = c.execute("SELECT * FROM users WHERE user_id=?", (user["user_id"],)).fetchone()
+        maybe_qualify_referral(c, fresh)
+        return jsonify({"ok": True,
+                        "msg": f"Channel join confirm ho gaya — {t['reward_coins']} coins mil gaye!",
+                        "state": state_payload(c, fresh)})
+
 @app.post("/api/owner/tasks")
 def owner_tasks_create():
     if not _require_owner():
@@ -715,12 +794,15 @@ def owner_tasks_create():
     category = (data.get("category") or "telegram").strip().lower()
     if category not in ("telegram", "twitter", "other"):
         category = "telegram"
+    verify_mode = (data.get("verify_mode") or "proof").strip().lower()
+    if verify_mode not in ("proof", "channel"):
+        verify_mode = "proof"
     if not title or reward <= 0:
         return jsonify({"ok": False, "msg": "Task ka title aur reward (coins) dalo"})
     with _lock, db() as c:
-        cur = c.execute("INSERT INTO tasks(title,description,link,reward_coins,budget_coins,category,created_at) VALUES(?,?,?,?,?,?,?)",
+        cur = c.execute("INSERT INTO tasks(title,description,link,reward_coins,budget_coins,category,verify_mode,created_at) VALUES(?,?,?,?,?,?,?,?)",
                         (title, (data.get("description") or "").strip(),
-                         (data.get("link") or "").strip(), reward, budget, category, time.time()))
+                         (data.get("link") or "").strip(), reward, budget, category, verify_mode, time.time()))
         return jsonify({"ok": True, "id": cur.lastrowid, "msg": "Task ban gaya"})
 
 @app.get("/api/owner/submissions")
