@@ -251,3 +251,16 @@ button:disabled { opacity:.45; cursor:default; }
 .gold-btn.done-btn { background:rgba(255,255,255,.08) !important; color:#9fe8bb !important; box-shadow:none !important; }
 .claim-dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:#ff5470; margin-left:7px; vertical-align:middle; box-shadow:0 0 10px #ff5470; animation:daypulse 1.2s infinite; }
 .claim-dot[hidden] { display:none; }
+
+/* split balance: cash left, coins right (owner: coins must be prominent) */
+.balance-duo { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.balance-duo .balance-card { margin:0; padding:15px 14px 13px; display:flex; flex-direction:column; }
+.balance-duo .balance-value { margin:8px 0 2px; }
+.balance-duo .balance-value strong { font-size:1.72rem; }
+.coin-card { border-color:rgba(245,185,33,.45) !important; background:linear-gradient(160deg, rgba(245,185,33,.14), rgba(20,26,16,.65) 55%) !important; }
+.coin-value strong { color:#ffd94d; text-shadow:0 2px 14px rgba(245,185,33,.45); }
+.gold-glow { background:radial-gradient(circle, rgba(245,185,33,.35), transparent 70%) !important; }
+.duo-btn { margin-top:10px; width:100%; padding:10px 8px; border:none; border-radius:11px; background:var(--green); color:#102018; font-weight:800; cursor:pointer; font-size:.86rem; }
+.duo-btn.gold { background:linear-gradient(135deg,#ffe066,#f5b921); color:#241a02; box-shadow:0 6px 16px rgba(245,185,33,.30); }
+.duo-sub { margin-top:9px; font-size:.68rem; color:#a6b8b6; line-height:1.45; }
+.duo-sub b { color:#eaf5ff; font-size:.8rem; }

@@ -9,7 +9,7 @@
 <script>window.SLIMEFI_ADS_BLOCK_ID = "59318"; /* AdsGram Reward block (platform 56007) */</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/style.css?v=16">
 </head>
 <body>
 
@@ -24,15 +24,22 @@
 
 <!-- ================= HOME ================= -->
 <section id="view-home" class="view active">
-  <div class="balance-card">
-    <div class="balance-glow"></div>
-    <div class="balance-top"><span>YOUR REWARD BALANCE</span><span class="live-dot">● LIVE</span></div>
-    <div class="balance-value"><span class="currency">₹</span><strong id="home-cash">0.00</strong></div>
-    <div class="balance-foot"><span>Available rewards</span><button onclick="go('wallet')">Withdraw ↗</button></div>
-    <div class="balance-stats">
-      <div><small>Pending rewards</small><b id="home-pending-rew">₹0.00</b></div><i></i>
-      <div><small>Coins</small><b id="home-coins">0</b></div><i></i>
-      <div><small>Lifetime coins</small><b id="home-lifetime">0</b></div>
+  <div class="balance-duo">
+    <div class="balance-card cash-card">
+      <div class="balance-glow"></div>
+      <div class="balance-top"><span>REWARD BALANCE</span><span class="live-dot">● LIVE</span></div>
+      <div class="balance-value"><span class="currency">₹</span><strong id="home-cash">0.00</strong></div>
+      <div class="balance-foot"><span>Available rewards</span></div>
+      <button class="duo-btn" onclick="go('wallet')">Withdraw ↗</button>
+      <div class="duo-sub">Pending rewards<br><b id="home-pending-rew">₹0.00</b></div>
+    </div>
+    <div class="balance-card coin-card">
+      <div class="balance-glow gold-glow"></div>
+      <div class="balance-top"><span>🪙 MY COINS</span></div>
+      <div class="balance-value coin-value"><strong id="home-coins">0</strong></div>
+      <div class="balance-foot"><span>1000 coins = ₹1</span></div>
+      <button class="duo-btn gold" onclick="go('wallet')">₹ Me Badlo →</button>
+      <div class="duo-sub">Lifetime coins<br><b id="home-lifetime">0</b></div>
     </div>
   </div>
 
@@ -399,6 +406,6 @@
 
 <div id="toast"></div>
 
-<script src="/static/app.js?v=15"></script>
+<script src="/static/app.js?v=16"></script>
 </body>
 </html>
