@@ -64,6 +64,10 @@ function render() {
   $("home-coins").textContent = fmt(S.coins);
   $("home-lifetime").textContent = fmt(S.lifetime_coins);
   $("home-pending-rew").textContent = "₹" + (S.pending_rewards_coins / S.earn.coins_per_rupee).toFixed(2);
+  $("payouts-total").textContent = S.payouts_paid_count ? (S.payouts_paid_count + " payouts · ₹" + fmt(S.payouts_paid_rupees)) : "";
+  $("payouts-list").innerHTML = (S.recent_payouts || []).map(p =>
+    `<div class="wd-row"><span>✅ ₹${p.amount_rupees} → ${esc(p.upi)}</span><span>${p.ts ? new Date(p.ts * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("")
+    || `<div class="card-sub">Abhi tak koi payout nahi hua — pehla payout yahin dikhega.</div>`;
   $("home-pending").textContent = fmt(S.pending.coins + S.pending.wood + S.pending.crystals);
   $("home-level").textContent = "Lv " + S.slime.level + " " + S.slime.name;
   // wallet
