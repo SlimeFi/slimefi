@@ -48,6 +48,9 @@ function fmtCost(c) {
 function go(name) {
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
   $("view-" + name).classList.add("active");
+  document.body.classList.toggle("in-game", name === "game");
+  document.querySelectorAll(".bottom-nav .nav-item").forEach(b =>
+    b.classList.toggle("active", b.dataset.go === name));
   window.scrollTo(0, 0);
   if (name === "tasks") loadTasks();
 }
@@ -56,9 +59,11 @@ window.go = go;
 function render() {
   if (!S) return;
   // home
-  $("home-cash").textContent = "₹" + Number(S.cash_rupees).toFixed(2);
+  $("home-cash").textContent = Number(S.cash_rupees).toFixed(2);
   $("home-users").textContent = fmt(S.players);
   $("home-coins").textContent = fmt(S.coins);
+  $("home-lifetime").textContent = fmt(S.lifetime_coins);
+  $("home-pending-rew").textContent = "₹" + (S.pending_rewards_coins / S.earn.coins_per_rupee).toFixed(2);
   $("home-pending").textContent = fmt(S.pending.coins + S.pending.wood + S.pending.crystals);
   $("home-level").textContent = "Lv " + S.slime.level + " " + S.slime.name;
   // wallet
@@ -126,7 +131,7 @@ function render() {
   const adBtn = $("btn-ad");
   if (e.ads_today >= e.ad_daily_limit) { adBtn.disabled = true; adBtn.textContent = "Aaj ke ads khatam — kal aana"; }
   else if (e.ad_cooldown_left > 0) { adBtn.disabled = true; adBtn.textContent = "Agla ad " + e.ad_cooldown_left + " sec me"; }
-  else { adBtn.disabled = false; adBtn.textContent = "Watch Ad (+" + e.ad_reward_coins + " coins)"; }
+  else { adBtn.disabled = false; adBtn.textContent = "▶ Watch Ad (+" + e.ad_reward_coins + " coins)"; }
   $("ad-note").textContent = e.ads_live ? "" : "Note: asal AdsGram ads judna baki hai — abhi reward system test mode me hai.";
 
   // admin panel
@@ -159,19 +164,32 @@ async function load() {
 }
 
 // ---------- sponsored tasks ----------
+let LAST_TASKS = [];
+let TASK_CAT = "all";
+const CAT_LABEL = { telegram: "➤ TELEGRAM", twitter: "𝕏 TWITTER", other: "▦ OTHER" };
 async function loadTasks() {
   const box = $("tasks-list");
   box.innerHTML = `<div class="card"><div class="card-sub">Loading…</div></div>`;
   const r = await api("/api/tasks");
   if (!r.ok) { box.innerHTML = ""; return; }
-  if (!r.tasks.length) {
+  LAST_TASKS = r.tasks;
+  renderTasks();
+}
+function renderTasks() {
+  const box = $("tasks-list");
+  const list = LAST_TASKS.filter(t => TASK_CAT === "all" || (t.category || "telegram") === TASK_CAT);
+  if (!LAST_TASKS.length) {
     box.innerHTML = `<div class="card"><div class="card-title">Abhi koi sponsored task nahi hai</div>
       <div class="card-sub">Naye paid tasks yahan aayenge — businesses ke campaigns shuru hote hi.</div></div>`;
     return;
   }
-  box.innerHTML = r.tasks.map(t => `
+  if (!list.length) {
+    box.innerHTML = `<div class="card"><div class="card-sub">Is category me abhi koi task nahi hai.</div></div>`;
+    return;
+  }
+  box.innerHTML = list.map(t => `
     <div class="card">
-      <div class="card-top"><div class="card-title">${esc(t.title)}</div><div class="lvl">+${fmt(t.reward_coins)} coins</div></div>
+      <div class="card-top"><div class="card-title">${esc(t.title)}</div><span class="cat-tag">${CAT_LABEL[t.category || "telegram"]}</span><div class="lvl">+${fmt(t.reward_coins)} coins</div></div>
       <div class="card-sub">${esc(t.description || "")}</div>
       ${t.link ? `<div class="card-sub">Link: ${esc(t.link)}</div>` : ""}
       ${t.my_status === "approved" ? `<div class="card-sub st-paid">✅ Reward mil gaya</div>`
@@ -214,7 +232,7 @@ async function loadOwner() {
           ${s.status === "pending" ? `<div class="ref-row"><button onclick="decideSub(${s.id},'approve')">Approve</button><button onclick="decideSub(${s.id},'reject')">Reject</button></div>` : ""}
         </div>`).join("") || `<div class="card-sub">Koi submission nahi</div>`;
       $("owner-tasks").innerHTML = (sb.tasks || []).map(t =>
-        `<div class="wd-row"><span>Task #${t.id} · ${esc(t.title)}</span><span>${fmt(t.reward_coins)} coins${t.budget_coins ? ` · Budget ${fmt(t.spent_coins || 0)}/${fmt(t.budget_coins)}` : ""} · ${t.active ? "ON" : "OFF"}</span></div>`).join("");
+        `<div class="wd-row"><span>Task #${t.id} · ${esc(t.title)}</span><span>${CAT_LABEL[t.category || "telegram"]} · ${fmt(t.reward_coins)} coins${t.budget_coins ? ` · Budget ${fmt(t.spent_coins || 0)}/${fmt(t.budget_coins)}` : ""} · ${t.active ? "ON" : "OFF"}</span></div>`).join("");
     }
   } catch (e) {}
   const r = await api("/api/owner/withdrawals");
@@ -259,7 +277,10 @@ $("btn-ad").onclick = () => {
     try {
       window.Adsgram.init({ blockId }).show()
         .then(res => { if (res && res.done) claim(); else toast("Ad pura dekho, tabhi coins milenge"); })
-        .catch(() => toast("Ad abhi nahi chal paya, thodi der baad try karo"));
+        .catch(() => {
+          toast("Ad abhi live nahi hai — AdsGram activation pending hai");
+          $("ad-note").textContent = "Note: AdsGram block abhi active nahi hua hai (approval/activation pending). Active hote hi ads apne aap chalne lagenge — koi action nahi chahiye.";
+        });
       return;
     } catch (err) {}
   }
@@ -274,7 +295,8 @@ $("btn-ref").onclick = () => {
 $("btn-nt").onclick = async () => {
   const body = { title: $("nt-title").value.trim(), description: $("nt-desc").value.trim(),
                  link: $("nt-link").value.trim(), reward_coins: parseInt($("nt-reward").value, 10) || 0,
-                 budget_coins: parseInt($("nt-budget").value, 10) || 0 };
+                 budget_coins: parseInt($("nt-budget").value, 10) || 0,
+                 category: $("nt-category").value };
   const r = await api("/api/owner/tasks", body);
   toast(r.msg || "Ho gaya");
   if (r.ok) { $("nt-title").value = ""; $("nt-desc").value = ""; $("nt-link").value = ""; $("nt-reward").value = ""; $("nt-budget").value = ""; loadOwner(); }
@@ -284,6 +306,27 @@ document.querySelectorAll(".tabbar button").forEach(b => b.onclick = () => {
   document.querySelectorAll(".pane").forEach(x => x.classList.remove("active"));
   b.classList.add("active");
   $("tab-" + b.dataset.tab).classList.add("active");
+});
+$("btn-copy").onclick = async () => {
+  if (!S) return;
+  try { await navigator.clipboard.writeText(S.referral_code); toast("Invite code copy ho gaya"); }
+  catch (e) { toast("Invite code: " + S.referral_code); }
+};
+$("btn-share").onclick = () => {
+  if (!S) return;
+  const link = "https://t.me/SlimeFi_bot?start=" + S.referral_code;
+  const shareUrl = "https://t.me/share/url?url=" + encodeURIComponent(link) +
+    "&text=" + encodeURIComponent("SlimeFi par mere saath earn karo!");
+  if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl);
+  else toast("Dost ko ye link bhejo: " + link);
+};
+document.querySelectorAll(".bottom-nav .nav-item").forEach(b =>
+  b.onclick = () => go(b.dataset.go));
+document.querySelectorAll(".chip[data-cat]").forEach(ch => ch.onclick = () => {
+  TASK_CAT = ch.dataset.cat;
+  document.querySelectorAll(".chip[data-cat]").forEach(x =>
+    x.classList.toggle("active", x === ch));
+  renderTasks();
 });
 load();
 setInterval(load, 30000);

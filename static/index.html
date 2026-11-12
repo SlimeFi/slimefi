@@ -7,13 +7,15 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <script>window.SLIMEFI_ADS_BLOCK_ID = "59318"; /* AdsGram Reward block (platform 56007) */</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
 <!-- ================= APP HEADER ================= -->
 <header class="app-header">
-  <div class="app-brand">SLIMEFI</div>
+  <div class="app-brand">SLIME<span>FI</span></div>
   <div class="app-head-right">
     <span class="pill-green">Earning Platform</span>
     <button class="wd-top" onclick="go('wallet')">Withdraw</button>
@@ -22,21 +24,21 @@
 
 <!-- ================= HOME ================= -->
 <section id="view-home" class="view active">
-  <div class="stat-row">
-    <div class="stat-card">
-      <div class="stat-ico">💼</div>
-      <div class="stat-big" id="home-cash">₹0.00</div>
-      <div class="stat-label">Available balance</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-ico">👥</div>
-      <div class="stat-big" id="home-users">0</div>
-      <div class="stat-label">Active users</div>
+  <div class="balance-card">
+    <div class="balance-glow"></div>
+    <div class="balance-top"><span>YOUR REWARD BALANCE</span><span class="live-dot">● LIVE</span></div>
+    <div class="balance-value"><span class="currency">₹</span><strong id="home-cash">0.00</strong></div>
+    <div class="balance-foot"><span>Available rewards</span><button onclick="go('wallet')">Withdraw ↗</button></div>
+    <div class="balance-stats">
+      <div><small>Pending rewards</small><b id="home-pending-rew">₹0.00</b></div><i></i>
+      <div><small>Coins</small><b id="home-coins">0</b></div><i></i>
+      <div><small>Lifetime coins</small><b id="home-lifetime">0</b></div>
     </div>
   </div>
-  <div class="coins-strip" onclick="go('wallet')">
-    <span>🪙 Coins: <b id="home-coins">0</b></span>
-    <span class="strip-sub">Pending: <b id="home-pending">0</b> · Wallet →</span>
+
+  <div class="coins-strip" onclick="go('game')">
+    <span>🎮 Village pending: <b id="home-pending">0</b></span>
+    <span class="strip-sub">👥 <b id="home-users">0</b> players · Collect →</span>
   </div>
 
   <h2 class="v2-h">Earning Center</h2>
@@ -111,6 +113,13 @@
     <div class="ref-row">
       <input id="nt-reward" type="number" placeholder="Reward coins" style="text-transform:none; max-width:140px">
       <input id="nt-budget" type="number" placeholder="Total budget coins (khali = unlimited)" style="text-transform:none; max-width:220px">
+    </div>
+    <div class="ref-row">
+      <select id="nt-category">
+        <option value="telegram">Telegram task</option>
+        <option value="twitter">Twitter / X task</option>
+        <option value="other">Other task</option>
+      </select>
       <button id="btn-nt" class="small-btn">Task Banao</button>
     </div>
     <div id="owner-tasks"></div>
@@ -121,10 +130,10 @@
 <section id="view-ads" class="view">
   <button class="back-btn" onclick="go('home')">← Home</button>
   <h2 class="v2-h">Sponsored Ads</h2>
-  <div class="card earn">
+  <div class="card earn ad-card">
     <div class="card-top"><div class="card-title">Ad Dekho, Coins Pao</div><div class="lvl" id="ad-count">0/20</div></div>
     <div class="card-sub">Ek ad = <span class="cost">+100 coins</span>. Ad ka paisa hi sabki earning ka source hai.</div>
-    <button id="btn-ad">Watch Ad</button>
+    <button id="btn-ad" class="gold-btn">▶ Watch Ad — Premium</button>
     <div class="card-sub" id="ad-note"></div>
   </div>
 </section>
@@ -140,6 +149,12 @@
     <div class="flow-step">Reward credited to ledger</div><div class="flow-arrow">↓</div>
     <div class="flow-step final">Eligible withdrawal</div>
   </div>
+  <div class="cat-row">
+    <button class="chip active" data-cat="all">All Tasks</button>
+    <button class="chip" data-cat="telegram">➤ Telegram</button>
+    <button class="chip" data-cat="twitter">𝕏 Twitter</button>
+    <button class="chip" data-cat="other">▦ Other</button>
+  </div>
   <div id="tasks-list" class="cards"></div>
 </section>
 
@@ -147,10 +162,17 @@
 <section id="view-referral" class="view">
   <button class="back-btn" onclick="go('home')">← Home</button>
   <h2 class="v2-h">Referral Center</h2>
+  <div class="ref-hero">
+    <p class="eyebrow">YOUR NETWORK, YOUR REWARDS</p>
+    <h2>Good things<br><em>grow together.</em></h2>
+    <div class="ref-code-row">
+      <div><small>YOUR INVITE CODE</small><b id="ref-code2">-</b></div>
+      <button id="btn-copy">Copy</button>
+    </div>
+    <button class="primary-btn" id="btn-share">↗ &nbsp; Invite Friends</button>
+    <div class="card-sub" id="ref-link-line" style="margin-top:10px"></div>
+  </div>
   <div class="card">
-    <div class="card-title">Your Referral Code</div>
-    <div class="ref-code" id="ref-code2">-</div>
-    <div class="card-sub" id="ref-link-line"></div>
     <div class="card-sub" id="squad-line2">0 friends joined</div>
     <div class="card-sub">Reward: dost ke pehli qualifying activity (ad / quest / daily / approved task) par <span class="cost">+500 coins</span>. Sirf join par reward nahi milta — fake accounts rokne ke liye.</div>
   </div>
@@ -306,8 +328,17 @@
   </nav>
 </section>
 
+<!-- ================= BOTTOM NAV ================= -->
+<nav class="bottom-nav">
+  <button class="nav-item active" data-go="home"><span>🏠</span><small>Home</small></button>
+  <button class="nav-item" data-go="tasks"><span>✅</span><small>Tasks</small></button>
+  <button class="nav-item nav-main" data-go="ads"><span>▶</span><small>Watch Ads</small></button>
+  <button class="nav-item" data-go="referral"><span>👥</span><small>Refer</small></button>
+  <button class="nav-item" data-go="wallet"><span>👛</span><small>Wallet</small></button>
+</nav>
+
 <div id="toast"></div>
 
-<script src="/static/app.js?v=6"></script>
+<script src="/static/app.js?v=7"></script>
 </body>
 </html>
