@@ -91,6 +91,13 @@ function render() {
   $("ref-code2").textContent = S.referral_code;
   $("squad-line").textContent = S.invites + " friends joined - Squad boost +" + S.squad_boost_pct + "%";
   $("squad-line2").textContent = S.invites + " friends joined · Har dost ki pehli activity par +500 coins";
+  $("ref-apply-card").style.display = S.has_referrer ? "none" : "block";
+  $("ref-applied-note").style.display = S.has_referrer ? "block" : "none";
+  $("ref-total").textContent = "Total Refer: " + (S.invites || 0);
+  const QLABEL = { 0: "Joined — pehli activity baki", 1: "Reward mila ✅", 2: "Review me hai ⏳", 3: "Reward nahi mila" };
+  $("my-ref-list").innerHTML = (S.my_referrals || []).length
+    ? (S.my_referrals || []).map(r => `<div class="wd-row"><span>${esc(r.label)}</span><span>${QLABEL[r.q] || ""}</span></div>`).join("")
+    : `<div class="card-sub">Abhi koi referral nahi — apna code dosto ko bhejo.</div>`;
   $("ref-link-line").textContent = "Dost ko ye link bhejo: t.me/SlimeFi_bot?start=" + S.referral_code;
   // game header + guardian
   $("r-coins").textContent = S.coins;
@@ -359,6 +366,11 @@ async function loadOwner() {
             <div class="card-sub">Dono ek hi network se hain — reward tumhare faisle par ruka hai.</div>
             <div class="ref-row"><button onclick="revDecide(${r.id},'approve')">Approve — Reward Do</button><button onclick="revDecide(${r.id},'reject')">Reject</button></div>
           </div>`).join("") || `<div class="card-sub">Review me kuch nahi hai</div>`;
+        $("owner-suspicious").innerHTML = (rf.suspicious || []).map(x => `
+          <div class="owner-row">
+            <div class="wd-row"><span>⚠️ ${esc(x.label)}</span><span>${fmt(x.lifetime_coins)} coins</span></div>
+            <div class="card-sub">${esc(x.reason || "")} — sirf network match hai, doshi pakka nahi. Jaanch karke faisla lo — ye account band nahi hai.</div>
+          </div>`).join("") || `<div class="card-sub">Koi suspicious account nahi hai</div>`;
         $("owner-banned").innerHTML = (rf.banned || []).map(b => `
           <div class="owner-row">
             <div class="wd-row"><span>${esc(b.label)}</span><span>${fmt(b.lifetime_coins)} coins</span></div>
@@ -417,23 +429,23 @@ $("btn-withdraw").onclick = () => {
   if (upi && amt > 0) act("/api/withdraw", { upi_id: upi, amount_rupees: amt, holder_name });
   else toast("UPI ID aur amount dono dalo");
 };
-$("btn-ad").onclick = () => {
-  const claim = () => act("/api/ad/claim");
+$("btn-ad").onclick = async () => {
   const blockId = window.SLIMEFI_ADS_BLOCK_ID;
-  if (blockId && window.Adsgram) {
-    try {
-      window.Adsgram.init({ blockId }).show()
-        .then(res => { if (res && res.done) claim(); else toast("Ad pura dekho, tabhi coins milenge"); })
-        .catch(() => {
-          toast("Ad abhi live nahi hai — AdsGram activation pending hai");
-          $("ad-note").textContent = "Note: AdsGram block abhi active nahi hua hai (approval/activation pending). Active hote hi ads apne aap chalne lagenge — koi action nahi chahiye.";
-        });
-      return;
-    } catch (err) {}
+  if (!blockId || !window.Adsgram) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
+  const st = await api("/api/ad/start");
+  if (!st.ok) { toast(st.msg || "Ad shuru nahi ho paya"); return; }
+  try {
+    const res = await window.Adsgram.init({ blockId }).show();
+    if (res && res.done) act("/api/ad/claim", { token: st.token });
+    else toast("Ad pura dekho, tabhi coins milenge");
+  } catch (e) {
+    toast("Ad pura nahi chala — coin nahi milega. Fir try karo");
   }
-  $("btn-ad").disabled = true;
-  toast("Ad chal raha hai...");
-  setTimeout(claim, 3000);
+};
+window.openPayouts = () => {
+  const url = "https://SlimeFi.pythonanywhere.com/payouts";
+  try { if (tg && tg.openLink) { tg.openLink(url); return; } } catch (e) {}
+  window.open(url, "_blank");
 };
 $("btn-ref").onclick = () => {
   const code = $("ref-input").value.trim();
