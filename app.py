@@ -49,6 +49,14 @@ def telegram_auth():
     Requests without initData are local browser tests (fallback user)."""
     if not request.path.startswith("/api/") or request.path == "/api/health":
         return None
+    # Owner's personal panel link carries a secret key: it maps straight to
+    # the owner's Telegram identity even when his Telegram client does not
+    # pass WebApp initData (mod/external-browser opens).
+    if OWNER_KEY and OWNER_ID:
+        k = request.headers.get("X-Owner-Key", "")
+        if k and hmac.compare_digest(k, OWNER_KEY):
+            g.tg_user_id = OWNER_ID
+            return None
     init_data = request.headers.get("X-Init-Data", "")
     if init_data:
         tg_id = verify_init_data(init_data)
@@ -103,6 +111,7 @@ AD_DAILY_LIMIT = 20           # max rewarded ads per user per day
 AD_COOLDOWN_SEC = 45          # gap between two ad claims
 MIN_WITHDRAW_RUPEES = 100     # minimum UPI withdrawal request
 OWNER_ID = os.environ.get("OWNER_ID", "")          # Telegram user key of the owner, e.g. "tg123456789"
+OWNER_KEY = os.environ.get("OWNER_KEY", "")        # secret in the owner's personal panel link (startapp param)
 ADSGRAM_BLOCK_ID = os.environ.get("ADSGRAM_BLOCK_ID", "")  # set when the AdsGram block is live
 
 # ---------------- db ----------------
@@ -141,6 +150,9 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT,
             amount_paise INTEGER, upi_id TEXT, status TEXT DEFAULT 'pending',
             created_at REAL, decided_at REAL
+        );
+        CREATE TABLE IF NOT EXISTS seen_starts(
+            tg_id TEXT PRIMARY KEY, username TEXT, first_name TEXT, ts REAL
         );
         """)
         # Earning columns added after the first release: add them to old DBs too.
@@ -523,6 +535,18 @@ def telegram_webhook():
     needs no outbound call to Telegram for this."""
     upd = request.get_json(silent=True) or {}
     msg = upd.get("message") or {}
+    # Record who pressed /start (the id comes from Telegram's own servers in
+    # the update, so it cannot be faked by a webview): used to identify the
+    # owner's real Telegram id for OWNER_ID.
+    try:
+        frm = msg.get("from") or {}
+        if frm.get("id"):
+            with db() as c:
+                c.execute("INSERT OR REPLACE INTO seen_starts VALUES(?,?,?,?)",
+                          (f"tg{frm['id']}", frm.get("username") or "",
+                           frm.get("first_name") or "", time.time()))
+    except Exception:
+        pass
     text = (msg.get("text") or "").strip()
     chat_id = (msg.get("chat") or {}).get("id")
     if not chat_id or not text.startswith("/start"):
