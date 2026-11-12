@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SlimeFi — Payout Proofs</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070b14; color: #e8eef7; font-family: "Segoe UI", system-ui, sans-serif; padding: 20px 14px 40px; }
+  .wrap { max-width: 560px; margin: 0 auto; }
+  .logo { font-size: 34px; text-align: center; }
+  h1 { text-align: center; font-size: 24px; margin: 6px 0 2px; }
+  h1 .g { color: #8be04e; }
+  .sub { text-align: center; color: #9fb0c7; font-size: 14px; line-height: 1.5; margin-bottom: 18px; }
+  .totals { display: flex; gap: 10px; margin-bottom: 16px; }
+  .tcard { flex: 1; background: linear-gradient(160deg, #101a2e, #0b1220); border: 1px solid #1e2c47; border-radius: 14px; padding: 14px; text-align: center; }
+  .tcard .big { font-size: 22px; font-weight: 800; color: #ffd75e; }
+  .tcard .lbl { font-size: 11px; letter-spacing: 1px; color: #9fb0c7; margin-top: 4px; text-transform: uppercase; }
+  .row { background: #0d1524; border: 1px solid #1c2a44; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+  .row .top { display: flex; justify-content: space-between; align-items: center; }
+  .amt { font-size: 18px; font-weight: 800; color: #8be04e; }
+  .date { color: #9fb0c7; font-size: 12px; }
+  .meta { color: #c7d3e6; font-size: 13px; margin-top: 5px; line-height: 1.55; word-break: break-all; }
+  .meta .k { color: #7e90ad; }
+  .empty { text-align: center; color: #9fb0c7; padding: 30px 10px; border: 1px dashed #26365a; border-radius: 12px; line-height: 1.6; }
+  .foot { text-align: center; margin-top: 22px; color: #7e90ad; font-size: 13px; line-height: 1.7; }
+  .foot a { color: #8be04e; text-decoration: none; font-weight: 700; }
+  .badge { display: inline-block; background: #14301c; color: #8be04e; border: 1px solid #265c36; font-size: 11px; padding: 2px 8px; border-radius: 99px; margin-left: 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">🟢</div>
+  <h1>Slime<span class="g">Fi</span> — Payout Proofs</h1>
+  <p class="sub">Har payout ka public record — amount, date, naam, masked UPI aur Transaction ID ke saath.<br>Jo yahan dikhta hai, wahi asal me pay hua hai.</p>
+  <div class="totals">
+    <div class="tcard"><div class="big" id="t-count">–</div><div class="lbl">Total Payouts</div></div>
+    <div class="tcard"><div class="big" id="t-amt">–</div><div class="lbl">Total Paid (₹)</div></div>
+  </div>
+  <div id="list"><div class="empty">Loading…</div></div>
+  <p class="foot">Khud kamao — tasks, daily bonus aur referrals se coins banao aur UPI se withdraw karo.<br>
+  👉 <a href="https://t.me/SlimeFi_bot/game">SlimeFi Bot kholo</a> · 📢 <a href="https://t.me/SlimeFi_official">Official Channel</a></p>
+</div>
+<script>
+  function esc(x) { return String(x == null ? "" : x).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  fetch("/api/payouts").then(r => r.json()).then(d => {
+    document.getElementById("t-count").textContent = d.count;
+    document.getElementById("t-amt").textContent = "₹" + d.total_rupees;
+    const list = document.getElementById("list");
+    if (!d.payouts || !d.payouts.length) {
+      list.innerHTML = '<div class="empty">Abhi tak koi payout complete nahi hua hai.<br>Pehla payout yahan sabse pehle dikhega. ✅</div>';
+      return;
+    }
+    list.innerHTML = d.payouts.map(p => `
+      <div class="row">
+        <div class="top"><span class="amt">₹${p.amount_rupees} <span class="badge">PAID ✅</span></span><span class="date">${p.ts ? new Date(p.ts * 1000).toLocaleDateString("en-IN", {day: "numeric", month: "short", year: "numeric"}) : ""}</span></div>
+        <div class="meta"><span class="k">Naam:</span> ${esc(p.holder_name || "—")}<br><span class="k">UPI:</span> ${esc(p.upi)}<br><span class="k">Transaction ID:</span> ${esc(p.txn_id || "—")}</div>
+      </div>`).join("");
+  }).catch(() => {
+    document.getElementById("list").innerHTML = '<div class="empty">Abhi load nahi ho paya — thodi der baad fir kholo.</div>';
+  });
+</script>
+</body>
+</html>

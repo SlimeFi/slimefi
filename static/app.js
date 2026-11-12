@@ -85,7 +85,7 @@ function render() {
   if (!S.earn.payouts_enabled) { $("btn-withdraw").disabled = true; $("btn-withdraw").textContent = "Withdraw abhi band hai"; }
   else { $("btn-withdraw").disabled = false; $("btn-withdraw").textContent = "Withdraw Request bhejo"; }
   $("my-withdrawals").innerHTML = (S.my_withdrawals || []).map(w =>
-    `<div class="wd-row"><span>#${w.id} · ₹${w.amount_rupees}</span><span class="st-${w.status}">${w.status.toUpperCase()}</span></div>${w.holder_name ? `<div class="card-sub">👤 ${esc(w.holder_name)} · 🏦 ${esc(w.bank_name)}</div>` : ""}${w.txn_id ? `<div class="card-sub">🧾 Txn: ${esc(w.txn_id)}</div>` : ""}`).join("");
+    `<div class="wd-row"><span>#${w.id} · ₹${w.amount_rupees}</span><span class="st-${w.status}">${w.status.toUpperCase()}</span></div>${w.holder_name ? `<div class="card-sub">👤 ${esc(w.holder_name)}</div>` : ""}${w.txn_id ? `<div class="card-sub">🧾 Txn: ${esc(w.txn_id)}</div>` : ""}`).join("");
   // referral
   $("ref-code").textContent = S.referral_code;
   $("ref-code2").textContent = S.referral_code;
@@ -377,7 +377,7 @@ async function loadOwner() {
     <div class="owner-row">
       <div class="wd-row"><span>#${w.id} · ${esc(w.user_id)}</span><span class="st-${w.status}">${w.status.toUpperCase()}</span></div>
       <div class="card-sub">₹${w.amount_rupees} → ${esc(w.upi_id)}</div>
-      ${w.holder_name ? `<div class="card-sub">👤 ${esc(w.holder_name)} · 🏦 ${esc(w.bank_name)}</div>` : `<div class="card-sub">👤 Naam/bank nahi diya (purani request)</div>`}
+      ${w.holder_name ? `<div class="card-sub">👤 ${esc(w.holder_name)}</div>` : `<div class="card-sub">👤 Naam nahi diya (purani request)</div>`}
       ${w.txn_id ? `<div class="card-sub">🧾 Txn: ${esc(w.txn_id)}</div>` : ""}
       ${w.status === "pending" ? `<input id="txn-${w.id}" placeholder="Transaction ID / UTR — payment ke baad dalo" style="text-transform:none"><div class="ref-row"><button onclick="decideWd(${w.id},'paid')">Paid kar diya</button><button onclick="decideWd(${w.id},'reject')">Reject</button></div>` : ""}
     </div>`).join("");
@@ -411,10 +411,8 @@ $("btn-withdraw").onclick = () => {
   const upi = $("upi-input").value.trim();
   const amt = parseInt($("wd-input").value, 10);
   const holder_name = $("wd-name").value.trim();
-  const bank_name = $("wd-bank").value.trim();
   if (!holder_name) { toast("Account holder ka naam dalo"); return; }
-  if (!bank_name) { toast("Bank ka naam dalo"); return; }
-  if (upi && amt > 0) act("/api/withdraw", { upi_id: upi, amount_rupees: amt, holder_name, bank_name });
+  if (upi && amt > 0) act("/api/withdraw", { upi_id: upi, amount_rupees: amt, holder_name });
   else toast("UPI ID aur amount dono dalo");
 };
 $("btn-ad").onclick = () => {
