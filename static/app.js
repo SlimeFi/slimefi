@@ -68,6 +68,8 @@ function render() {
     (S.pending_rewards_coins / S.earn.coins_per_rupee).toFixed(2) + ") — admin approval ke baad milenge";
   $("rate-line").textContent = S.earn.coins_per_rupee + " coins = ₹1";
   $("min-wd").textContent = "₹" + S.earn.min_withdraw_rupees;
+  if (!S.earn.payouts_enabled) { $("btn-withdraw").disabled = true; $("btn-withdraw").textContent = "Withdraw abhi band hai"; }
+  else { $("btn-withdraw").disabled = false; $("btn-withdraw").textContent = "Withdraw Request bhejo"; }
   $("my-withdrawals").innerHTML = (S.my_withdrawals || []).map(w =>
     `<div class="wd-row"><span>#${w.id} · ₹${w.amount_rupees}</span><span class="st-${w.status}">${w.status.toUpperCase()}</span></div>`).join("");
   // referral
@@ -144,7 +146,9 @@ async function act(path, body) {
   else if (r.ok) toast("Ho gaya");
 }
 async function load() {
-  S = await api("/api/state"); render();
+  S = await api("/api/state");
+  if (!S || S.ok === false) { if (S && S.msg) toast(S.msg); S = null; return; }
+  render();
   try {
     const ref = new URLSearchParams(location.search).get("ref");
     if (ref && !localStorage.getItem("slimefi_ref_done")) {
@@ -210,7 +214,7 @@ async function loadOwner() {
           ${s.status === "pending" ? `<div class="ref-row"><button onclick="decideSub(${s.id},'approve')">Approve</button><button onclick="decideSub(${s.id},'reject')">Reject</button></div>` : ""}
         </div>`).join("") || `<div class="card-sub">Koi submission nahi</div>`;
       $("owner-tasks").innerHTML = (sb.tasks || []).map(t =>
-        `<div class="wd-row"><span>Task #${t.id} · ${esc(t.title)}</span><span>${fmt(t.reward_coins)} coins · ${t.active ? "ON" : "OFF"}</span></div>`).join("");
+        `<div class="wd-row"><span>Task #${t.id} · ${esc(t.title)}</span><span>${fmt(t.reward_coins)} coins${t.budget_coins ? ` · Budget ${fmt(t.spent_coins || 0)}/${fmt(t.budget_coins)}` : ""} · ${t.active ? "ON" : "OFF"}</span></div>`).join("");
     }
   } catch (e) {}
   const r = await api("/api/owner/withdrawals");
@@ -269,10 +273,11 @@ $("btn-ref").onclick = () => {
 };
 $("btn-nt").onclick = async () => {
   const body = { title: $("nt-title").value.trim(), description: $("nt-desc").value.trim(),
-                 link: $("nt-link").value.trim(), reward_coins: parseInt($("nt-reward").value, 10) || 0 };
+                 link: $("nt-link").value.trim(), reward_coins: parseInt($("nt-reward").value, 10) || 0,
+                 budget_coins: parseInt($("nt-budget").value, 10) || 0 };
   const r = await api("/api/owner/tasks", body);
   toast(r.msg || "Ho gaya");
-  if (r.ok) { $("nt-title").value = ""; $("nt-desc").value = ""; $("nt-link").value = ""; $("nt-reward").value = ""; loadOwner(); }
+  if (r.ok) { $("nt-title").value = ""; $("nt-desc").value = ""; $("nt-link").value = ""; $("nt-reward").value = ""; $("nt-budget").value = ""; loadOwner(); }
 };
 document.querySelectorAll(".tabbar button").forEach(b => b.onclick = () => {
   document.querySelectorAll(".tabbar button").forEach(x => x.classList.remove("active"));
