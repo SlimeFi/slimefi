@@ -10,7 +10,7 @@
 <script>window.SLIMEFI_ADS_BLOCK_ID = "59365"; /* AdsGram TEST Reward block (test platform 56001) — real block 59318 declined, swap back after approval */</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=20">
+<link rel="stylesheet" href="/static/style.css?v=21">
 </head>
 <body>
 
@@ -106,6 +106,13 @@
     </div>
     <span class="ec-btn">Open</span>
   </div>
+  <div class="wide-card" onclick="go('spin')">
+    <div>
+      <div class="wide-title">🎡 Spin &amp; Win — Roz 1 FREE Spin</div>
+      <div class="wide-sub">Wheel ghumao, <span class="cost">50–500 coins</span> jeeto · Ad dekho = +1 Spin</div>
+    </div>
+    <span class="ec-btn">Play</span>
+  </div>
   <div class="wide-card" onclick="go('model')">
     <div>
       <div class="wide-title">📈 Business Model</div>
@@ -168,6 +175,23 @@
       <button id="btn-nt" class="small-btn">Task Banao</button>
     </div>
     <div id="owner-tasks"></div>
+  </div>
+</section>
+
+<!-- ================= SPIN WHEEL ================= -->
+<section id="view-spin" class="view">
+  <button class="back-btn" onclick="go('home')">← Home</button>
+  <h2 class="v2-h">🎡 Spin &amp; Win</h2>
+  <div class="card spin-card">
+    <div class="spin-wrap">
+      <div class="spin-pointer">▼</div>
+      <div class="wheel" id="wheel"><div class="wheel-hub"><img src="/static/img/slime-pet.png" alt="SlimeFi"></div></div>
+    </div>
+    <div class="spin-info" id="spin-info">🎟️ Free spin bacha: 1 · Extra spin: 0</div>
+    <button id="btn-spin" class="gold-btn">🎡 SPIN KARO</button>
+    <button id="btn-spin-ad" class="small-btn" style="width:100%; margin-top:10px; padding:12px">📺 Ad Dekho = +1 Spin</button>
+    <div class="spin-result" id="spin-result"></div>
+    <div class="card-sub">Roz 1 free spin — inaam 50 se 500 coins tak! Aur spin chahiye to ad dekho, har ad par +1 spin milta hai. Jeet server se tay hoti hai — poori tarah fair, koi setting nahi.</div>
   </div>
 </section>
 
@@ -428,6 +452,6 @@
 
 <div id="toast"></div>
 
-<script src="/static/app.js?v=28"></script>
+<script src="/static/app.js?v=29"></script>
 </body>
 </html>
