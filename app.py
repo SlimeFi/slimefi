@@ -146,6 +146,9 @@ AD_COOLDOWN_SEC = 45          # gap between two ad claims
 AD_MIN_WATCH_SEC = 8          # a real ad cannot finish faster than this
 AD_MIN_OPEN_SEC = 15          # middle path: no 'done' signal -> token must be this old (ad stayed open)
 AD_TOKEN_TTL_SEC = 300        # an ad-start token dies after 5 minutes
+SPIN_FREE_PER_DAY = 1         # Spin Wheel: one free spin daily (owner, 2026-11-13)
+SPIN_SEGMENTS = [50, 500, 150, 300, 100, 250, 200, 100]  # wheel prizes in coins
+SPIN_WEIGHTS = [26, 4, 18, 10, 24, 12, 14, 20]           # relative chances (500 is rare)
 MIN_WITHDRAW_RUPEES = 10      # minimum UPI withdrawal request
 PAYOUTS_ENABLED = os.environ.get("PAYOUTS_ENABLED", "0") == "1"  # UPI payout master switch (owner)
 ALLOW_DEV_AUTH = os.environ.get("ALLOW_DEV_AUTH", "0") == "1"    # local testing only: trust X-User-Id
@@ -241,7 +244,10 @@ def init_db():
                          ("ban_reason", "ALTER TABLE users ADD COLUMN ban_reason TEXT DEFAULT ''"),
                          ("ban_override", "ALTER TABLE users ADD COLUMN ban_override INTEGER DEFAULT 0"),
                          ("suspicious", "ALTER TABLE users ADD COLUMN suspicious INTEGER DEFAULT 0"),
-                         ("suspicious_reason", "ALTER TABLE users ADD COLUMN suspicious_reason TEXT DEFAULT ''")]:
+                         ("suspicious_reason", "ALTER TABLE users ADD COLUMN suspicious_reason TEXT DEFAULT ''"),
+                         ("spins_today", "ALTER TABLE users ADD COLUMN spins_today INTEGER DEFAULT 0"),
+                         ("spins_date", "ALTER TABLE users ADD COLUMN spins_date TEXT DEFAULT ''"),
+                         ("spin_credits", "ALTER TABLE users ADD COLUMN spin_credits INTEGER DEFAULT 0")]:
             if col not in cols:
                 c.execute(ddl)
         tcols = {r[1] for r in c.execute("PRAGMA table_info(tasks)")}
@@ -363,6 +369,12 @@ def state_payload(c, user):
         "daily_available": user["last_daily"] != today,
         "daily_table": DAILY_REWARDS,
         "daily_cycle_day": _daily_cycle_day(user),
+        "spin": {
+            "free_left": max(0, SPIN_FREE_PER_DAY - ((user["spins_today"] or 0) if user["spins_date"] == today else 0)),
+            "credits": user["spin_credits"] or 0,
+            "segments": SPIN_SEGMENTS,
+            "free_per_day": SPIN_FREE_PER_DAY,
+        },
         "referral_code": user["referral_code"], "invites": user["invites"],
         "has_referrer": bool(user["referred_by"]),
         "my_referrals": [
@@ -743,14 +755,59 @@ def ad_claim():
         cur = c.execute("UPDATE ad_sessions SET used=1 WHERE token=? AND used=0", (token,))
         if cur.rowcount != 1:
             return jsonify({"ok": False, "msg": "Is ad ka reward pehle hi mil chuka hai"})
-        c.execute("""UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+?,
-                     ads_today=?, ads_date=?, last_ad_at=? WHERE user_id=?""",
-                  (AD_REWARD_COINS, AD_REWARD_COINS, watched + 1, today, time.time(), u["user_id"]))
-        log(c, u["user_id"], "ad", {"coins": AD_REWARD_COINS}, f"Rewarded ad #{watched + 1}")
+        spin_mode = data.get("purpose") == "spin"
+        if spin_mode:
+            # Spin page ad: the reward is +1 spin credit, not coins.
+            c.execute("""UPDATE users SET spin_credits=spin_credits+1,
+                         ads_today=?, ads_date=?, last_ad_at=? WHERE user_id=?""",
+                      (watched + 1, today, time.time(), u["user_id"]))
+            log(c, u["user_id"], "ad_spin", {"spin": 1}, f"Rewarded ad #{watched + 1} -> +1 spin")
+        else:
+            c.execute("""UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+?,
+                         ads_today=?, ads_date=?, last_ad_at=? WHERE user_id=?""",
+                      (AD_REWARD_COINS, AD_REWARD_COINS, watched + 1, today, time.time(), u["user_id"]))
+            log(c, u["user_id"], "ad", {"coins": AD_REWARD_COINS}, f"Rewarded ad #{watched + 1}")
         maybe_qualify_referral(c, u)
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
-        adlog(c, u["user_id"], "claim_ok", f"done={1 if data.get('done') else 0} age={int(age)}")
-        return jsonify({"ok": True, "reward": AD_REWARD_COINS, "state": state_payload(c, u)})
+        adlog(c, u["user_id"], "claim_ok", f"done={1 if data.get('done') else 0} age={int(age)} spin={1 if spin_mode else 0}")
+        return jsonify({"ok": True, "reward": 0 if spin_mode else AD_REWARD_COINS,
+                        "spin_credit": spin_mode, "state": state_payload(c, u)})
+
+@app.post("/api/spin")
+def spin():
+    """Spin Wheel (owner, 2026-11-13): 1 free spin daily; more spins come
+    from rewarded ads (spin credits via /api/ad/claim purpose=spin). The
+    SERVER picks the prize with fixed weights — the client only animates
+    to the segment index it is given, so prizes cannot be faked."""
+    today = str(date.today())
+    with _lock, db() as c:
+        u = roll_day(c, settle(c, get_user(c, uid())))
+        spins_today = (u["spins_today"] or 0) if u["spins_date"] == today else 0
+        credits = u["spin_credits"] or 0
+        if credits > 0:
+            c.execute("UPDATE users SET spin_credits=spin_credits-1 WHERE user_id=?",
+                      (u["user_id"],))
+        elif spins_today < SPIN_FREE_PER_DAY:
+            c.execute("UPDATE users SET spins_today=?, spins_date=? WHERE user_id=?",
+                      (spins_today + 1, today, u["user_id"]))
+        else:
+            return jsonify({"ok": False,
+                            "msg": "Aaj ka free spin ho gaya — aur spin ke liye ad dekho"})
+        pick = secrets.randbelow(sum(SPIN_WEIGHTS))
+        idx, acc = 0, 0
+        for i, w in enumerate(SPIN_WEIGHTS):
+            acc += w
+            if pick < acc:
+                idx = i
+                break
+        prize = SPIN_SEGMENTS[idx]
+        c.execute("UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+? WHERE user_id=?",
+                  (prize, prize, u["user_id"]))
+        log(c, u["user_id"], "spin", {"coins": prize}, f"Spin Wheel prize {prize} coins")
+        maybe_qualify_referral(c, u)
+        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
+        return jsonify({"ok": True, "prize": prize, "index": idx,
+                        "state": state_payload(c, u)})
 
 @app.post("/api/convert")
 def convert():
