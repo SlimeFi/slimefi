@@ -8,7 +8,7 @@
 <script src='//libtl.com/sdk.js' data-zone='12248440' data-sdk='show_12248440'></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=35">
+<link rel="stylesheet" href="/static/style.css?v=36">
 </head>
 <body>
 
@@ -166,8 +166,8 @@
   <button class="back-btn" onclick="go('home')">← Home</button>
   <h2 class="v2-h">Sponsored Ads</h2>
   <div class="card earn ad-card">
-    <div class="card-top"><div class="card-title">Ad Dekho, Coins Pao</div><div class="lvl" id="ad-count">0/20</div></div>
-    <div class="card-sub">Ek ad = <span class="cost">+100 coins</span>. Ad ka paisa hi sabki earning ka source hai.</div>
+    <div class="card-top"><div class="card-title">Watch Ads</div><div class="lvl" id="ad-count">0/20</div></div>
+    <div class="card-sub">Watch &amp; Earn Coins — ek ad = <span class="cost">+100 coins</span>. Ad ka paisa hi sabki earning ka source hai.</div>
     <button id="btn-ad" class="gold-btn">▶ Watch Ad — Premium</button>
     <div class="card-sub" id="ad-note"></div>
   </div>
@@ -310,11 +310,11 @@
 
 <!-- ================= BOTTOM NAV ================= -->
 <nav class="bottom-nav v31-nav">
-  <button class="nav-item active" data-go="home"><span class="nav-tile" style="color:#6cb2ff">⌂</span><small>Home</small></button>
-  <button class="nav-item" data-go="tasks"><span class="nav-tile" style="color:#b18cff">◎</span><small>Quests</small></button>
-  <button class="nav-item nav-ad" id="nav-ad"><span class="nav-tile gold">▶</span><small>Watch Ad</small></button>
-  <button class="nav-item" data-go="wallet"><span class="nav-tile" style="color:#4ade80">▣</span><small>Wallet</small></button>
-  <button class="nav-item" data-go="referral"><span class="nav-tile" style="color:#ffa94d">👥</span><small>Refer</small></button>
+  <button class="nav-item active" data-go="home"><span class="nav-tile nav-img"><img src="/static/img/nav-home.png" alt="Home"></span><small>Home</small></button>
+  <button class="nav-item" data-go="tasks"><span class="nav-tile nav-img"><img src="/static/img/nav-quest.png" alt="Quests"></span><small>Quests</small></button>
+  <button class="nav-item nav-ad" id="nav-ad"><span class="nav-tile nav-img"><img src="/static/img/nav-watch.png" alt="Watch Ad"></span><small>Watch Ad</small></button>
+  <button class="nav-item" data-go="wallet"><span class="nav-tile nav-img"><img src="/static/img/nav-wallet.png" alt="Wallet"></span><small>Wallet</small></button>
+  <button class="nav-item" data-go="referral"><span class="nav-tile nav-img"><img src="/static/img/nav-refer.png" alt="Refer"></span><small>Refer</small></button>
 </nav>
 
 <div id="toast"></div>
