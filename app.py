@@ -1,10 +1,8 @@
-"""SlimeFi - Jura Tempest Village Builder
-Flask + SQLite backend. Earning phase (added 2026-11-12 on the owner's
-decision): coins convert to a rupee cash wallet funded by rewarded-ad
-revenue; withdrawals are UPI requests the owner approves and pays
-manually from the owner panel.
-Income accrues from server timestamps, so it keeps building
-even while the player is offline.
+"""SlimeFi v30 - Reward Earning Platform
+Flask + SQLite backend. Coins are the canonical reward balance; displayed
+rupee value is derived at 1,000 coins = Rs 1. UPI withdrawals reserve
+coins immediately and are reviewed in the owner panel. Legacy village data
+is retained in the database for safe migration but is no longer user-facing.
 """
 import os
 import json
@@ -17,6 +15,7 @@ import secrets
 import urllib.parse
 import urllib.request
 import re
+from decimal import Decimal, InvalidOperation
 from datetime import date, timedelta
 from flask import Flask, request, jsonify, send_from_directory, g
 
@@ -230,6 +229,11 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT,
             delta_paise INTEGER DEFAULT 0, kind TEXT, note TEXT, ts REAL
         );
+        CREATE TABLE IF NOT EXISTS support_tickets(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL,
+            category TEXT NOT NULL, message TEXT NOT NULL, status TEXT DEFAULT 'open',
+            created_at REAL NOT NULL, updated_at REAL
+        );
         """)
         # Earning columns added after the first release: add them to old DBs too.
         cols = {r[1] for r in c.execute("PRAGMA table_info(users)")}
@@ -265,6 +269,14 @@ def init_db():
                          ("payment_date", "ALTER TABLE withdrawals ADD COLUMN payment_date TEXT DEFAULT ''")]:
             if col not in wcols:
                 c.execute(ddl)
+        # v30 migration: old cash wallet was created by manually converting coins.
+        # Move that value back into coins once, preserving total user value.
+        for row in c.execute("SELECT user_id, cash_paise FROM users WHERE COALESCE(cash_paise,0)>0").fetchall():
+            restored = int(row["cash_paise"]) * 10  # 10 coins per paisa at 1,000 coins = Rs 1
+            c.execute("UPDATE users SET coins=coins+?, cash_paise=0 WHERE user_id=?", (restored, row["user_id"]))
+            c.execute("INSERT INTO ledger(user_id,kind,coins,wood,crystals,note,ts) VALUES(?,?,?,?,?,?,?)",
+                      (row["user_id"], "wallet_migration", restored, 0, 0,
+                       "v30 wallet migration: legacy cash converted back to canonical coins", time.time()))
 
 def get_user(c, user_id):
     row = c.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
@@ -389,8 +401,9 @@ def state_payload(c, user):
         "squad_boost_pct": min(user["invites"] * 5, 50),
         "buildings": buildings, "quests": quests,
         "recipes": [{"id": k, **v} for k, v in RECIPES.items()],
-        "cash_paise": user["cash_paise"] or 0,
-        "cash_rupees": round((user["cash_paise"] or 0) / 100, 2),
+        "cash_paise": int(user["coins"] or 0) // 10,
+        "cash_rupees": round((user["coins"] or 0) / COINS_PER_RUPEE, 2),
+        "coin_value_rupees": round((user["coins"] or 0) / COINS_PER_RUPEE, 2),
         "players": c.execute("SELECT COUNT(*) n FROM users WHERE user_id != 'owner'").fetchone()["n"],
         "pending_rewards_coins": c.execute(
             "SELECT COALESCE(SUM(t.reward_coins),0) s FROM task_submissions s "
@@ -545,7 +558,7 @@ def health():
 @app.get("/api/state")
 def state():
     with _lock, db() as c:
-        u = roll_day(c, settle(c, get_user(c, uid())))
+        u = roll_day(c, get_user(c, uid()))
         _detect_multi_account(c, u)
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone() or u
         if u["banned"]:
@@ -559,70 +572,21 @@ def state():
 
 @app.post("/api/collect")
 def collect():
-    with _lock, db() as c:
-        u = roll_day(c, settle(c, get_user(c, uid())))
-        got = {"coins": int(u["pending_coins"]), "wood": int(u["pending_wood"]),
-               "crystals": int(u["pending_crystals"])}
-        if sum(got.values()) == 0:
-            return jsonify({"ok": False, "msg": "Abhi collect karne ke liye kuch nahi hai. Buildings production kar rahi hain."})
-        c.execute("""UPDATE users SET coins=coins+?, wood=wood+?, crystals=crystals+?,
-                     lifetime_coins=lifetime_coins+?, pending_coins=0, pending_wood=0,
-                     pending_crystals=0, daily_collects=daily_collects+1 WHERE user_id=?""",
-                  (got["coins"], got["wood"], got["crystals"], got["coins"], u["user_id"]))
-        log(c, u["user_id"], "collect", got, "Village income collected")
-        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
-        return jsonify({"ok": True, "got": got, "state": state_payload(c, u)})
+    return jsonify({"ok": False, "msg": "Village Game v30 se hata diya gaya hai."}), 410
 
 @app.post("/api/upgrade")
 def upgrade():
-    data = request.get_json(silent=True) or {}
-    bid = data.get("building_id")
-    if bid not in BUILDINGS:
-        return jsonify({"ok": False, "msg": "Unknown building"})
-    with _lock, db() as c:
-        u = roll_day(c, settle(c, get_user(c, uid())))
-        levels = get_buildings(c, u["user_id"])
-        bl = levels[bid]
-        if bid != "dwarf_forge" and bl >= 3 + levels["dwarf_forge"] * 2:
-            return jsonify({"ok": False, "msg": "Pehle Dwarf Forge upgrade karo, tabhi ye building aur upar jayegi."})
-        cost = upgrade_cost(bid, bl)
-        if u["coins"] < cost["coins"] or u["wood"] < cost["wood"] or u["crystals"] < cost["crystals"]:
-            return jsonify({"ok": False, "msg": "Resources kam hain", "cost": cost})
-        c.execute("INSERT INTO buildings VALUES(?,?,?) ON CONFLICT(user_id,building_id) DO UPDATE SET level=level+1",
-                  (u["user_id"], bid, bl + 1))
-        c.execute("""UPDATE users SET coins=coins-?, wood=wood-?, crystals=crystals-?,
-                     daily_upgrades=daily_upgrades+1 WHERE user_id=?""",
-                  (cost["coins"], cost["wood"], cost["crystals"], u["user_id"]))
-        log(c, u["user_id"], "upgrade", {k: -v for k, v in cost.items()}, f"{BUILDINGS[bid]['name']} -> Lv {bl+1}")
-        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
-        return jsonify({"ok": True, "state": state_payload(c, u)})
+    return jsonify({"ok": False, "msg": "Village Game v30 se hata diya gaya hai."}), 410
 
 @app.post("/api/refine")
 def refine():
-    data = request.get_json(silent=True) or {}
-    rid = data.get("recipe_id")
-    if rid not in RECIPES:
-        return jsonify({"ok": False, "msg": "Unknown recipe"})
-    r = RECIPES[rid]
-    with _lock, db() as c:
-        u = roll_day(c, settle(c, get_user(c, uid())))
-        for k, v in r["give"].items():
-            if u[k] < v:
-                return jsonify({"ok": False, "msg": f"{k} kam hai, {v} chahiye"})
-        sets = ", ".join([f"{k}={k}-?" for k in r["give"]] + [f"{k}={k}+?" for k in r["get"]])
-        params = list(r["give"].values()) + list(r["get"].values())
-        c.execute(f"UPDATE users SET {sets}, daily_refines=daily_refines+1, "
-                  f"lifetime_coins=lifetime_coins+? WHERE user_id=?",
-                  (*params, r["get"].get("coins", 0), u["user_id"]))
-        log(c, u["user_id"], "refine", r["get"], r["title"])
-        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
-        return jsonify({"ok": True, "state": state_payload(c, u)})
+    return jsonify({"ok": False, "msg": "Village Game v30 se hata diya gaya hai."}), 410
 
 @app.post("/api/daily")
 def daily():
     today = str(date.today())
     with _lock, db() as c:
-        u = roll_day(c, settle(c, get_user(c, uid())))
+        u = roll_day(c, get_user(c, uid()))
         if u["last_daily"] == today:
             return jsonify({"ok": False, "msg": "Aaj ka bonus le liya hai. Kal phir aana."})
         yday = str(date.today() - timedelta(days=1))
@@ -642,27 +606,7 @@ def daily():
 
 @app.post("/api/quest/claim")
 def quest_claim():
-    data = request.get_json(silent=True) or {}
-    q = next((x for x in QUESTS if x["id"] == data.get("quest_id")), None)
-    if not q:
-        return jsonify({"ok": False, "msg": "Unknown quest"})
-    today = str(date.today())
-    with _lock, db() as c:
-        u = roll_day(c, settle(c, get_user(c, uid())))
-        if u[q["counter"]] < q["target"]:
-            return jsonify({"ok": False, "msg": "Quest abhi complete nahi hai"})
-        if c.execute("SELECT 1 FROM quest_claims WHERE user_id=? AND quest_id=? AND day=?",
-                     (u["user_id"], q["id"], today)).fetchone():
-            return jsonify({"ok": False, "msg": "Reward pehle hi le liya hai"})
-        c.execute("INSERT INTO quest_claims VALUES(?,?,?)", (u["user_id"], q["id"], today))
-        r = q["reward"]
-        sets = ", ".join(f"{k}={k}+?" for k in r)
-        c.execute(f"UPDATE users SET {sets}, lifetime_coins=lifetime_coins+? WHERE user_id=?",
-                  (*r.values(), r.get("coins", 0), u["user_id"]))
-        log(c, u["user_id"], "quest", r, q["title"])
-        maybe_qualify_referral(c, u)
-        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
-        return jsonify({"ok": True, "state": state_payload(c, u)})
+    return jsonify({"ok": False, "msg": "Village Game v30 se hata diya gaya hai."}), 410
 
 @app.post("/api/referral/apply")
 def referral_apply():
@@ -686,7 +630,7 @@ def referral_apply():
         c.execute("UPDATE users SET invites=invites+1 WHERE user_id=?", (inv["user_id"],))
         log(c, u["user_id"], "referral", {}, "Referral code laga (reward qualifying activity par)")
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
-        return jsonify({"ok": True, "state": state_payload(c, roll_day(c, settle(c, u))),
+        return jsonify({"ok": True, "state": state_payload(c, roll_day(c, u)),
                         "msg": "Referral lag gaya. Pehli activity puri karte hi dost ko reward milega."})
 
 # ---------------- earning routes ----------------
@@ -699,7 +643,7 @@ def ad_start():
     today = str(date.today())
     data = request.get_json(silent=True) or {}
     with _lock, db() as c:
-        u = roll_day(c, settle(c, get_user(c, uid())))
+        u = roll_day(c, get_user(c, uid()))
         if not ADSGRAM_BLOCK_ID:
             adlog(c, u["user_id"], "start_reject", "no_block")
             return jsonify({"ok": False, "msg": "Ads abhi live nahi hain"})
@@ -728,7 +672,7 @@ def ad_claim():
     token = (data.get("token") or "").strip()
     today = str(date.today())
     with _lock, db() as c:
-        u = roll_day(c, settle(c, get_user(c, uid())))
+        u = roll_day(c, get_user(c, uid()))
         row = c.execute("SELECT * FROM ad_sessions WHERE token=?", (token,)).fetchone() if token else None
         if not row or row["user_id"] != u["user_id"]:
             adlog(c, u["user_id"], "claim_reject", "bad_token")
@@ -781,7 +725,7 @@ def spin():
     to the segment index it is given, so prizes cannot be faked."""
     today = str(date.today())
     with _lock, db() as c:
-        u = roll_day(c, settle(c, get_user(c, uid())))
+        u = roll_day(c, get_user(c, uid()))
         spins_today = (u["spins_today"] or 0) if u["spins_date"] == today else 0
         credits = u["spin_credits"] or 0
         if credits > 0:
@@ -811,60 +755,100 @@ def spin():
 
 @app.post("/api/convert")
 def convert():
-    data = request.get_json(silent=True) or {}
-    try:
-        coins = int(data.get("coins") or 0)
-    except (TypeError, ValueError):
-        coins = 0
-    if coins < CONVERT_MIN_COINS or coins % COINS_PER_RUPEE != 0:
-        return jsonify({"ok": False, "msg": f"Convert {COINS_PER_RUPEE} coins ke hisab se hota hai, kam se kam {CONVERT_MIN_COINS} coins."})
-    rupees_paise = (coins // COINS_PER_RUPEE) * 100
-    with _lock, db() as c:
-        u = roll_day(c, settle(c, get_user(c, uid())))
-        if u["coins"] < coins:
-            return jsonify({"ok": False, "msg": "Coins kam hain"})
-        c.execute("UPDATE users SET coins=coins-?, cash_paise=cash_paise+? WHERE user_id=?",
-                  (coins, rupees_paise, u["user_id"]))
-        log(c, u["user_id"], "convert", {"coins": -coins}, f"Converted to Rs {rupees_paise // 100}")
-        cash_log(c, u["user_id"], rupees_paise, "convert", f"{coins} coins converted to cash")
-        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
-        return jsonify({"ok": True, "state": state_payload(c, u),
-                        "msg": f"{coins} coins cash me badal gaye"})
+    return jsonify({"ok": False, "msg": "v30 me conversion ki zaroorat nahi — Coins ki ₹ value Wallet me automatically dikhti hai."}), 410
 
 @app.post("/api/withdraw")
 def withdraw():
     data = request.get_json(silent=True) or {}
     if not PAYOUTS_ENABLED:
-        return jsonify({"ok": False, "msg": "Withdraw abhi band hai — jald shuru hoga"})
+        return jsonify({"ok": False, "msg": "Withdraw abhi band hai — payout approval ke baad shuru hoga"})
     upi = (data.get("upi_id") or "").strip()
     holder = (data.get("holder_name") or "").strip()
-    bank = (data.get("bank_name") or "").strip()
     try:
-        rupees = int(data.get("amount_rupees") or 0)
-    except (TypeError, ValueError):
-        rupees = 0
+        amount = Decimal(str(data.get("amount_rupees") or "0")).quantize(Decimal("0.01"))
+        amount_paise = int(amount * 100)
+    except (InvalidOperation, TypeError, ValueError):
+        amount_paise = 0
     if "@" not in upi or len(upi) < 5:
-        return jsonify({"ok": False, "msg": "Sahi UPI ID dalo, jese naam@okhdfcbank"})
+        return jsonify({"ok": False, "msg": "Sahi UPI ID dalo, jaise naam@okhdfcbank"})
     if len(holder) < 3:
-        return jsonify({"ok": False, "msg": "Account holder ka pura naam dalo — payment verify karne ke liye zaroori hai"})
-    if rupees < MIN_WITHDRAW_RUPEES:
+        return jsonify({"ok": False, "msg": "Account holder ka poora naam dalo"})
+    if amount_paise < MIN_WITHDRAW_RUPEES * 100:
         return jsonify({"ok": False, "msg": f"Minimum withdraw Rs {MIN_WITHDRAW_RUPEES} hai"})
+    coins_needed = amount_paise * (COINS_PER_RUPEE // 100)
     with _lock, db() as c:
-        u = roll_day(c, settle(c, get_user(c, uid())))
-        if (u["cash_paise"] or 0) < rupees * 100:
-            return jsonify({"ok": False, "msg": "Cash balance kam hai"})
-        c.execute("UPDATE users SET cash_paise=cash_paise-? WHERE user_id=?",
-                  (rupees * 100, u["user_id"]))
-        cur = c.execute("INSERT INTO withdrawals(user_id,amount_paise,upi_id,created_at,holder_name,bank_name) VALUES(?,?,?,?,?,?)",
-                        (u["user_id"], rupees * 100, upi, time.time(), holder, bank))
-        log(c, u["user_id"], "withdraw", {}, f"Withdraw request #{cur.lastrowid}: Rs {rupees} to UPI ({holder})")
-        cash_log(c, u["user_id"], -rupees * 100, "withdraw_hold", f"Withdraw #{cur.lastrowid} requested")
-        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
-        return jsonify({"ok": True, "state": state_payload(c, u),
-                        "msg": f"Request bhej di. Rs {rupees} jald hi tumhare UPI par aayega."})
+        u = roll_day(c, get_user(c, uid()))
+        if int(u["coins"] or 0) < coins_needed:
+            return jsonify({"ok": False, "msg": "Coins balance is amount ke liye kam hai"})
+        # Reserve coins and create request in one locked DB transaction.
+        c.execute("UPDATE users SET coins=coins-? WHERE user_id=?", (coins_needed, u["user_id"]))
+        cur = c.execute("INSERT INTO withdrawals(user_id,amount_paise,upi_id,created_at,holder_name) VALUES(?,?,?,?,?)",
+                        (u["user_id"], amount_paise, upi, time.time(), holder))
+        log(c, u["user_id"], "withdraw_hold", {"coins": -coins_needed},
+            f"Withdraw #{cur.lastrowid} reserved {coins_needed} coins for Rs {amount}")
+        c.execute("INSERT INTO cash_ledger(user_id,delta_paise,kind,note,ts) VALUES(?,?,?,?,?)",
+                  (u["user_id"], 0, "withdraw_hold", f"Withdraw #{cur.lastrowid} reserved", time.time()))
+        fresh = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
+        return jsonify({"ok": True, "state": state_payload(c, fresh),
+                        "msg": f"₹{amount} ki request submit ho gayi. {coins_needed} Coins reserve kiye gaye hain."})
+
 
 def _require_owner():
     return bool(OWNER_ID) and uid() == OWNER_ID
+
+@app.get("/api/history")
+def user_history():
+    with db() as c:
+        user_id = uid()
+        rows = c.execute("SELECT kind,coins,note,ts FROM ledger WHERE user_id=? ORDER BY id DESC LIMIT 30",
+                         (user_id,)).fetchall()
+        withdrawals = c.execute("SELECT id,amount_paise,status,created_at,decided_at FROM withdrawals WHERE user_id=? ORDER BY id DESC LIMIT 15",
+                                (user_id,)).fetchall()
+        items = [{"type": r["kind"], "coins": r["coins"], "note": r["note"], "ts": r["ts"]} for r in rows]
+        items += [{"type": "withdrawal_" + r["status"], "coins": -int(r["amount_paise"]) * 10,
+                   "note": f"Withdrawal #{r['id']} · ₹{r['amount_paise']/100:.2f} · {r['status']}",
+                   "ts": r["decided_at"] or r["created_at"]} for r in withdrawals]
+        items.sort(key=lambda x: x["ts"] or 0, reverse=True)
+        return jsonify({"ok": True, "history": items[:40]})
+
+@app.get("/api/support/tickets")
+def support_tickets_list():
+    with db() as c:
+        rows = c.execute("SELECT id,category,message,status,created_at,updated_at FROM support_tickets WHERE user_id=? ORDER BY id DESC LIMIT 20",
+                         (uid(),)).fetchall()
+        return jsonify({"ok": True, "tickets": [dict(r) for r in rows]})
+
+@app.post("/api/support/tickets")
+def support_ticket_create():
+    data = request.get_json(silent=True) or {}
+    category = (data.get("category") or "general").strip()[:40]
+    message = (data.get("message") or "").strip()
+    if len(message) < 10 or len(message) > 1200:
+        return jsonify({"ok": False, "msg": "Problem 10 se 1200 characters me likho"})
+    with _lock, db() as c:
+        cur = c.execute("INSERT INTO support_tickets(user_id,category,message,created_at,updated_at) VALUES(?,?,?,?,?)",
+                        (uid(), category, message, time.time(), time.time()))
+        return jsonify({"ok": True, "ticket_id": cur.lastrowid, "msg": f"Support ticket #{cur.lastrowid} submit ho gaya"})
+
+@app.get("/api/owner/support/tickets")
+def owner_support_tickets():
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    with db() as c:
+        rows = c.execute("SELECT id,user_id,category,message,status,created_at FROM support_tickets ORDER BY id DESC LIMIT 100").fetchall()
+        return jsonify({"ok": True, "tickets": [dict(r) for r in rows]})
+
+@app.post("/api/owner/support/tickets/close")
+def owner_support_ticket_close():
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    data = request.get_json(silent=True) or {}
+    with _lock, db() as c:
+        cur = c.execute("UPDATE support_tickets SET status='closed',updated_at=? WHERE id=? AND status='open'",
+                        (time.time(), data.get("id")))
+        if not cur.rowcount:
+            return jsonify({"ok": False, "msg": "Open ticket nahi mila"})
+        return jsonify({"ok": True, "msg": "Ticket close ho gaya"})
 
 @app.get("/api/owner/stats")
 def owner_stats():
@@ -893,9 +877,14 @@ def owner_stats():
     promos = conn.execute(
         "SELECT code, coins, max_uses, used_count, active FROM promo_codes "
         "ORDER BY created_at DESC LIMIT 20").fetchall()
+    total_coin_balance = conn.execute("SELECT COALESCE(SUM(coins),0) s FROM users").fetchone()["s"]
+    open_tickets = conn.execute("SELECT COUNT(*) n FROM support_tickets WHERE status='open'").fetchone()["n"]
     conn.close()
     return jsonify({"ok": True, "total_players": total, "joined_today": joined_today,
-                    "bot_starts": starts, "recent": [dict(r) for r in rows],
+                    "bot_starts": starts, "total_coin_balance": total_coin_balance,
+                    "estimated_coin_value_rupees": round(total_coin_balance / COINS_PER_RUPEE, 2),
+                    "open_support_tickets": open_tickets,
+                    "recent": [dict(r) for r in rows],
                     "players": [dict(r) for r in players],
                     "promos": [dict(r) for r in promos]})
 
@@ -940,10 +929,10 @@ def owner_decide():
         if not w or w["status"] != "pending":
             return jsonify({"ok": False, "msg": "Request pending nahi hai"})
         if action == "reject":
-            c.execute("UPDATE users SET cash_paise=cash_paise+? WHERE user_id=?",
-                      (w["amount_paise"], w["user_id"]))
-            log(c, w["user_id"], "withdraw_refund", {}, f"Withdraw #{w['id']} rejected, refunded")
-            cash_log(c, w["user_id"], w["amount_paise"], "withdraw_refund", f"Withdraw #{w['id']} rejected, refunded")
+            refund_coins = int(w["amount_paise"]) * (COINS_PER_RUPEE // 100)
+            c.execute("UPDATE users SET coins=coins+? WHERE user_id=?", (refund_coins, w["user_id"]))
+            log(c, w["user_id"], "withdraw_refund", {"coins": refund_coins},
+                f"Withdraw #{w['id']} rejected; {refund_coins} coins returned")
         else:
             txn = (data.get("txn_id") or "").strip()
             utr = (data.get("utr") or "").strip()
@@ -1435,12 +1424,13 @@ def telegram_webhook():
     return jsonify({
         "method": "sendMessage",
         "chat_id": chat_id,
-        "text": ("\U0001F7E2 Welcome to SlimeFi — Earning Platform + Village Game! \U0001F3AE\n\n"
-                 "\U0001F3E1 Apna gaon banao, buildings upgrade karo\n"
-                 "\U0001F4CB Tasks pure karo, \U0001FA99 coins kamao\n"
-                 "\U0001F4B8 1000 coins = \u20B91 — UPI se withdraw karo (min \u20B910)\n"
-                 "\U0001F451 Apne Slime ko Level 10 Slime Sovereign banao\n\n"
-                 "\U0001F447 Neeche wala button dabao aur earning shuru karo!"),
+        "text": ("\U0001F7E2 Welcome to SlimeFi — Reward Earning Platform!\n\n"
+                 "\U0001F4B0 Watch Ads aur available Tasks se Coins kamao\n"
+                 "\U0001F465 Friends invite karo — qualifying activity par referral reward\n"
+                 "\U0001F381 Daily Bonus aur special campaigns check karo\n"
+                 "\U0001FA99 1,000 Coins = \u20B91 (Wallet me automatic value)\n"
+                 "\U0001F4B3 Eligible hone par UPI withdrawal request bhejo\n\n"
+                 "\U0001F447 Start karne ke liye neeche button dabao."),
         "reply_markup": {"inline_keyboard": [[
             {"text": "\U0001F680 Launch SlimeFi", "web_app": {"url": url}}
         ]]},
