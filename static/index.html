@@ -10,7 +10,7 @@
 <script>window.SLIMEFI_ADS_BLOCK_ID = "59365"; /* AdsGram TEST Reward block (test platform 56001) — real block 59318 declined, swap back after approval */</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=31">
+<link rel="stylesheet" href="/static/style.css?v=32">
 </head>
 <body>
 
@@ -69,6 +69,8 @@
     <button class="mission-tile mission-spin" onclick="go('spin')"><span class="mission-icon">✧</span><span class="mission-name">Lucky spin</span><small>Try your daily spin</small><b>SPIN ↗</b></button>
   </div>
 
+  <button class="games-home-banner" onclick="go('games')"><span class="games-home-icon">🎮</span><span><small>NEW DESTINATION</small><b>Enter Games Center</b><em>Puzzle • Quiz • XP</em></span><strong>PLAY ↗</strong></button>
+
   <div class="community-banner" onclick="go('referral')">
     <div class="community-icon">♧</div><div><small>GROW YOUR SQUAD</small><b>Invite friends. Earn together.</b><span id="home-referral-caption">Your invite link is ready inside</span></div><span class="community-arrow">→</span>
   </div>
@@ -117,6 +119,21 @@
 </section>
 
 <!-- ================= ADS ================= -->
+<section id="view-games" class="view">
+  <div class="games-hero">
+    <div><small>SLIMEFI ARCADE</small><h1>Games Center</h1><p>Play daily challenges, collect XP and climb your Slime level.</p></div>
+    <div class="games-mascot">🎮</div>
+  </div>
+  <div class="games-xp-card"><div><small>YOUR GAME XP</small><b id="games-xp">0 XP</b></div><div><small>GAME LEVEL</small><b id="games-level">LEVEL 1</b></div><div class="games-xp-track"><span id="games-xp-bar"></span></div><small id="games-xp-next">100 XP to next level</small></div>
+  <div class="games-section-head"><div><small>PLAY & EARN XP</small><h2>Daily challenges</h2></div><span>↻ Resets daily</span></div>
+  <div class="game-card puzzle-card"><div class="game-card-art">🧩</div><div class="game-card-info"><span class="game-tag">BRAIN GAME</span><h3>Puzzle Challenge</h3><p>Find the matching symbol in the grid.</p><b>+20 XP</b></div><button onclick="startPuzzle()" id="play-puzzle">PLAY</button></div>
+  <div class="game-card quiz-card"><div class="game-card-art">🧠</div><div class="game-card-info"><span class="game-tag">5 QUESTIONS</span><h3>Daily Quiz</h3><p>Answer at least 3 correctly to complete.</p><b>+25 XP</b></div><button onclick="startQuiz()" id="play-quiz">PLAY</button></div>
+  <div id="game-stage" class="game-stage" hidden></div>
+  <div class="games-section-head"><div><small>PARTNER ZONE</small><h2>Sponsored Games</h2></div><span class="sponsor-label">SPONSORED</span></div>
+  <div class="sponsor-empty"><div>🤝</div><b>Partner games are coming soon</b><p>Sponsored games will appear here after a partner campaign is approved. Paid placements will always be labelled.</p></div>
+  <div class="games-footnote">XP is a game progression score, not cash or withdrawable coins. Game rewards are currently in Test Mode. Never pay to unlock a reward.</div>
+</section>
+
 <section id="view-leaderboard" class="view">
   <h2 class="v2-h">🏆 Leaderboard</h2>
   <div class="card" style="margin-top:14px">
@@ -298,13 +315,13 @@
 <nav class="bottom-nav v31-nav">
   <button class="nav-item active" data-go="home"><span>⌂</span><small>Home</small></button>
   <button class="nav-item" data-go="tasks"><span>⚡</span><small>Quests</small></button>
-  <button class="nav-item nav-main" data-go="ads"><span>▶</span><small>Earn</small></button>
+  <button class="nav-item nav-main" data-go="games"><span>🎮</span><small>Games</small></button>
   <button class="nav-item" data-go="leaderboard"><span>♛</span><small>Ranks</small></button>
   <button class="nav-item" data-go="wallet"><span>▣</span><small>Wallet</small></button>
 </nav>
 
 <div id="toast"></div>
 
-<script src="/static/app.js?v=31"></script>
+<script src="/static/app.js?v=32"></script>
 </body>
 </html>

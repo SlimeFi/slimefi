@@ -57,6 +57,7 @@ function go(name) {
   if (name === "tasks") loadTasks();
   if (name === "history") loadHistory();
   if (name === "support") loadSupportTickets();
+  if (name === "games") loadGames();
 }
 window.go = go;
 
@@ -633,6 +634,60 @@ document.querySelectorAll(".chip[data-cat]").forEach(ch => ch.onclick = () => {
     x.classList.toggle("active", x === ch));
   renderTasks();
 });
+
+// ---------- Games Center: daily puzzle + quiz, XP is separate from coins ----------
+let GAME_STATE = null;
+const QUIZ_BANK = [
+  {q:"Which planet is known as the Red Planet?",a:["Venus","Mars","Jupiter","Mercury"],c:1},
+  {q:"How many sides does a hexagon have?",a:["5","6","7","8"],c:1},
+  {q:"Which is the largest ocean?",a:["Atlantic","Indian","Pacific","Arctic"],c:2},
+  {q:"What is 12 × 8?",a:["86","96","108","เมื่อคืน"],c:1},
+  {q:"Which gas do plants absorb?",a:["Oxygen","Nitrogen","Carbon dioxide","Helium"],c:2},
+  {q:"How many days are there in a leap year?",a:["364","365","366","367"],c:2},
+  {q:"Which shape has three sides?",a:["Square","Triangle","Circle","Pentagon"],c:1}
+];
+async function loadGames(){
+  const r=await api('/api/games/state'); if(!r || !r.ok){toast((r&&r.msg)||'Games load nahi hue');return;}
+  GAME_STATE=r;
+  $('games-xp').textContent=fmt(r.xp)+' XP'; $('games-level').textContent='LEVEL '+r.level;
+  const within=r.xp%100; $('games-xp-bar').style.width=within+'%';
+  $('games-xp-next').textContent=(100-within)+' XP to next level';
+  ['puzzle','quiz'].forEach(id=>{const b=$('play-'+id);if(b){const done=(r.claimed_today||[]).includes(id);b.disabled=done;b.textContent=done?'DONE ✓':'PLAY';}});
+}
+function startPuzzle(){
+  if(GAME_STATE && GAME_STATE.claimed_today.includes('puzzle')){toast('Aaj ka Puzzle XP claim ho chuka hai');return;}
+  const symbols=['🍀','⭐','💎','🍇','🪐','🍋','🧩','🌙','🔮'];
+  const target=symbols[Math.floor(Math.random()*symbols.length)];
+  const decoys=symbols.filter(x=>x!==target).sort(()=>Math.random()-.5).slice(0,8);
+  const at=Math.floor(Math.random()*9); const cells=[...decoys]; cells.splice(at,0,target);
+  $('game-stage').hidden=false;
+  $('game-stage').innerHTML=`<div class="game-stage-top"><div><small>PUZZLE CHALLENGE</small><h3>Find the ${target}</h3></div><button onclick="closeGameStage()">✕</button></div><p>Grid mein matching symbol par tap karo.</p><div class="puzzle-grid">${cells.map((x,i)=>`<button onclick="pickPuzzle(${i},${at})">${x}</button>`).join('')}</div><div id="game-feedback" class="game-feedback">Choose one tile</div>`;
+  $('game-stage').scrollIntoView({behavior:'smooth',block:'center'});
+}
+window.pickPuzzle=async function(i,at){
+  if(i!==at){$('game-feedback').textContent='Not quite — dobara try karo!';$('game-feedback').className='game-feedback wrong';return;}
+  $('game-feedback').textContent='Correct! XP claim ho raha hai…';
+  await completeGame('puzzle');
+};
+function startQuiz(){
+  if(GAME_STATE && GAME_STATE.claimed_today.includes('quiz')){toast('Aaj ka Quiz XP claim ho chuka hai');return;}
+  const qs=[...QUIZ_BANK].sort(()=>Math.random()-.5).slice(0,5); let idx=0,score=0;
+  const show=()=>{
+    if(idx>=qs.length){
+      $('game-stage').innerHTML=`<div class="game-stage-top"><div><small>DAILY QUIZ</small><h3>Quiz complete</h3></div><button onclick="closeGameStage()">✕</button></div><div class="quiz-result">${score}/5 correct</div><p>${score>=3?'Great work! You unlocked today’s XP.':'3 correct answers chahiye. Aaj phir try kar sakte ho.'}</p><button class="game-submit" ${score<3?'disabled':''} onclick="completeGame('quiz')">${score>=3?'CLAIM +25 XP':'TRY AGAIN TOMORROW'}</button>`;return;
+    }
+    const q=qs[idx];$('game-stage').innerHTML=`<div class="game-stage-top"><div><small>DAILY QUIZ · ${idx+1}/5</small><h3>${esc(q.q)}</h3></div><button onclick="closeGameStage()">✕</button></div><div class="quiz-options">${q.a.map((a,i)=>`<button onclick="answerQuiz(${i})">${esc(a)}</button>`).join('')}</div><div class="game-feedback">Score: ${score}</div>`;
+  };
+  window.answerQuiz=(choice)=>{if(choice===qs[idx].c)score++;idx++;show();};
+  $('game-stage').hidden=false;show();$('game-stage').scrollIntoView({behavior:'smooth',block:'center'});
+}
+window.completeGame=async function(id){
+  const r=await api('/api/games/complete',{game_id:id});
+  if(r.ok){toast(r.msg||'XP added');await loadGames();$('game-stage').innerHTML=`<div class="game-success">✨<h3>Challenge complete!</h3><b>+${r.xp_awarded} XP</b><p>Coins balance change nahi hua.</p><button class="game-submit" onclick="closeGameStage()">BACK TO GAMES</button></div>`;}
+  else {toast(r.msg||'Reward claim nahi hua');await loadGames();}
+};
+window.closeGameStage=()=>{$('game-stage').hidden=true;$('game-stage').innerHTML='';};
+
 load();
 setInterval(load, 30000);
 
