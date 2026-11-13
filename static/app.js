@@ -442,14 +442,55 @@ async function spinNow() {
     if (r.state) { S = r.state; render(); }
   }, 4900);
 }
+// ---------- Monetag loader: self-healing + capability beacon ----------
+// Some webviews/networks fail to load the SDK from the head tag, so the
+// show_12248440 function never exists and every ad tap fails with
+// "ad available nahi". ensureMonetag() re-injects the SDK once and
+// waits for it; the beacon reports the outcome to the server (owner
+// adlog, event client_check) so a phone where ads never load can be
+// diagnosed from the server side.
+let _mtInjected = false;
+function ensureMonetag() {
+  if (typeof window.show_12248440 === "function") return Promise.resolve(true);
+  return new Promise(resolve => {
+    if (!_mtInjected) {
+      _mtInjected = true;
+      try {
+        const sc = document.createElement("script");
+        sc.src = "https://libtl.com/sdk.js";
+        sc.async = true;
+        sc.setAttribute("data-zone", "12248440");
+        sc.setAttribute("data-sdk", "show_12248440");
+        document.head.appendChild(sc);
+      } catch (e) {}
+    }
+    const t0 = Date.now();
+    const iv = setInterval(() => {
+      if (typeof window.show_12248440 === "function") { clearInterval(iv); resolve(true); }
+      else if (Date.now() - t0 > 9000) { clearInterval(iv); resolve(false); }
+    }, 300);
+  });
+}
+let _beaconDone = false;
+async function monetagBeacon() {
+  if (_beaconDone) return; _beaconDone = true;
+  const ok = (typeof window.show_12248440 === "function") || await ensureMonetag();
+  try { await api("/api/clientlog", { monetag: ok ? 1 : 0, ua: navigator.userAgent || "" }); } catch (e) {}
+}
+setTimeout(monetagBeacon, 4000);
 function spinAd() {
+  if (typeof window.show_12248440 === "function") { spinAdRun(); return; }
+  toast("Ad load ho raha hai…");
+  ensureMonetag().then(ok => { if (ok) spinAdRun(); else toast("Ad abhi available nahi hai — thodi der baad try karo"); });
+}
+function spinAdRun() {
   // Same ad flow as Watch Ads (Monetag only, one-time token + age
   // gates) — but the claim carries purpose "spin", so the server pays
   // +1 spin credit instead of the +100 coins.
   const monetagFn = window.show_12248440;
   const useMonetag = typeof monetagFn === "function";
   if (!useMonetag) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
-  const startP = api("/api/ad/start", { v: 30 });
+  const startP = api("/api/ad/start", { v: 39 });
   const t0 = Date.now();
   let claimed = false;
   const tryClaim = async done => {
@@ -520,7 +561,7 @@ $("btn-withdraw").onclick = () => {
   else toast("UPI ID aur amount dono dalo");
 };
 if ($("nav-ad")) $("nav-ad").onclick = () => { const b = $("btn-ad"); if (b) b.click(); };
-$("btn-ad").onclick = () => {
+function watchAdRun() {
   const monetagFn = window.show_12248440;
   const useMonetag = typeof monetagFn === "function";
   if (!useMonetag) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
@@ -535,7 +576,7 @@ $("btn-ad").onclick = () => {
   // matched back to this exact session.
   const ymid = "sf" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const base = S ? { coins: S.coins || 0, ads: (S.earn && S.earn.ads_today) || 0 } : { coins: 0, ads: 0 };
-  const startP = api("/api/ad/start", { v: 34, ymid });
+  const startP = api("/api/ad/start", { v: 39, ymid });
   const btn = $("btn-ad");
   let confirming = false;
   const confirmReward = async nonValued => {
@@ -579,6 +620,11 @@ $("btn-ad").onclick = () => {
   } else {
     settle(false);
   }
+}
+$("btn-ad").onclick = () => {
+  if (typeof window.show_12248440 === "function") { watchAdRun(); return; }
+  toast("Ad load ho raha hai…");
+  ensureMonetag().then(ok => { if (ok) watchAdRun(); else toast("Ad abhi available nahi hai — thodi der baad try karo"); });
 };
 window.openPayouts = () => {
   const url = "https://SlimeFi.pythonanywhere.com/payouts";

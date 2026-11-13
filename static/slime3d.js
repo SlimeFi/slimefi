@@ -75,17 +75,18 @@
     var H = el.clientHeight || 150;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(W, H);
+    renderer.setClearColor(0x000000, 0);
     el.appendChild(renderer.domElement);
 
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 50);
-    camera.position.set(0, 0.25, 4.35);
-    camera.lookAt(0, -0.05, 0);
+    camera.position.set(0, 0.1, 3.95);
+    camera.lookAt(0, -0.02, 0);
 
     /* lights: ambient + key + cool rim (no shadows, no post FX) */
     scene.add(new THREE.AmbientLight(0x9db8ff, 0.55));
-    var key = new THREE.DirectionalLight(0xffffff, 1.0);
-    key.position.set(2.5, 3.5, 4);
+    var key = new THREE.DirectionalLight(0xffffff, 0.8);
+    key.position.set(1.6, 2.4, 4.2);
     scene.add(key);
     var rim = new THREE.DirectionalLight(0x8fe3ff, 0.45);
     rim.position.set(-3.5, 1.2, -2.5);
@@ -115,8 +116,8 @@
         shininess: 85, specular: 0xcfe9ff
       })
     );
-    puddle.scale.set(1.18, 0.2, 1.18);
-    puddle.position.y = -0.84;
+    puddle.scale.set(1.02, 0.16, 1.02);
+    puddle.position.y = -0.88;
     puddle.renderOrder = 1;
     slime.add(puddle);
 
@@ -162,9 +163,9 @@
     var domeBase = domeGeo.attributes.position.array.slice();
     var dome = new THREE.Mesh(domeGeo, new THREE.MeshPhongMaterial({
       color: 0x74c0ff, transparent: true, opacity: 0.92,
-      shininess: 95, specular: 0xd6efff, depthWrite: false
+      shininess: 55, specular: 0xa9d6ff, depthWrite: false
     }));
-    dome.scale.set(1, 0.88, 1);
+    dome.scale.set(1, 0.94, 1);
     dome.renderOrder = 4;
     slime.add(dome);
 
@@ -172,20 +173,22 @@
     function makeEye(side) {
       var grp = new THREE.Group();
       var eye = new THREE.Mesh(
-        new THREE.SphereGeometry(0.088, 20, 16),
+        new THREE.SphereGeometry(0.125, 24, 18),
         new THREE.MeshPhongMaterial({
           color: 0x0a1c38, shininess: 130, specular: 0xffffff
         })
       );
-      eye.scale.set(0.82, 1.28, 0.55);
+      eye.scale.set(0.85, 1.35, 0.5);
+      eye.renderOrder = 6;
       grp.add(eye);
       var hl = new THREE.Mesh(
-        new THREE.SphereGeometry(0.027, 10, 8),
+        new THREE.SphereGeometry(0.038, 12, 10),
         new THREE.MeshBasicMaterial({ color: 0xffffff })
       );
-      hl.position.set(-0.02 * side, 0.048, 0.042);
+      hl.position.set(-0.03 * side, 0.07, 0.055);
+      hl.renderOrder = 6;
       grp.add(hl);
-      grp.position.set(0.31 * side, 0.05, 0.9);
+      grp.position.set(0.30 * side, 0.10, 0.92);
       grp.rotation.y = 0.3 * side;
       return grp;
     }
@@ -196,14 +199,14 @@
 
     /* blush: small pink translucent flattened spheres on the cheeks */
     var blushMat = new THREE.MeshBasicMaterial({
-      color: 0xff9ec7, transparent: true, opacity: 0.5, depthWrite: false
+      color: 0xff9ec7, transparent: true, opacity: 0.55, depthWrite: false
     });
     [-1, 1].forEach(function (side) {
-      var bl = new THREE.Mesh(new THREE.SphereGeometry(0.095, 16, 12), blushMat);
-      bl.scale.set(1.3, 0.62, 0.35);
-      bl.position.set(0.55 * side, -0.15, 0.76);
+      var bl = new THREE.Mesh(new THREE.SphereGeometry(0.11, 18, 14), blushMat);
+      bl.scale.set(1.35, 0.65, 0.35);
+      bl.position.set(0.52 * side, -0.18, 0.78);
       bl.rotation.y = 0.55 * side;
-      bl.renderOrder = 5;
+      bl.renderOrder = 6;
       slime.add(bl);
     });
 
