@@ -8,7 +8,7 @@
 <script src='//libtl.com/sdk.js' data-zone='12248440' data-sdk='show_12248440'></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=33">
+<link rel="stylesheet" href="/static/style.css?v=35">
 </head>
 <body>
 
@@ -33,8 +33,7 @@
     <div class="hero-mascot-wrap">
       <div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div>
       <div class="hero-star star-a">✦</div><div class="hero-star star-b">✧</div>
-      <img class="hero-mascot" src="/static/img/slime-pet.png" alt="SlimeFi mascot">
-      <div class="mascot-tag">SLIMEFI</div>
+      <div id="slime3d"><img class="hero-mascot slime3d-fallback" src="/static/img/slime-pet.png" alt="SlimeFi mascot"></div>
     </div>
     <div class="hero-glow"></div>
   </div>
@@ -311,15 +310,17 @@
 
 <!-- ================= BOTTOM NAV ================= -->
 <nav class="bottom-nav v31-nav">
-  <button class="nav-item active" data-go="home"><span>⌂</span><small>Home</small></button>
-  <button class="nav-item" data-go="tasks"><span>⚡</span><small>Quests</small></button>
-  <button class="nav-item nav-main nav-ad" id="nav-ad"><span>▶</span><small>Watch Ad</small></button>
-  <button class="nav-item" data-go="leaderboard"><span>♛</span><small>Ranks</small></button>
-  <button class="nav-item" data-go="wallet"><span>▣</span><small>Wallet</small></button>
+  <button class="nav-item active" data-go="home"><span class="nav-tile" style="color:#6cb2ff">⌂</span><small>Home</small></button>
+  <button class="nav-item" data-go="tasks"><span class="nav-tile" style="color:#b18cff">◎</span><small>Quests</small></button>
+  <button class="nav-item nav-ad" id="nav-ad"><span class="nav-tile gold">▶</span><small>Watch Ad</small></button>
+  <button class="nav-item" data-go="wallet"><span class="nav-tile" style="color:#4ade80">▣</span><small>Wallet</small></button>
+  <button class="nav-item" data-go="referral"><span class="nav-tile" style="color:#ffa94d">👥</span><small>Refer</small></button>
 </nav>
 
 <div id="toast"></div>
 
-<script src="/static/app.js?v=35"></script>
+<script src="/static/three.min.js"></script>
+<script src="/static/slime3d.js?v=1"></script>
+<script src="/static/app.js?v=36"></script>
 </body>
 </html>

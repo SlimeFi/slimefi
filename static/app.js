@@ -682,22 +682,3 @@ window.closeGameStage=()=>{$('game-stage').hidden=true;$('game-stage').innerHTML
 load();
 setInterval(load, 30000);
 
-// ===== Slime pet transformation (from the user's video) =====
-// The slime hops around; every few seconds the magic rings flare, a flash
-// bursts, and it transforms into the slime-girl for a few seconds.
-(function () {
-  const stage = document.querySelector(".pet-stage");
-  if (!stage) return;
-  let girl = false;
-  const swap = () => {
-    if (document.hidden) { setTimeout(swap, 2000); return; }
-    girl = !girl;
-    stage.classList.add("tf-flash");
-    setTimeout(() => {
-      stage.classList.toggle("tf-on", girl);
-      stage.classList.remove("tf-flash");
-    }, 240);
-    setTimeout(swap, girl ? 4500 : 8000);
-  };
-  setTimeout(swap, 5000);
-})();
