@@ -692,6 +692,19 @@ def referral_apply():
         return jsonify({"ok": True, "state": state_payload(c, roll_day(c, u)),
                         "msg": "Referral lag gaya. Pehli activity puri karte hi dost ko reward milega."})
 
+@app.post("/api/clientlog")
+def clientlog():
+    """Capability beacon from the client (diagnostics): records whether
+    the Monetag SDK function exists in this user's webview, so ad-load
+    failures on a specific phone can be traced from the server side."""
+    data = request.get_json(silent=True) or {}
+    with _lock, db() as c:
+        u = get_user(c, uid())
+        mt = 1 if data.get("monetag") else 0
+        ua = (data.get("ua") or "")[:90]
+        adlog(c, u["user_id"], "client_check", f"monetag={mt} ua={ua}")
+        return jsonify({"ok": True})
+
 # ---------------- earning routes ----------------
 @app.post("/api/ad/start")
 def ad_start():
