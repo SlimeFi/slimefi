@@ -347,3 +347,14 @@ button:disabled { opacity:.45; cursor:default; }
 .pet-stage.tf-flash .pet-flash{animation:petFlash .65s ease-out}
 @keyframes petFlash{0%{opacity:0;transform:scale(.35)}28%{opacity:1}100%{opacity:0;transform:scale(1.5)}}
 @media (prefers-reduced-motion: reduce){.pet-girl,.pet-flash{animation:none;transition:none}}
+
+/* Spin Wheel (v29) */
+.spin-card { text-align: center; }
+.spin-wrap { position: relative; width: 280px; height: 280px; margin: 20px auto 8px; }
+.spin-pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 30px; color: #ffd54a; z-index: 3; text-shadow: 0 2px 8px rgba(0,0,0,.65); }
+.wheel { position: absolute; inset: 0; border-radius: 50%; border: 6px solid rgba(255,213,74,.9); box-shadow: 0 0 34px rgba(255,183,47,.35), inset 0 0 26px rgba(0,0,0,.5); transition: transform 4.6s cubic-bezier(.12,.8,.16,1); }
+.wheel-label { position: absolute; left: calc(50% - 14px); top: calc(50% - 11px); width: 28px; text-align: center; font-weight: 800; font-size: 17px; color: #fff; text-shadow: 0 1px 5px rgba(0,0,0,.8); pointer-events: none; }
+.wheel-hub { position: absolute; left: 50%; top: 50%; width: 78px; height: 78px; transform: translate(-50%,-50%); border-radius: 50%; background: #141b34; border: 3px solid rgba(255,213,74,.95); display: flex; align-items: center; justify-content: center; overflow: hidden; z-index: 2; }
+.wheel-hub img { width: 66px; height: 66px; object-fit: contain; }
+.spin-info { font-weight: 700; margin: 12px 0 6px; }
+.spin-result { min-height: 26px; font-size: 19px; font-weight: 800; color: #ffd54a; margin-top: 12px; }
