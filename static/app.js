@@ -70,6 +70,7 @@ function render() {
     `<div class="wd-row"><span>${medals[i] || (i + 1) + "."} ${esc(p.label)} · Lv ${p.level}</span><span>${fmt(p.coins)} coins</span></div>`).join("")
     || `<div class="card-sub">Abhi koi player nahi hai — pehle tum bano!</div>`;
   renderDaily();
+  renderSpin();
   $("payouts-list").innerHTML = (S.recent_payouts || []).map(p =>
     `<div class="wd-row"><span>✅ ₹${p.amount_rupees} → ${esc(p.upi)}${p.txn_id ? " · 🧾 " + esc(p.txn_id) : ""}${p.utr ? " · UTR " + esc(p.utr) : ""}</span><span>${p.ts ? new Date(p.ts * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("")
     || `<div class="card-sub">Abhi tak koi payout nahi hua — pehla payout yahin dikhega.</div>`;
@@ -413,7 +414,104 @@ window.decideSub = async (id, action) => {
   S = await api("/api/state"); render();
 };
 
+// ---------- Spin Wheel ----------
+let SPIN_ROT = 0, SPINNING = false, WHEEL_KEY = "";
+const WHEEL_COLORS = ["#7c4dff", "#ffb300", "#00897b", "#c2185b", "#3949ab", "#ef6c00", "#2e7d32", "#5e35b1"];
+function renderSpin() {
+  if (!S || !S.spin || !$("wheel")) return;
+  $("spin-info").textContent = "🎟️ Free spin bacha: " + S.spin.free_left + " · Extra spin: " + S.spin.credits;
+  const segs = S.spin.segments || [];
+  const key = segs.join(",");
+  if (!segs.length || key === WHEEL_KEY) return;
+  WHEEL_KEY = key;
+  const step = 360 / segs.length;
+  $("wheel").style.background = "conic-gradient(from " + (-step / 2) + "deg, " +
+    segs.map((v, i) => WHEEL_COLORS[i % WHEEL_COLORS.length] + " " + (i * step) + "deg " + ((i + 1) * step) + "deg").join(", ") + ")";
+  document.querySelectorAll(".wheel-label").forEach(e => e.remove());
+  segs.forEach((v, i) => {
+    const s = document.createElement("span");
+    s.className = "wheel-label";
+    s.textContent = v;
+    s.style.transform = "rotate(" + (i * step) + "deg) translateY(-104px)";
+    $("wheel").appendChild(s);
+  });
+}
+async function spinNow() {
+  if (SPINNING) return;
+  const r = await api("/api/spin", {});
+  if (!r.ok) { toast(r.msg || "Spin nahi ho paya"); return; }
+  SPINNING = true;
+  $("spin-result").textContent = "";
+  $("btn-spin").disabled = true;
+  const segs = (S && S.spin && S.spin.segments) || [50, 500, 150, 300, 100, 250, 200, 100];
+  const step = 360 / segs.length;
+  const target = -r.index * step;
+  const delta = (((target - (SPIN_ROT % 360)) % 360) + 360) % 360;
+  SPIN_ROT += 360 * 5 + delta;
+  $("wheel").style.transform = "rotate(" + SPIN_ROT + "deg)";
+  setTimeout(() => {
+    SPINNING = false;
+    $("btn-spin").disabled = false;
+    $("spin-result").textContent = "🎉 " + r.prize + " Coins jeete!";
+    toast("🎡 Spin: +" + r.prize + " coins!");
+    if (r.state) { S = r.state; render(); }
+  }, 4900);
+}
+function spinAd() {
+  // Same proven ad flow as Watch Ads (Monetag first, AdsGram fallback,
+  // one-time token + age gates) — but the claim carries purpose "spin",
+  // so the server pays +1 spin credit instead of the +100 coins.
+  const monetagFn = window.show_12248440;
+  const blockId = window.SLIMEFI_ADS_BLOCK_ID;
+  const useMonetag = typeof monetagFn === "function";
+  if (!useMonetag && (!blockId || !window.Adsgram)) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
+  const startP = api("/api/ad/start", { v: 29 });
+  const t0 = Date.now();
+  let claimed = false;
+  const tryClaim = async done => {
+    if (claimed) return; claimed = true;
+    const st = await startP;
+    if (!st.ok) { toast(st.msg || "Spin nahi mila — fir try karo"); return; }
+    const need = (done ? 10000 : 17000) - (Date.now() - t0);
+    const send = async () => {
+      const r = await api("/api/ad/claim", { token: st.token, done: done ? 1 : 0, purpose: "spin" });
+      if (r.ok) { toast("🎡 +1 Spin mila!"); if (r.state) { S = r.state; render(); } }
+      else toast(r.msg || "Spin nahi mila — fir try karo");
+    };
+    if (need > 0) setTimeout(send, need); else send();
+  };
+  let settled = false;
+  const onDone = d => { settled = true; tryClaim(d); };
+  const onFail = () => {
+    settled = true;
+    if (Date.now() - t0 >= 15000) tryClaim(false);
+    else toast("Ad load nahi hua — fir try karo");
+  };
+  if (useMonetag) {
+    monetagFn()
+      .then(res => {
+        if (res && res.reward_event_type === "non_valued") { settled = true; toast("Is ad ka reward nahi bana — ek aur try karo"); return; }
+        onDone(true);
+      })
+      .catch(onFail);
+  } else {
+    window.Adsgram.init({ blockId }).show()
+      .then(res => {
+        settled = true;
+        if (Date.now() - t0 >= 15000 || (res && res.done)) tryClaim(!!(res && res.done));
+        else toast("Ad pura dekho, tabhi spin milega");
+      })
+      .catch(onFail);
+  }
+  const iv = setInterval(() => {
+    if (claimed || settled) { clearInterval(iv); return; }
+    if (Date.now() - t0 >= 20000) { clearInterval(iv); tryClaim(false); }
+  }, 1000);
+}
+
 // ---------- wiring ----------
+$("btn-spin").onclick = spinNow;
+$("btn-spin-ad").onclick = spinAd;
 $("btn-collect").onclick = () => act("/api/collect");
 $("btn-daily").onclick = () => act("/api/daily");
 $("btn-convert").onclick = () => {
@@ -436,7 +534,7 @@ $("btn-ad").onclick = () => {
   if (!useMonetag && (!blockId || !window.Adsgram)) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
   // Token fetch and ad start TOGETHER: the ad must open straight from the
   // tap — if we wait for the network first, the webview blocks the ad.
-  const startP = api("/api/ad/start", { v: 28 });
+  const startP = api("/api/ad/start", { v: 29 });
   const t0 = Date.now();
   let claimed = false;
   const tryClaim = async done => {
