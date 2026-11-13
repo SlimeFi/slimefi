@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SlimeFi — Earning Platform</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+
+<script>window.SLIMEFI_ADS_BLOCK_ID = "";</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===== SlimeFi — Premium Earn Hub theme (owner's premium interface) ===== */
+:root {
+  --bg:#090d18; --panel:#111827; --panel2:#151f31; --line:rgba(167,186,220,.12);
+  --text:#f4f7ff; --muted:#8e9bb3; --green:#9ef36b; --green-d:#22c55e;
+  --purple:#a78bfa; --gold:#f5c542; --red:#f87171;
+}
+* { box-sizing:border-box; }
+body {
+  margin:0; color:var(--text); min-height:100vh; padding-bottom:104px;
+  font-family:'DM Sans', system-ui, sans-serif;
+  background:radial-gradient(ellipse at 50% -20%, #1b2b46 0, transparent 45%), var(--bg);
+}
+
+h2 { font-family:'Space Grotesk', sans-serif; font-size:1.15rem; margin:18px 0 10px; }
+button { font-family:inherit; cursor:pointer; }
+input, select {
+  background:#0c1422; border:1px solid var(--line); color:var(--text);
+  border-radius:10px; padding:10px 12px; font-size:.92rem; width:100%;
+}
+input { text-transform:uppercase; }
+button:not(.nav-item):not(.chip):not(.wd-top):not(.gold-btn) {
+  background:var(--panel2); color:var(--text); border:1px solid var(--line);
+  border-radius:12px; padding:11px 14px; font-weight:700; font-size:.95rem; width:100%;
+}
+button:disabled { opacity:.45; cursor:default; }
+.small-btn { width:auto !important; white-space:nowrap; }
+
+/* views */
+.view { display:none; padding:4px 14px 28px; max-width:520px; margin:0 auto; }
+.view.active { display:block; animation:fade .22s ease; }
+@keyframes fade { from { opacity:.4; transform:translateY(5px); } to { opacity:1; transform:none; } }
+
+/* app header */
+.app-header { display:flex; align-items:center; justify-content:space-between;
+  padding:14px 14px 6px; max-width:520px; margin:0 auto; }
+.app-brand { font-family:'Space Grotesk', sans-serif; font-size:1.5rem; font-weight:700; letter-spacing:1.5px; }
+.app-brand span { color:var(--green); }
+.app-head-right { display:flex; align-items:center; gap:8px; }
+.pill-green { background:rgba(158,243,107,.12); color:var(--green); border:1px solid rgba(158,243,107,.35);
+  padding:5px 10px; border-radius:999px; font-size:.74rem; font-weight:700; }
+.wd-top { background:var(--green); color:#102018; border:none; font-weight:800; font-size:.82rem;
+  padding:8px 14px; border-radius:999px; width:auto; }
+
+/* premium balance card */
+.balance-card { position:relative; overflow:hidden; border:1px solid rgba(140,230,108,.25);
+  border-radius:23px; padding:18px 19px 15px; margin-top:8px;
+  background:linear-gradient(125deg,#1d3a35,#172d35 48%,#1b2440); box-shadow:0 14px 38px rgba(0,0,0,.35); }
+.balance-glow { position:absolute; width:190px; height:190px; border-radius:50%; right:-55px; top:-105px;
+  background:rgba(161,242,108,.16); filter:blur(8px); }
+.balance-top { display:flex; justify-content:space-between; font-size:.62rem; font-weight:800;
+  letter-spacing:1.6px; color:#b4c7c4; }
+.live-dot { color:var(--green); }
+.balance-value { display:flex; align-items:baseline; gap:5px; margin:10px 0 4px; }
+.balance-value .currency { font-size:1.5rem; color:#b8f69b; }
+.balance-value strong { font-family:'Space Grotesk', sans-serif; font-size:2.35rem; letter-spacing:-1px; }
+.balance-foot { display:flex; justify-content:space-between; align-items:center; font-size:.8rem; color:#b1c4c0; }
+.balance-foot button { width:auto; background:var(--green); color:#102018; border:none;
+  font-weight:800; padding:9px 13px; font-size:.78rem; border-radius:10px; }
+.balance-stats { display:flex; gap:15px; align-items:center; border-top:1px solid rgba(255,255,255,.1);
+  margin-top:16px; padding-top:13px; }
+.balance-stats div { display:grid; gap:3px; }
+.balance-stats small { font-size:.62rem; color:#a6b8b6; letter-spacing:.4px; }
+.balance-stats b { font-size:.85rem; }
+.balance-stats i { height:24px; width:1px; background:rgba(255,255,255,.13); }
+
+/* home pieces */
+.coins-strip { margin-top:10px; background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  padding:12px 14px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-size:.9rem; }
+.coins-strip .strip-sub { color:var(--muted); font-size:.8rem; }
+.v2-h { font-size:1.28rem; font-weight:700; margin:20px 0 10px; }
+.ec-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.ec-card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px 14px; cursor:pointer; }
+.ec-card.dim { opacity:.75; cursor:default; }
+.ec-ico { font-size:1.4rem; margin-bottom:8px; }
+.ec-title { font-size:1.02rem; font-weight:800; margin-bottom:10px; }
+.ec-btn { display:inline-block; background:var(--panel2); color:#e5e7eb; padding:6px 14px; border-radius:999px;
+  font-size:.8rem; font-weight:700; }
+.ec-btn.upcoming { background:rgba(245,197,66,.14); color:var(--gold); }
+.wide-card { margin-top:10px; background:var(--panel); border:1px solid var(--line); border-radius:16px;
+  padding:14px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+.wide-title { font-weight:800; font-size:1rem; }
+.wide-sub { color:var(--muted); font-size:.82rem; margin-top:3px; }
+.stat-row { display:flex; gap:10px; }
+.stat-card { flex:1; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; }
+.stat-card.align-left { text-align:left; }
+.stat-card input { margin-top:8px; }
+.stat-card button { margin-top:8px; }
+.stat-ico { font-size:1.25rem; margin-bottom:6px; }
+.stat-big { font-family:'Space Grotesk', sans-serif; font-size:1.7rem; font-weight:700; }
+.stat-label { color:var(--muted); font-size:.82rem; margin-top:4px; }
+
+/* generic cards (game, tasks, admin) */
+.cards { display:grid; gap:10px; }
+.card { background:linear-gradient(140deg,#141e2e,#101725); border:1px solid var(--line);
+  border-radius:16px; padding:14px; margin-bottom:10px; }
+.card-top { display:flex; justify-content:space-between; align-items:center; }
+.card-title { font-weight:800; font-size:1rem; }
+.card-sub { color:var(--muted); font-size:.86rem; margin-top:6px; line-height:1.45; }
+.lvl { color:var(--gold); font-weight:800; font-size:.85rem; }
+.cost { color:var(--green); font-weight:700; }
+.note { color:var(--muted); font-size:.85rem; line-height:1.5; text-align:center; }
+.wd-row { display:flex; justify-content:space-between; align-items:center; padding:7px 0;
+  border-bottom:1px solid var(--line); font-size:.9rem; }
+.wd-row:last-child { border-bottom:none; }
+.owner-row { border-top:1px solid var(--line); padding:8px 0; }
+.st-pending { color:#fbbf24; font-weight:700; }
+.st-paid { color:#4ade80; font-weight:700; }
+.st-rejected { color:var(--red); font-weight:700; }
+.ref-row { display:flex; gap:8px; margin-top:8px; }
+.ref-row input { flex:1; }
+.ref-code { font-family:'Space Grotesk', sans-serif; font-size:1.5rem; letter-spacing:2px;
+  color:var(--gold); margin:8px 0; }
+
+/* golden premium ad button */
+.gold-btn { width:100%; border:none; border-radius:14px; padding:15px; margin-top:12px;
+  font-size:1.05rem; font-weight:800; color:#231a02; letter-spacing:.3px;
+  background:linear-gradient(135deg,#ffe27a 0%,#f5c542 45%,#e8930c 100%);
+  box-shadow:0 8px 26px rgba(245,197,66,.35), inset 0 1px 0 rgba(255,255,255,.55); }
+.gold-btn:disabled { opacity:.5; box-shadow:none; }
+.gold-btn:active { transform:scale(.99); }
+.ad-card { border-color:rgba(245,197,66,.35); }
+
+/* tasks category chips */
+.cat-row { display:flex; gap:7px; overflow:auto; margin:0 0 13px; }
+.chip { white-space:nowrap; border:1px solid var(--line); border-radius:20px; background:#121c2b;
+  color:#aab7ca; padding:8px 14px; font-size:.8rem; font-weight:600; width:auto; }
+.chip.active { background:var(--green); color:#102018; border-color:var(--green); font-weight:800; }
+.cat-tag { font-size:.68rem; font-weight:800; letter-spacing:.8px; color:var(--purple);
+  border:1px solid rgba(167,139,250,.35); padding:3px 8px; border-radius:999px; }
+
+/* referral hero */
+.ref-hero { position:relative; overflow:hidden; padding:20px; border:1px solid rgba(167,139,250,.3);
+  border-radius:20px; margin-bottom:10px;
+  background:radial-gradient(circle at 100% 0, rgba(167,139,250,.16), transparent 40%), linear-gradient(145deg,#24213f,#172035); }
+.ref-hero h2 { font-size:1.8rem; line-height:1.08; margin:0; }
+.ref-hero h2 em { color:#c3aaff; font-style:normal; }
+.eyebrow { font-size:.62rem; letter-spacing:1.8px; font-weight:800; color:#8fa1ba; margin:0 0 8px; }
+.ref-code-row { display:flex; justify-content:space-between; align-items:center; background:#0c1422;
+  border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:11px; margin:15px 0; }
+.ref-code-row div { display:grid; gap:4px; }
+.ref-code-row small { font-size:.6rem; color:#8c9bb2; letter-spacing:1px; }
+.ref-code-row b { font-family:'Space Grotesk', sans-serif; font-size:1rem; letter-spacing:1px; color:#fff; }
+.ref-code-row button { width:auto; border:none; border-radius:8px; background:var(--purple);
+  color:#17132b; font-size:.75rem; font-weight:800; padding:8px 12px; }
+.primary-btn { width:100%; border:none; border-radius:12px; padding:13px; font-size:.9rem; font-weight:800;
+  color:#102018; background:linear-gradient(90deg,#b4fa7a,#7ee4a0); }
+
+/* tasks flow */
+.flow-box { background:#101216; border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:14px; }
+.flow-step { background:#1d2126; border-radius:12px; padding:13px; text-align:center; font-weight:600; font-size:.92rem; }
+.flow-step.final { background:none; border:1px solid #2c333a; font-weight:900; }
+.flow-arrow { text-align:center; color:#7d8590; padding:3px 0; }
+.back-btn { background:none !important; border:none !important; color:var(--green) !important;
+  font-weight:800; font-size:.95rem; padding:8px 0; width:auto !important; }
+
+/* wallet */
+.wallet-big { background:#1a1d20; border:1px solid var(--line); border-radius:16px; padding:16px; }
+.wallet-amt { color:var(--green-d); font-family:'Space Grotesk', sans-serif; font-size:2.1rem; font-weight:700; margin:4px 0; }
+.phase-badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:.74rem; font-weight:800; margin:6px 0; }
+.phase-badge.p1 { background:rgba(34,197,94,.16); color:#4ade80; }
+.phase-badge.p2 { background:rgba(249,115,22,.16); color:#fb923c; }
+.model-head { color:var(--green-d); font-family:'Space Grotesk', sans-serif; font-size:2.1rem; font-weight:700; line-height:1.15; margin:8px 0 4px; }
+
+/* bottom nav */
+.bottom-nav { position:fixed; z-index:30; bottom:0; left:50%; transform:translateX(-50%);
+  width:min(520px,100%); padding:9px 8px calc(10px + env(safe-area-inset-bottom));
+  display:grid; grid-template-columns:repeat(7,1fr);
+  background:rgba(12,18,31,.94); border-top:1px solid var(--line); backdrop-filter:blur(18px); }
+.nav-item { border:0; background:none; color:#7f8ca4; display:grid; justify-items:center; gap:4px; padding:3px 0; width:100%; }
+.nav-item span { font-size:1.08rem; line-height:1.35; }
+.nav-item small { font-size:.54rem; font-weight:700; white-space:nowrap; }
+.nav-item.active { color:var(--green); }
+.nav-main span { width:38px; height:32px; border-radius:11px; display:grid; place-items:center; color:#231a02;
+  background:linear-gradient(145deg,#ffe27a,#f5a623); box-shadow:0 4px 15px rgba(245,197,66,.4); }
+.nav-main.active small { color:var(--gold); }
+
+/* ===== village game ===== */
+.topbar { display:flex; justify-content:space-between; align-items:center; padding:10px 2px; }
+.brand { font-family:'Space Grotesk', sans-serif; letter-spacing:2px; color:#7dd3fc; font-weight:700; }
+.resources { display:flex; gap:6px; }
+.pill { display:flex; align-items:center; gap:5px; background:var(--panel2); border:1px solid var(--line);
+  border-radius:999px; padding:5px 10px; font-size:.85rem; }
+.pill.level { color:var(--gold); border-color:rgba(245,197,66,.4); }
+.dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+.dot.gold { background:#fbbf24; } .dot.wood { background:#d97706; } .dot.crys { background:#38bdf8; }
+.slime-strip { display:flex; justify-content:space-between; align-items:center; gap:12px;
+  background:linear-gradient(120deg,#1e2a52,#2a2350); border:1px solid var(--line);
+  border-radius:16px; padding:14px; margin:8px 0 12px; }
+.slime-name { color:var(--gold); font-weight:800; font-size:1.1rem; }
+.slime-sub { color:var(--muted); font-size:.8rem; }
+.progress-wrap { flex:1; max-width:55%; }
+.progress { height:9px; background:#0c1226; border-radius:99px; overflow:hidden; border:1px solid var(--line); }
+.progress #level-bar { height:100%; width:0; background:linear-gradient(90deg,#b4fa7a,#7ee4a0); transition:width .4s; }
+.progress-text { font-size:.7rem; color:var(--muted); margin-top:5px; text-align:right; }
+.hero { position:relative; border-radius:16px; overflow:hidden; border:1px solid var(--line);
+  background:var(--panel2); min-height:130px; }
+.hero img { width:100%; display:block; }
+.collect-btn { position:absolute; top:10px; right:10px; width:auto !important; background:rgba(12,20,34,.85) !important; }
+.pending { position:absolute; left:10px; bottom:10px; background:rgba(12,20,34,.85);
+  padding:6px 10px; border-radius:9px; font-size:.8rem; }
+.daily-btn { margin:12px 0 4px; background:linear-gradient(120deg,#43307a,#1d3a6e) !important; }
+.banner { border-radius:16px; overflow:hidden; border:1px solid var(--line); background:var(--panel2); min-height:110px; }
+.banner img { width:100%; display:block; }
+.pane { display:none; }
+.pane.active { display:block; }
+.tabbar { position:fixed; left:50%; transform:translateX(-50%); bottom:0; width:min(520px,100%);
+  display:flex; background:rgba(10,15,36,.97); border-top:1px solid var(--line);
+  padding:8px 6px calc(8px + env(safe-area-inset-bottom)); z-index:30; }
+.tabbar button { flex:1; background:none !important; border:none !important; color:#8fa3e0;
+  font-size:.86rem; font-weight:700; padding:10px 2px; border-radius:10px; width:auto; }
+.tabbar button.active { color:var(--gold) !important; background:rgba(245,197,66,.1) !important; }
+#view-game { padding-bottom:96px; }
+
+/* toast */
+#toast { position:fixed; bottom:96px; left:50%; transform:translate(-50%,12px); opacity:0; pointer-events:none;
+  background:#e9f7df; color:#122019; padding:10px 15px; border-radius:12px; font-size:.85rem; font-weight:700;
+  z-index:50; transition:.2s; max-width:90%; text-align:center; }
+#toast.show { opacity:1; transform:translate(-50%,0); }
+
+/* ban screen */
+#ban-screen { position:fixed; inset:0; z-index:99; background:#090d18; display:flex; align-items:center; justify-content:center; padding:22px; }
+.ban-card { max-width:420px; text-align:center; }
+.ban-emoji { font-size:3rem; margin-bottom:12px; }
+.ban-text { white-space:pre-line; color:#f2f5ea; font-size:1rem; line-height:1.55; }
+
+/* premium task cards */
+.task-card { border:1px solid rgba(158,240,105,.18); background:linear-gradient(160deg, rgba(158,240,105,.06), rgba(255,255,255,.02) 48%); box-shadow:0 12px 28px rgba(0,0,0,.38); }
+.task-head { display:flex; gap:11px; align-items:flex-start; }
+.task-ico { font-size:1.3rem; line-height:1; padding:10px; border-radius:13px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.09); }
+.task-main { flex:1; min-width:0; }
+.task-title { font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:1.03rem; color:#f4f8ec; }
+.task-reward { font-family:"Space Grotesk",sans-serif; font-weight:700; color:#141a08; background:linear-gradient(135deg,#ffe066,#f5b921); padding:5px 11px; border-radius:999px; font-size:.85rem; white-space:nowrap; box-shadow:0 4px 12px rgba(245,185,33,.35); }
+.task-actions { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-top:13px; }
+.btn-open { background:rgba(255,255,255,.07); color:#eaf5ff; border:1px solid rgba(255,255,255,.18); padding:9px 15px; border-radius:11px; font-weight:700; cursor:pointer; }
+.btn-claim { background:linear-gradient(135deg,#b6f34c,#7ed321); color:#101604; border:none; padding:9px 16px; border-radius:11px; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(126,211,33,.35); }
+.done-pill { background:linear-gradient(135deg,#2fbf71,#1e9e57); color:#fff; font-weight:800; padding:8px 15px; border-radius:999px; font-size:.85rem; letter-spacing:.4px; box-shadow:0 6px 16px rgba(46,191,113,.30); }
+.pend-pill { color:#ffd76a; font-weight:700; padding:8px 4px; }
+
+.danger-btn { background:#3a1620 !important; color:#ff9db0 !important; border:1px solid rgba(255,120,150,.35) !important; }
+
+/* daily bonus */
+.daily-cal { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:12px 0; }
+.day-cell { text-align:center; padding:10px 4px; border-radius:13px; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.08); display:flex; flex-direction:column; gap:2px; }
+.day-cell small { color:#9fb4c7; font-size:.68rem; text-transform:uppercase; letter-spacing:.5px; }
+.day-cell b { font-size:1.05rem; }
+.day-cell span { font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:.8rem; color:#cfe6a8; }
+.day-cell.done { border-color:rgba(88,214,141,.45); background:rgba(88,214,141,.10); }
+.day-cell.current { border-color:#f5b921; background:rgba(245,185,33,.12); box-shadow:0 0 0 1px #f5b921, 0 8px 20px rgba(245,185,33,.22); animation:daypulse 1.6s infinite; }
+@keyframes daypulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.04); } }
+.gold-btn.done-btn { background:rgba(255,255,255,.08) !important; color:#9fe8bb !important; box-shadow:none !important; }
+.claim-dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:#ff5470; margin-left:7px; vertical-align:middle; box-shadow:0 0 10px #ff5470; animation:daypulse 1.2s infinite; }
+.claim-dot[hidden] { display:none; }
+
+/* split balance: cash left, coins right (owner: coins must be prominent) */
+.balance-duo { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.balance-duo .balance-card { margin:0; padding:15px 14px 13px; display:flex; flex-direction:column; }
+.balance-duo .balance-value { margin:8px 0 2px; }
+.balance-duo .balance-value strong { font-size:1.72rem; }
+.coin-card { border-color:rgba(245,185,33,.45) !important; background:linear-gradient(160deg, rgba(245,185,33,.14), rgba(20,26,16,.65) 55%) !important; }
+.coin-value strong { color:#ffd94d; text-shadow:0 2px 14px rgba(245,185,33,.45); }
+.gold-glow { background:radial-gradient(circle, rgba(245,185,33,.35), transparent 70%) !important; }
+.duo-btn { margin-top:10px; width:100%; padding:10px 8px; border:none; border-radius:11px; background:var(--green); color:#102018; font-weight:800; cursor:pointer; font-size:.86rem; }
+.duo-btn.gold { background:linear-gradient(135deg,#ffe066,#f5b921); color:#241a02; box-shadow:0 6px 16px rgba(245,185,33,.30); }
+.duo-sub { margin-top:9px; font-size:.68rem; color:#a6b8b6; line-height:1.45; }
+.duo-sub b { color:#eaf5ff; font-size:.8rem; }
+
+/* daily check-in coins + claim */
+.daily-coins-wrap { text-align:center; margin:12px 0 2px; }
+.daily-coins-label { font-size:.7rem; letter-spacing:1.2px; color:#9fb4c7; font-weight:700; }
+.daily-coins { font-family:"Space Grotesk",sans-serif; font-size:2.15rem; font-weight:700; color:#ffd94d; text-shadow:0 2px 16px rgba(245,185,33,.4); line-height:1.15; }
+#daily-claim { margin:10px 0 4px; }
+
+/* ===== Slime pet: a living character hopping around the Home stage ===== */
+.pet-stage{position:relative;height:118px;margin-top:12px;border-radius:18px;overflow:hidden;
+  background:radial-gradient(120% 150% at 50% 0%,#12233d 0%,#0a1424 55%,#070d18 100%);
+  border:1px solid rgba(96,200,255,.16);box-shadow:inset 0 0 24px rgba(56,189,248,.08)}
+.pet-ground{position:absolute;left:4%;right:4%;bottom:12px;height:3px;border-radius:3px;
+  background:linear-gradient(90deg,transparent,rgba(103,232,249,.45),rgba(250,204,21,.4),transparent)}
+.pet-track{position:absolute;bottom:14px;width:84px;height:96px;animation:petRoam 11s ease-in-out infinite alternate}
+.pet-bob{animation:petJump .95s cubic-bezier(.36,0,.64,1) infinite;transform-origin:50% 100%}
+.pet-img{width:84px;height:84px;border-radius:50%;display:block;
+  box-shadow:0 0 22px rgba(56,189,248,.45),0 0 4px rgba(125,211,252,.8)}
+.pet-shadow{width:54px;height:9px;margin:3px auto 0;border-radius:50%;
+  background:radial-gradient(50% 50% at 50% 50%,rgba(0,0,0,.55),transparent 70%);
+  animation:petShadow .95s cubic-bezier(.36,0,.64,1) infinite}
+.pet-spark{position:absolute;color:#a5f3fc;font-size:13px;opacity:0;animation:petSpark 3.6s ease-in-out infinite}
+.pet-spark.s1{left:16%;top:16px}
+.pet-spark.s2{left:52%;top:8px;animation-delay:1.2s;font-size:10px;color:#fde68a}
+.pet-spark.s3{left:82%;top:20px;animation-delay:2.3s;font-size:11px}
+@keyframes petRoam{from{left:12px}to{left:calc(100% - 96px)}}
+@keyframes petJump{
+  0%,100%{transform:translateY(0) scale(1.14,.84)}
+  22%{transform:translateY(-4px) scale(.93,1.08)}
+  48%{transform:translateY(-30px) scale(1,1)}
+  72%{transform:translateY(-4px) scale(.96,1.04)}
+  86%{transform:translateY(0) scale(1.16,.82)}}
+@keyframes petShadow{0%,100%{transform:scaleX(1);opacity:.85}48%{transform:scaleX(.55);opacity:.4}}
+@keyframes petSpark{0%,100%{opacity:0;transform:translateY(5px) scale(.7)}50%{opacity:.95;transform:translateY(-4px) scale(1.1)}}
+@media (prefers-reduced-motion: reduce){
+  .pet-track,.pet-bob,.pet-shadow,.pet-spark{animation:none}
+}
+
+/* ===== Magic transformation effect (from the user's video): orbiting
+   light rings, a glowing magic circle under the slime, more sparkles ===== */
+.pet-bob{position:relative}
+.pet-ring{position:absolute;left:50%;top:44%;width:118px;height:118px;margin:-59px 0 0 -59px;
+  border-radius:50%;pointer-events:none;
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));
+          mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))}
+.pet-ring.r1{background:conic-gradient(from 0deg,transparent 0 34%,rgba(165,243,252,.95) 47%,#fff 50%,rgba(165,243,252,.95) 53%,transparent 66% 100%);
+  transform:rotateX(64deg);animation:petSpin 2.8s linear infinite}
+.pet-ring.r2{background:conic-gradient(from 180deg,transparent 0 38%,rgba(253,230,138,.9) 49%,#fff 51%,rgba(253,230,138,.9) 54%,transparent 64% 100%);
+  transform:rotateX(64deg) rotateY(-18deg);animation:petSpinR 3.9s linear infinite;opacity:.85}
+.pet-circle{position:absolute;left:50%;bottom:-7px;width:104px;height:26px;margin-left:-52px;border-radius:50%;
+  pointer-events:none;opacity:.8;
+  background:conic-gradient(from 0deg,transparent 0 8%,rgba(103,232,249,.85) 10% 13%,transparent 15% 25%,rgba(103,232,249,.85) 27% 30%,transparent 32% 44%,rgba(165,243,252,.9) 46% 49%,transparent 51% 63%,rgba(103,232,249,.85) 65% 68%,transparent 70% 82%,rgba(165,243,252,.9) 84% 87%,transparent 89% 100%);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));
+          mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));
+  animation:petSpin 7s linear infinite, petCirclePulse 1.9s ease-in-out infinite}
+.pet-img{animation:petGlow 2.6s ease-in-out infinite}
+.pet-spark.s4{left:30%;top:38px;animation-delay:.7s;font-size:10px}
+.pet-spark.s5{left:64%;top:44px;animation-delay:1.8s;font-size:13px;color:#bae6fd}
+.pet-spark.s6{left:44%;top:12px;animation-delay:2.9s;font-size:9px;color:#fde68a}
+@keyframes petSpin{from{transform:rotateX(64deg) rotate(0deg)}to{transform:rotateX(64deg) rotate(360deg)}}
+@keyframes petSpinR{from{transform:rotateX(64deg) rotateY(-18deg) rotate(360deg)}to{transform:rotateX(64deg) rotateY(-18deg) rotate(0deg)}}
+@keyframes petCirclePulse{0%,100%{opacity:.55}50%{opacity:.95}}
+@keyframes petGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.14)}}
+@media (prefers-reduced-motion: reduce){
+  .pet-ring,.pet-circle,.pet-img{animation:none}
+}
+
+/* ===== Transformation: slime <-> slime-girl, video style ===== */
+.pet-girl{position:absolute;left:50%;top:44%;width:92px;height:92px;margin:-46px 0 0 -46px;
+  border-radius:50%;opacity:0;transform:scale(.3) rotate(-14deg);pointer-events:none;
+  box-shadow:0 0 26px rgba(147,197,253,.65),0 0 5px rgba(191,219,254,.9);
+  transition:opacity .45s ease,transform .55s cubic-bezier(.34,1.56,.64,1)}
+.pet-stage.tf-on .pet-girl{opacity:1;transform:scale(1) rotate(0deg)}
+.pet-stage.tf-on .pet-img{opacity:0;transform:scale(.25) rotate(12deg)}
+.pet-img{transition:opacity .4s ease,transform .45s ease}
+.pet-stage.tf-on .pet-ring.r1{animation-duration:.8s}
+.pet-stage.tf-on .pet-ring.r2{animation-duration:1.1s}
+.pet-stage.tf-on .pet-circle{opacity:1}
+.pet-flash{position:absolute;left:50%;top:44%;width:130px;height:130px;margin:-65px 0 0 -65px;
+  border-radius:50%;pointer-events:none;opacity:0;
+  background:radial-gradient(circle,#fff 0%,rgba(191,219,254,.85) 34%,rgba(103,232,249,.35) 58%,transparent 72%)}
+.pet-stage.tf-flash .pet-flash{animation:petFlash .65s ease-out}
+@keyframes petFlash{0%{opacity:0;transform:scale(.35)}28%{opacity:1}100%{opacity:0;transform:scale(1.5)}}
+@media (prefers-reduced-motion: reduce){.pet-girl,.pet-flash{animation:none;transition:none}}
+
+/* Spin Wheel (v29) */
+.spin-card { text-align: center; }
+.spin-wrap { position: relative; width: 280px; height: 280px; margin: 20px auto 8px; }
+.spin-pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 30px; color: #ffd54a; z-index: 3; text-shadow: 0 2px 8px rgba(0,0,0,.65); }
+.wheel { position: absolute; inset: 0; border-radius: 50%; border: 6px solid rgba(255,213,74,.9); box-shadow: 0 0 34px rgba(255,183,47,.35), inset 0 0 26px rgba(0,0,0,.5); transition: transform 4.6s cubic-bezier(.12,.8,.16,1); }
+.wheel-label { position: absolute; left: calc(50% - 14px); top: calc(50% - 11px); width: 28px; text-align: center; font-weight: 800; font-size: 17px; color: #fff; text-shadow: 0 1px 5px rgba(0,0,0,.8); pointer-events: none; }
+.wheel-hub { position: absolute; left: 50%; top: 50%; width: 78px; height: 78px; transform: translate(-50%,-50%); border-radius: 50%; background: #141b34; border: 3px solid rgba(255,213,74,.95); display: flex; align-items: center; justify-content: center; overflow: hidden; z-index: 2; }
+.wheel-hub img { width: 66px; height: 66px; object-fit: contain; }
+.spin-info { font-weight: 700; margin: 12px 0 6px; }
+.spin-result { min-height: 26px; font-size: 19px; font-weight: 800; color: #ffd54a; margin-top: 12px; }
+
+/* v30 earning dashboard */
+.v30-welcome-card { margin-top:12px; }
+.v30-quick-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:14px; }
+.v30-quick-stats div { background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px; min-width:0; }
+.v30-quick-stats small { display:block; color:var(--muted); font-size:.58rem; letter-spacing:.5px; }
+.v30-quick-stats b { display:block; margin-top:5px; font-size:.9rem; overflow-wrap:anywhere; }
+#support-message { width:100%; margin:9px 0; background:#0c1422; border:1px solid var(--line); color:var(--text); border-radius:10px; padding:12px; font:inherit; resize:vertical; }
+
+</style>
+</head>
+<body><div style="position:sticky;top:0;z-index:9999;background:#b8860b;color:#111;font-weight:700;text-align:center;padding:8px 6px;font-size:14px">👀 V30 PREVIEW — ye sirf demo hai, asal bot abhi purana wala hi chal raha hai</div>
+
+<!-- ================= APP HEADER ================= -->
+<header class="app-header">
+  <div class="app-brand">SLIME<span>FI</span></div>
+  <div class="app-head-right">
+    <span class="pill-green">Earning Platform</span>
+    <button class="wd-top" onclick="go('wallet')">Withdraw</button>
+  </div>
+</header>
+
+<!-- ================= HOME ================= -->
+<section id="view-home" class="view active">
+  <div class="balance-duo">
+    <div class="balance-card cash-card">
+      <div class="balance-glow"></div>
+      <div class="balance-top"><span>REWARD BALANCE</span><span class="live-dot">● LIVE</span></div>
+      <div class="balance-value"><span class="currency">₹</span><strong id="home-cash">0.00</strong></div>
+      <div class="balance-foot"><span>Coin value · 1,000 Coins = ₹1</span></div>
+      <button class="duo-btn" onclick="go('wallet')">Withdraw ↗</button>
+      <div class="duo-sub">Pending rewards<br><b id="home-pending-rew">₹0.00</b></div>
+    </div>
+    <div class="balance-card coin-card">
+      <div class="balance-glow gold-glow"></div>
+      <div class="balance-top"><span>🪙 MY COINS</span></div>
+      <div class="balance-value coin-value"><strong id="home-coins">0</strong></div>
+      <div class="balance-foot"><span>Value: <b id="home-coin-value">₹0.00</b></span></div>
+      <button class="duo-btn gold" onclick="go('wallet')">Wallet Details →</button>
+      <div class="duo-sub">Lifetime coins<br><b id="home-lifetime">0</b></div>
+    </div>
+  </div>
+
+  <div class="card v30-welcome-card">
+    <div class="card-title">💚 Welcome to SlimeFi</div>
+    <div class="card-sub">Earn rewards by completing available activities. Your Coins and rupee value update together.</div>
+    <div class="v30-quick-stats">
+      <div><small>AVAILABLE COINS</small><b id="home-coins-small">0</b></div>
+      <div><small>RUPEE VALUE</small><b id="home-value-small">₹0.00</b></div>
+      <div><small>PLAYERS</small><b id="home-users">0</b></div>
+    </div>
+  </div>
+<h2 class="v2-h">Earning Center</h2>
+  <div class="ec-grid">
+    <div class="ec-card" onclick="go('ads')">
+      <div class="ec-ico">📣</div>
+      <div class="ec-title">Sponsored Ads</div>
+      <span class="ec-btn">Explore</span>
+    </div>
+    <div class="ec-card" onclick="go('tasks')">
+      <div class="ec-ico">✅</div>
+      <div class="ec-title">Paid Tasks</div>
+      <span class="ec-btn">Explore</span>
+    </div>
+    <div class="ec-card dim">
+      <div class="ec-ico">🛍️</div>
+      <div class="ec-title">Affiliate</div>
+      <span class="ec-btn upcoming">Upcoming</span>
+    </div>
+    <div class="ec-card" onclick="go('referral')">
+      <div class="ec-ico">👥</div>
+      <div class="ec-title">Referral</div>
+      <span class="ec-btn">Explore</span>
+    </div>
+    <div class="ec-card" onclick="openPayouts()">
+      <div class="ec-ico">💸</div>
+      <div class="ec-title">Payout Portal</div>
+      <span class="ec-btn">Open</span>
+    </div>
+    <div class="ec-card dim">
+      <div class="ec-ico">👑</div>
+      <div class="ec-title">Premium</div>
+      <span class="ec-btn upcoming">Upcoming</span>
+    </div>
+  </div>
+
+  <div class="wide-card" onclick="go('spin')">
+    <div>
+      <div class="wide-title">🎡 Spin &amp; Win — Roz 1 FREE Spin</div>
+      <div class="wide-sub">Wheel ghumao, <span class="cost">50–500 coins</span> jeeto · Ad dekho = +1 Spin</div>
+    </div>
+    <span class="ec-btn">Play</span>
+  </div>
+  <div class="wide-card" onclick="go('history')">
+    <div><div class="wide-title">📜 Reward History</div><div class="wide-sub">Coins credit, rewards aur withdrawal status dekho</div></div>
+    <span class="ec-btn">Open</span>
+  </div>
+  <div class="wide-card" onclick="go('model')">
+    <div>
+      <div class="wide-title">📈 Business Model</div>
+      <div class="wide-sub">Earn. Complete. Reward. — SlimeFi kaise kamata hai</div>
+    </div>
+    <span class="ec-btn">Open</span>
+  </div>
+  <div class="wide-card" onclick="go('support')">
+    <div>
+      <div class="wide-title">🛟 Support</div>
+      <div class="wide-sub">Madad, shikayat (grievance) aur safety rules</div>
+    </div>
+    <span class="ec-btn">Open</span>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="card-top"><div class="card-title">🏆 Recent Payouts</div><div class="lvl" id="payouts-total"></div></div>
+    <div id="payouts-list"></div>
+    <div class="card-sub">Yahan sirf admin dwara Paid mark kiye gaye payouts aur unke transaction references dikhte hain.</div>
+  </div>
+
+  <!-- ADMIN PANEL (owner only) -->
+  <div class="card" id="owner-panel" style="display:none; margin-top:14px">
+    <div class="card-title">👑 Admin Panel</div>
+    <div class="card-sub" id="owner-stats"></div>
+    <div id="owner-recent"></div>
+    <div class="card-sub" id="owner-summary"></div>
+    <div id="owner-list"></div>
+    <div class="card-title" style="margin-top:14px">🛟 Support Tickets</div>
+    <div id="owner-support-tickets"></div>
+    <div class="card-title" style="margin-top:14px">Task Submissions — Approve / Reject</div>
+    <div id="owner-subs"></div>
+    <div class="card-title" style="margin-top:14px">Referral Review — Same-Network (Hold)</div>
+    <div id="owner-referrals"></div>
+    <div class="card-title" style="margin-top:14px">⚠️ Suspicious Accounts — sirf jaanch ke liye (band nahi)</div>
+    <div id="owner-suspicious"></div>
+    <div class="card-title" style="margin-top:14px">🚫 Banned Accounts</div>
+    <div id="owner-banned"></div>
+    <div class="card-title" style="margin-top:14px">🪙 Coins Do / Kato</div>
+    <div class="ref-row"><select id="gr-user"></select></div>
+    <div class="ref-row"><input id="gr-amount" type="number" placeholder="Coins ki matra" style="text-transform:none"><button class="small-btn" onclick="grantCoins()">Coins Do</button><button class="small-btn danger-btn" onclick="reduceCoins()">Coins Kato</button></div>
+    <div class="card-sub">Dene se balance + lifetime badhega (level aur leaderboard bhi). Kaatne se dono ghatega, 0 se neeche nahi jayega. Hisaab ledger me record rahega.</div>
+    <div class="card-title" style="margin-top:14px">🎟️ Promo Code Banao</div>
+    <div class="ref-row"><input id="np-code" placeholder="CODE (jaise WELCOME100)" style="text-transform:uppercase"></div>
+    <div class="ref-row"><input id="np-coins" type="number" placeholder="Coins" style="text-transform:none"><input id="np-uses" type="number" placeholder="Kitne log (0 = unlimited)" style="text-transform:none"><button class="small-btn" onclick="createPromo()">Banao</button></div>
+    <div id="owner-promos"></div>
+    <div class="card-title" style="margin-top:14px">Naya Sponsored Task Banao</div>
+    <div class="ref-row"><input id="nt-title" placeholder="Task title — jese Channel join karo" style="text-transform:none"></div>
+    <div class="ref-row"><input id="nt-desc" placeholder="Description — kya karna hai" style="text-transform:none"></div>
+    <div class="ref-row"><input id="nt-link" placeholder="Link (optional)" style="text-transform:none"></div>
+    <div class="ref-row">
+      <input id="nt-reward" type="number" placeholder="Reward coins" style="text-transform:none; max-width:140px">
+      <input id="nt-budget" type="number" placeholder="Total budget coins (khali = unlimited)" style="text-transform:none; max-width:220px">
+    </div>
+    <div class="ref-row">
+      <select id="nt-mode"><option value="proof">Direct Complete (proof nahi)</option><option value="channel">Channel auto-check (proof nahi)</option></select>
+      <select id="nt-category">
+        <option value="telegram">Telegram task</option>
+        <option value="twitter">Twitter / X task</option>
+        <option value="other">Other task</option>
+      </select>
+      <button id="btn-nt" class="small-btn">Task Banao</button>
+    </div>
+    <div id="owner-tasks"></div>
+  </div>
+</section>
+
+<!-- ================= SPIN WHEEL ================= -->
+<section id="view-spin" class="view">
+  <button class="back-btn" onclick="go('home')">← Home</button>
+  <h2 class="v2-h">🎡 Spin &amp; Win</h2>
+  <div class="card spin-card">
+    <div class="spin-wrap">
+      <div class="spin-pointer">▼</div>
+      <div class="wheel" id="wheel"><div class="wheel-hub"><img src="/static/img/slime-pet.png" alt="SlimeFi"></div></div>
+    </div>
+    <div class="spin-info" id="spin-info">🎟️ Free spin bacha: 1 · Extra spin: 0</div>
+    <button id="btn-spin" class="gold-btn">🎡 SPIN KARO</button>
+    <button id="btn-spin-ad" class="small-btn" style="width:100%; margin-top:10px; padding:12px">📺 Ad Dekho = +1 Spin</button>
+    <div class="spin-result" id="spin-result"></div>
+    <div class="card-sub">Roz 1 free spin — inaam 50 se 500 coins tak! Aur spin chahiye to ad dekho, har ad par +1 spin milta hai. Jeet server se tay hoti hai — poori tarah fair, koi setting nahi.</div>
+  </div>
+</section>
+
+<!-- ================= ADS ================= -->
+<section id="view-leaderboard" class="view">
+  <h2 class="v2-h">🏆 Leaderboard</h2>
+  <div class="card" style="margin-top:14px">
+    <div class="card-top"><div class="card-title">👑 Leaderboard</div><div class="lvl">Top Players</div></div>
+    <div id="leaderboard-list"></div>
+    <div class="card-sub">Sabse zyada lifetime coins wale players — list roz update hoti hai.</div>
+  </div>
+
+  <div class="card-sub" style="text-align:center">Top par aana hai? Tasks, daily bonus aur referrals se lifetime coins badhao.</div>
+</section>
+
+<section id="view-daily" class="view">
+  <h2 class="v2-h">🎁 Daily Check-In</h2>
+  <div class="card">
+    <div class="card-top"><div class="card-title">7-Day Streak Bonus</div><div class="lvl" id="daily-streak">Streak: 0 din</div></div>
+    <div class="daily-coins-wrap">
+      <div class="daily-coins-label">🪙 MERE COINS</div>
+      <div class="daily-coins" id="daily-coins">0</div>
+    </div>
+    <button class="gold-btn" id="daily-claim" onclick="claimDaily()">🎁 Claim</button>
+    <div id="daily-cal" class="daily-cal"></div>
+    <div class="card-sub">Roz aao, roz bonus lo. Ek din miss kiya to streak Day 1 se shuru ho jayegi. Day 7 par sabse bada bonus — 500 coins!</div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="card-top"><div class="card-title">🎟️ Promo Code</div></div>
+    <div class="card-sub">Koi promo code mila hai? Yahan dalo aur turant coins pao.</div>
+    <div class="ref-row"><input id="promo-code" placeholder="PROMO CODE dalo" style="text-transform:uppercase">
+    <button class="small-btn" onclick="redeemPromo()">Lagao</button></div>
+  </div>
+</section>
+
+<section id="view-ads" class="view">
+  <button class="back-btn" onclick="go('home')">← Home</button>
+  <h2 class="v2-h">Sponsored Ads</h2>
+  <div class="card earn ad-card">
+    <div class="card-top"><div class="card-title">Ad Dekho, Coins Pao</div><div class="lvl" id="ad-count">0/20</div></div>
+    <div class="card-sub">Ek ad = <span class="cost">+100 coins</span>. Ad ka paisa hi sabki earning ka source hai.</div>
+    <button id="btn-ad" class="gold-btn">▶ Watch Ad — Premium</button>
+    <div class="card-sub" id="ad-note"></div>
+  </div>
+</section>
+
+<!-- ================= PAID TASKS ================= -->
+<section id="view-tasks" class="view">
+  <button class="back-btn" onclick="go('home')">← Home</button>
+  <h2 class="v2-h">Paid Tasks — Task Center</h2>
+  <div class="flow-box">
+    <div class="flow-step">User task karta hai — Open dabakar</div><div class="flow-arrow">↓</div>
+    <div class="flow-step">Complete / Check button dabata hai</div><div class="flow-arrow">↓</div>
+    <div class="flow-step">Channel task bot khud verify karta hai</div><div class="flow-arrow">↓</div>
+    <div class="flow-step">Reward turant credited — COMPLETED</div><div class="flow-arrow">↓</div>
+    <div class="flow-step final">Eligible withdrawal</div>
+  </div>
+  <div class="cat-row">
+    <button class="chip active" data-cat="all">All Tasks</button>
+    <button class="chip" data-cat="telegram">➤ Telegram</button>
+    <button class="chip" data-cat="twitter">𝕏 Twitter</button>
+    <button class="chip" data-cat="other">▦ Other</button>
+  </div>
+  <div id="tasks-list" class="cards"></div>
+</section>
+
+<!-- ================= REFERRAL ================= -->
+<section id="view-referral" class="view">
+  <button class="back-btn" onclick="go('home')">← Home</button>
+  <h2 class="v2-h">Referral Center</h2>
+  <div class="ref-hero">
+    <p class="eyebrow">YOUR NETWORK, YOUR REWARDS</p>
+    <h2>Good things<br><em>grow together.</em></h2>
+    <div class="ref-code-row">
+      <div><small>YOUR INVITE CODE</small><b id="ref-code2">-</b></div>
+      <button id="btn-copy">Copy</button>
+    </div>
+    <button class="primary-btn" id="btn-share">↗ &nbsp; Invite Friends</button>
+    <div class="card-sub" id="ref-link-line" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <div class="card-sub" id="squad-line2">0 friends joined</div>
+    <div class="card-sub">Reward: dost ke pehli qualifying activity (ad / quest / daily / approved task) par <span class="cost">+500 coins</span>. Sirf join par reward nahi milta — fake accounts rokne ke liye.</div>
+    <div class="card-title" style="margin-top:12px">Mere Referrals · <span id="ref-total">Total Refer: 0</span></div>
+    <div id="my-ref-list"></div>
+  </div>
+  <div class="card" style="border:1px solid rgba(255,190,60,.45); background:rgba(255,170,0,.07)">
+    <div class="card-title">⏰ Dhyan Do — Referral Niyam</div>
+    <div class="card-sub">Referral code sirf naye account ke pehle <b>48 ghanto</b> me lagta hai, uske baad nahi lagega. Ek hi account rakho — duplicate ya suspicious referrals ki jaanch hoti hai. Sirf network (IP) match hone par koi account band nahi hota — pehle admin review hota hai.</div>
+  </div>
+  <div class="card" id="ref-apply-card">
+    <div class="card-title">Dost ka code lagao</div>
+    <div class="ref-row">
+      <input id="ref-input" placeholder="SLIME-XXXXXX" maxlength="12">
+      <button id="btn-ref" class="small-btn">Apply</button>
+    </div>
+  </div>
+  <div class="card" id="ref-applied-note" style="display:none">
+    <div class="card-sub">✅ Tumne referral code laga liya hai — isliye code dalne ka option ab nahi dikhta.</div>
+  </div>
+</section>
+
+<!-- ================= WALLET ================= -->
+<section id="view-wallet" class="view">
+  <button class="back-btn" onclick="go('home')">← Home</button>
+  <h2 class="v2-h">SlimeFi Wallet</h2>
+  <div class="wallet-big">
+    <div class="stat-label">Available balance</div>
+    <div class="wallet-amt" id="cash-amt">₹0.00</div>
+    <div class="stat-label" id="pending-rew-line">Pending rewards: ₹0.00</div>
+    <div class="stat-label"><b id="wallet-coins">0</b> Coins = <b id="wallet-coin-value">₹0.00</b></div>
+    <div class="stat-label">Automatic rate: <span id="rate-line">1,000 Coins = ₹1</span></div>
+  </div>
+  <div class="card" style="margin-top:10px"><div class="card-sub">Ab alag se Convert karne ki zaroorat nahi. Withdrawal request par Coins aur unki ₹ value ek saath reserve ho jayegi.</div></div>
+
+  <h2 class="v2-h">↓ Withdrawal request</h2>
+  <div class="stat-row">
+    <div class="stat-card align-left">
+      <div class="stat-ico">🏦</div>
+      <div class="ec-title">UPI</div>
+      <span class="phase-badge p1">Phase 1</span>
+      <div class="stat-label">Verified eligible account par payout. Minimum <span id="min-wd">₹10</span> · Processing: 24–72 hours</div>
+      <input id="wd-name" placeholder="Account Holder ka Naam (bank wala naam)" style="text-transform:none">
+      <input id="upi-input" placeholder="Tumhara UPI ID" style="text-transform:none">
+      <input id="wd-input" type="number" min="10" step="0.01" placeholder="₹ Amount (e.g. 10.00)" style="text-transform:none">
+      <button id="btn-withdraw">Withdraw (UPI)</button>
+      <div class="stat-label">Payment sirf isi naam wale account par jayega — admin pehle naam verify karega.</div>
+    </div>
+    <div class="stat-card align-left dim">
+      <div class="stat-ico">₿</div>
+      <div class="ec-title">Crypto</div>
+      <span class="phase-badge p2">Phase 2</span>
+      <div class="stat-label">Only after legal and compliance approval. Abhi uplabdh nahi hai.</div>
+    </div>
+  </div>
+  <div id="my-withdrawals"></div>
+  <p class="note">Har transaction ki ledger entry banti hai — balance kabhi seedha edit nahi hota, taaki har reward aur payout audit ho sake. SlimeFi kabhi tumhara UPI PIN, OTP ya private key nahi mangta.</p>
+</section>
+
+<!-- ================= REWARD HISTORY ================= -->
+<section id="view-history" class="view">
+  <button class="back-btn" onclick="go('home')">← Home</button>
+  <h2 class="v2-h">📜 Reward History</h2>
+  <div class="card"><div class="card-sub">Recent coin credits, deductions and withdrawal updates.</div><div id="history-list"></div></div>
+</section>
+
+<!-- ================= BUSINESS MODEL ================= -->
+<section id="view-model" class="view">
+  <button class="back-btn" onclick="go('home')">← Home</button>
+  <div class="app-head-right" style="margin:6px 0"><span class="pill-green">Business Model</span></div>
+  <div class="model-head">Earn. Complete.<br>Reward.</div>
+  <p class="note" style="text-align:left">A real-revenue digital earning platform</p>
+  <div class="stat-row">
+    <div class="stat-card align-left"><div class="stat-big">₹0</div><div class="stat-label">Initial growth budget</div></div>
+    <div class="stat-card align-left"><div class="stat-big">1</div><div class="stat-label">Launch payout method (UPI)</div></div>
+  </div>
+  <h2 class="v2-h">Revenue sources</h2>
+  <div class="card">
+    <div class="wd-row"><span>Sponsored tasks</span><span>Campaign margin</span></div>
+    <div class="wd-row"><span>Affiliate</span><span>Commission</span></div>
+    <div class="wd-row"><span>Brand promotion</span><span>Campaign fee</span></div>
+    <div class="wd-row"><span>Marketplace</span><span>Sale commission</span></div>
+    <div class="wd-row"><span>Premium tools</span><span>Subscription</span></div>
+    <div class="wd-row"><span>Business services</span><span>Service fee</span></div>
+  </div>
+  <h2 class="v2-h">Payouts</h2>
+  <div class="card">
+    <div class="wd-row"><span>UPI</span><span class="phase-badge p1">Phase 1</span></div>
+    <div class="wd-row"><span>Approved crypto payout provider</span><span class="phase-badge p2">Phase 2</span></div>
+  </div>
+  <p class="note">Rewards joining fee ya deposit se fund nahi hote. Crypto payout sirf legal approval ke baad, aur minor users ke liye kabhi nahi.</p>
+</section>
+
+<!-- ================= SUPPORT ================= -->
+<section id="view-support" class="view">
+  <button class="back-btn" onclick="go('home')">← Home</button>
+  <h2 class="v2-h">Support &amp; Grievance</h2>
+  <div class="card">
+    <div class="card-title">Madad chahiye?</div>
+    <div class="card-sub">Apni problem yahan submit karo. Ticket ID ke saath request record hogi.</div>
+    <select id="support-category"><option value="account">Account</option><option value="coins">Coins / Rewards</option><option value="task">Task</option><option value="withdrawal">Withdrawal</option><option value="other">Other</option></select>
+    <textarea id="support-message" maxlength="1200" placeholder="Apni problem detail me likho (10–1200 characters)" rows="4"></textarea>
+    <button id="support-submit">Submit Support Ticket</button>
+    <div id="support-ticket-list"></div>
+    <div class="card-sub">Safety: SlimeFi kabhi tumhara <b>UPI PIN, OTP ya private crypto key</b> nahi mangta.</div>
+  </div>
+</section>
+
+<!-- ================= BOTTOM NAV ================= -->
+<nav class="bottom-nav">
+  <button class="nav-item active" data-go="home"><span>🏠</span><small>Home</small></button>
+  <button class="nav-item" data-go="daily"><span>🎁</span><small>Check-In</small></button>
+  <button class="nav-item" data-go="tasks"><span>✅</span><small>Tasks</small></button>
+  <button class="nav-item nav-main" data-go="ads"><span>▶</span><small>Watch Ads</small></button>
+  <button class="nav-item" data-go="leaderboard"><span>🏆</span><small>Leaderboard</small></button>
+  <button class="nav-item" data-go="referral"><span>👥</span><small>Refer</small></button>
+  <button class="nav-item" data-go="wallet"><span>👛</span><small>Wallet</small></button>
+</nav>
+
+<div id="toast"></div>
+
+<script>
+// ---- V30 PREVIEW STUB: canned API data so the design can be browsed ----
+const PV_STATE = {"buildings":[{"capped_by_forge":false,"id":"town_hall","level":1,"name":"Town Hall","next_cost":{"coins":160,"crystals":0,"wood":32},"rate_per_hour":5,"resource":"coins"},{"capped_by_forge":false,"id":"goblin_hut","level":1,"name":"Goblin Hut","next_cost":{"coins":80,"crystals":0,"wood":0},"rate_per_hour":12,"resource":"coins"},{"capped_by_forge":false,"id":"goblin_workshop","level":0,"name":"Goblin Workshop","next_cost":{"coins":60,"crystals":0,"wood":0},"rate_per_hour":0,"resource":"wood"},{"capped_by_forge":false,"id":"magic_ore_mine","level":0,"name":"Magic Ore Mine","next_cost":{"coins":120,"crystals":0,"wood":15},"rate_per_hour":0,"resource":"crystals"},{"capped_by_forge":false,"id":"dwarf_forge","level":0,"name":"Dwarf Forge","next_cost":{"coins":250,"crystals":10,"wood":30},"rate_per_hour":0,"resource":null}],"cash_paise":245,"cash_rupees":2.45,"coin_value_rupees":2.45,"coins":2450,"crystals":0,"daily_available":true,"daily_cycle_day":1,"daily_table":[50,75,100,150,200,300,500],"earn":{"ad_cooldown_left":0,"ad_daily_limit":20,"ad_reward_coins":100,"ads_live":true,"ads_today":0,"coins_per_rupee":1000,"convert_min_coins":1000,"min_withdraw_rupees":10,"payouts_enabled":true,"referral_reward_coins":500},"has_referrer":false,"invites":2,"is_owner":false,"leaderboard":[{"coins":12840,"label":"Player g555","level":3}],"lifetime_coins":12840,"my_referrals":[],"my_withdrawals":[{"amount_rupees":10.0,"bank_name":"","holder_name":"Demo User","id":1,"payment_date":"","status":"paid","txn_id":"TXN123456","upi_id":"demo@okhdfc","utr":""}],"payouts_paid_count":1,"payouts_paid_rupees":10.0,"pending":{"coins":0,"crystals":0,"wood":0},"pending_rewards_coins":0,"players":1,"quests":[{"claimed":false,"counter":"daily_collects","id":"collect1","progress":0,"reward":{"coins":50},"target":1,"title":"Collect income 1 time"},{"claimed":false,"counter":"daily_upgrades","id":"upgrade1","progress":0,"reward":{"coins":150},"target":1,"title":"Upgrade any building"},{"claimed":false,"counter":"daily_refines","id":"refine1","progress":0,"reward":{"coins":80,"crystals":5},"target":1,"title":"Refine materials 1 time"}],"recent_payouts":[{"amount_rupees":10.0,"payment_date":"","ts":1794460462.0064251,"txn_id":"TXN123456","upi":"de***@okhdfc","utr":""}],"recipes":[{"get":{"coins":90},"give":{"wood":10},"id":"craft_wood","title":"Craft wood into coins"},{"get":{"coins":120},"give":{"crystals":10},"id":"smelt_crystal","title":"Smelt crystals into coins"}],"referral_code":"SLIME-930844","slime":{"level":3,"name":"Magically Enhanced","next_at":21000},"spin":{"credits":1,"free_left":1,"free_per_day":1,"segments":[50,500,150,300,100,250,200,100]},"squad_boost_pct":10,"streak":3,"user_id":"tg555","wood":0}
+;
+const PV_TASKS = {"ok":true,"tasks":[{"budget_left":10000,"category":"twitter","description":"SlimeFi ke baare me ek post karo","id":3,"link":"","my_status":null,"reward_coins":150,"title":"X par post karo","verify_mode":"proof"},{"budget_left":10000,"category":"other","description":"Ek dost ko bot ka link share karo","id":2,"link":"","my_status":null,"reward_coins":200,"title":"Dost ko SlimeFi bhejo","verify_mode":"proof"},{"budget_left":10000,"category":"telegram","description":"Official channel join karo aur reward pao","id":1,"link":"https://t.me/SlimeFi_official","my_status":null,"reward_coins":100,"title":"SlimeFi Channel Join Karo","verify_mode":"channel"}]}
+;
+const PV_HISTORY = {"history":[{"coins":0,"note":"Village founded: Goblin Hut + Town Hall ready","ts":1794540440.0225618,"type":"founding"},{"coins":200,"note":"Task reward","ts":1794539262.0064251,"type":"task"},{"coins":100,"note":"Daily bonus day 3","ts":1794538062.0064251,"type":"daily"},{"coins":250,"note":"Spin Wheel prize 250 coins","ts":1794537462.0064251,"type":"spin"},{"coins":100,"note":"Rewarded ad #3","ts":1794536862.0064251,"type":"ad"},{"coins":-10000,"note":"Withdrawal #1 \u00b7 \u20b910.00 \u00b7 paid","ts":1794460462.0064251,"type":"withdrawal_paid"}],"ok":true}
+;
+const PV_TICKETS = {"ok":true,"tickets":[{"category":"Payment","created_at":1794533262.0064251,"id":1,"message":"Mera withdraw kab aayega?","status":"open","updated_at":null}]}
+;
+const PV_MSG = {ok:false, msg:"Ye preview hai — ye kaam asal bot me hoga", state: PV_STATE};
+window.fetch = function(url, opt) {
+  const u = String(url);
+  let data;
+  if (u.includes("/api/state")) data = PV_STATE;
+  else if (u.includes("/api/spin")) data = {ok:true, prize:250, index:5, state:PV_STATE};
+  else if (u.includes("/api/history")) data = PV_HISTORY;
+  else if (u.includes("/api/support/tickets")) data = (opt && opt.method === "POST") ? {ok:true, msg:"Preview: asal bot me ticket banega"} : PV_TICKETS;
+  else if (u.match(/\/api\/tasks\/?$/)) data = PV_TASKS;
+  else if (u.includes("/api/tasks/")) data = {ok:true, msg:"Preview: asal bot me reward milega", state:PV_STATE};
+  else if (u.includes("/api/ad/start")) data = {ok:false, msg:"Preview me ad nahi chalta"};
+  else if (u.includes("/api/daily")) data = {ok:true, msg:"Preview", state:PV_STATE};
+  else if (u.includes("/api/owner/")) data = {ok:true, users:[], withdrawals:[], submissions:[], referrals:[], tickets:[], tasks:[], promos:[], stats:{}};
+  else data = PV_MSG;
+  return Promise.resolve({json: () => Promise.resolve(data)});
+};
+</script>
+<script>
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); }
+let USER = "owner";
+try {
+  if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) USER = "tg" + tg.initDataUnsafe.user.id;
+  else USER = localStorage.getItem("slimefi_user") || "owner";
+} catch (e) {}
+
+// Owner's personal panel link: t.me/SlimeFi_bot/game?startapp=<key>
+// The key can arrive four ways depending on how the game was opened:
+// Telegram start param, ?startapp=, ?k= (direct owner link), or the
+// tgWebAppStartParam in the URL hash that Telegram appends itself.
+let OKEY = "";
+try {
+  const hashParams = new URLSearchParams((location.hash || "").replace(/^#/, ""));
+  const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param)
+    || new URLSearchParams(location.search).get("startapp")
+    || new URLSearchParams(location.search).get("k")
+    || hashParams.get("tgWebAppStartParam") || "";
+  if (sp) localStorage.setItem("slimefi_k", sp);
+  OKEY = localStorage.getItem("slimefi_k") || "";
+} catch (e) {}
+
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n || 0).toLocaleString("en-IN");
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let S = null;
+
+async function api(path, body) {
+  const opt = { headers: { "X-User-Id": USER, "Content-Type": "application/json", "X-Init-Data": tg ? (tg.initData || "") : "", ...(OKEY ? { "X-Owner-Key": OKEY } : {}) } };
+  if (body) { opt.method = "POST"; opt.body = JSON.stringify(body); }
+  const r = await fetch(path, opt);
+  return r.json();
+}
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2600);
+}
+function fmtCost(c) {
+  const p = [];
+  if (c.coins) p.push(c.coins + " coins");
+  if (c.wood) p.push(c.wood + " wood");
+  if (c.crystals) p.push(c.crystals + " crystals");
+  return p.length ? p.join(" + ") : "Free";
+}
+
+// ---------- view navigation ----------
+function go(name) {
+  const target = $("view-" + name);
+  if (!target) { toast("Ye section available nahi hai"); return; }
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  target.classList.add("active");
+  document.body.classList.remove("in-game");
+  document.querySelectorAll(".bottom-nav .nav-item").forEach(b =>
+    b.classList.toggle("active", b.dataset.go === name));
+  window.scrollTo(0, 0);
+  if (name === "tasks") loadTasks();
+  if (name === "history") loadHistory();
+  if (name === "support") loadSupportTickets();
+}
+window.go = go;
+
+function render() {
+  if (!S) return;
+  // home
+  const coinValue = Number(S.coins || 0) / Number(S.earn.coins_per_rupee || 1000);
+  $("home-cash").textContent = coinValue.toFixed(2);
+  $("home-coin-value").textContent = "₹" + coinValue.toFixed(2);
+  $("home-coins-small").textContent = fmt(S.coins);
+  $("home-value-small").textContent = "₹" + coinValue.toFixed(2);
+  $("home-users").textContent = fmt(S.players);
+  $("home-coins").textContent = fmt(S.coins);
+  $("home-lifetime").textContent = fmt(S.lifetime_coins);
+  $("home-pending-rew").textContent = "₹" + (S.pending_rewards_coins / S.earn.coins_per_rupee).toFixed(2);
+  $("payouts-total").textContent = S.payouts_paid_count ? (S.payouts_paid_count + " payouts · ₹" + fmt(S.payouts_paid_rupees)) : "";
+  const medals = ["🥇", "🥈", "🥉"];
+  $("leaderboard-list").innerHTML = (S.leaderboard || []).map((p, i) =>
+    `<div class="wd-row"><span>${medals[i] || (i + 1) + "."} ${esc(p.label)} · Lv ${p.level}</span><span>${fmt(p.coins)} coins</span></div>`).join("")
+    || `<div class="card-sub">Abhi koi player nahi hai — pehle tum bano!</div>`;
+  renderDaily();
+  renderSpin();
+  $("payouts-list").innerHTML = (S.recent_payouts || []).map(p =>
+    `<div class="wd-row"><span>✅ ₹${p.amount_rupees} → ${esc(p.upi)}${p.txn_id ? " · 🧾 " + esc(p.txn_id) : ""}${p.utr ? " · UTR " + esc(p.utr) : ""}</span><span>${p.ts ? new Date(p.ts * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("")
+    || `<div class="card-sub">Abhi tak koi payout nahi hua — pehla payout yahin dikhega.</div>`;
+  // wallet
+  $("cash-amt").textContent = "₹" + coinValue.toFixed(2);
+  $("wallet-coins").textContent = fmt(S.coins);
+  $("wallet-coin-value").textContent = "₹" + coinValue.toFixed(2);
+  $("pending-rew-line").textContent = "Pending approval: " + fmt(S.pending_rewards_coins) + " Coins = ₹" +
+    (S.pending_rewards_coins / S.earn.coins_per_rupee).toFixed(2);
+  $("rate-line").textContent = fmt(S.earn.coins_per_rupee) + " Coins = ₹1";
+  $("min-wd").textContent = "₹" + S.earn.min_withdraw_rupees;
+  if (!S.earn.payouts_enabled) { $("btn-withdraw").disabled = true; $("btn-withdraw").textContent = "Withdraw abhi band hai"; }
+  else { $("btn-withdraw").disabled = false; $("btn-withdraw").textContent = "Withdraw Request bhejo"; }
+  $("my-withdrawals").innerHTML = (S.my_withdrawals || []).map(w =>
+    `<div class="wd-row"><span>#${w.id} · ₹${w.amount_rupees}</span><span class="st-${w.status}">${w.status === "rejected" ? "FAILED" : w.status.toUpperCase()}</span></div>${w.holder_name ? `<div class="card-sub">👤 ${esc(w.holder_name)}</div>` : ""}${w.txn_id ? `<div class="card-sub">🧾 Txn: ${esc(w.txn_id)}</div>` : ""}${w.utr ? `<div class="card-sub">🏦 UTR: ${esc(w.utr)}</div>` : ""}${w.payment_date ? `<div class="card-sub">📅 Payment Date: ${esc(w.payment_date)}</div>` : ""}`).join("");
+  // referral
+  $("ref-code2").textContent = S.referral_code;
+  $("squad-line2").textContent = S.invites + " friends joined · Har dost ki pehli activity par +500 coins";
+  $("ref-apply-card").style.display = S.has_referrer ? "none" : "block";
+  $("ref-applied-note").style.display = S.has_referrer ? "block" : "none";
+  $("ref-total").textContent = "Total Refer: " + (S.invites || 0);
+  const QLABEL = { 0: "Joined — pehli activity baki", 1: "Reward mila ✅", 2: "Review me hai ⏳", 3: "Reward nahi mila" };
+  $("my-ref-list").innerHTML = (S.my_referrals || []).length
+    ? (S.my_referrals || []).map(r => `<div class="wd-row"><span>${esc(r.label)}</span><span>${QLABEL[r.q] || ""}</span></div>`).join("")
+    : `<div class="card-sub">Abhi koi referral nahi — apna code dosto ko bhejo.</div>`;
+  $("ref-link-line").textContent = "Dost ko ye link bhejo: t.me/SlimeFi_bot?start=" + S.referral_code;
+  // ad card
+  const e = S.earn;
+  $("ad-count").textContent = e.ads_today + "/" + e.ad_daily_limit;
+  const adBtn = $("btn-ad");
+  if (e.ads_today >= e.ad_daily_limit) { adBtn.disabled = true; adBtn.textContent = "Aaj ke ads khatam — kal aana"; }
+  else if (e.ad_cooldown_left > 0) { adBtn.disabled = true; adBtn.textContent = "Agla ad " + e.ad_cooldown_left + " sec me"; }
+  else { adBtn.disabled = false; adBtn.textContent = "▶ Watch Ad (+" + e.ad_reward_coins + " coins)"; }
+  $("ad-note").textContent = e.ads_live ? "" : "Note: ads judna baki hai — abhi reward system test mode me hai.";
+
+  // admin panel
+  if (S.is_owner) { $("owner-panel").style.display = "block"; loadOwner(); }
+  else { $("owner-panel").style.display = "none"; }
+
+}
+async function act(path, body) {
+  const r = await api(path, body || {});
+  if (r.state) { S = r.state; render(); }
+  if (r.msg) toast(r.msg);
+  else if (r.ok && r.got) toast("Collected: " + fmtCost(r.got));
+  else if (r.ok && r.reward) toast("Reward: +" + r.reward + " coins");
+  else if (r.ok) toast("Ho gaya");
+}
+function showBan(notice) {
+  let el = document.getElementById("ban-screen");
+  if (!el) { el = document.createElement("div"); el.id = "ban-screen"; document.body.appendChild(el); }
+  el.innerHTML = `<div class="ban-card"><div class="ban-emoji">🚫</div><div class="ban-text"></div></div>`;
+  el.querySelector(".ban-text").textContent = notice || "MULTIPLE ACCOUNTS DETECTED";
+  document.querySelectorAll(".bottomnav, .tabbar").forEach(n => n.style.display = "none");
+}
+async function load() {
+  S = await api("/api/state");
+  if (!S || S.ok === false) { if (S && S.msg) toast(S.msg); S = null; return; }
+  if (S.banned) { showBan(S.ban_notice); return; }
+  render();
+  try {
+    const ref = new URLSearchParams(location.search).get("ref");
+    if (ref && !localStorage.getItem("slimefi_ref_done")) {
+      localStorage.setItem("slimefi_ref_done", "1");
+      act("/api/referral/apply", { code: ref });
+    }
+  } catch (e) {}
+}
+
+// ---------- daily bonus + promo ----------
+function renderDaily() {
+  const table = S.daily_table || [50, 75, 100, 150, 200, 300, 500];
+  const cd = S.daily_cycle_day || 1;
+  const claimed = !S.daily_available;
+  $("daily-streak").textContent = "Streak: " + fmt(S.streak || 0) + " din";
+  $("daily-coins").textContent = fmt(S.coins);
+  $("daily-cal").innerHTML = table.map((amt, i) => {
+    const d = i + 1;
+    const cls = d < cd || (claimed && d === cd) ? "done" : (!claimed && d === cd ? "current" : "");
+    const mark = cls === "done" ? "✅" : (d === 7 ? "👑" : "🎁");
+    return `<div class="day-cell ${cls}"><small>Day ${d}</small><b>${mark}</b><span>+${amt}</span></div>`;
+  }).join("");
+  const btn = $("daily-claim");
+  if (claimed) { btn.textContent = "Claimed ✅"; btn.disabled = true; btn.classList.add("done-btn"); }
+  else { btn.textContent = "🎁 Claim — Day " + cd + " · +" + table[cd - 1] + " coins"; btn.disabled = false; btn.classList.remove("done-btn"); }
+}
+window.claimDaily = async () => {
+  const r = await api("/api/daily", {});
+  toast(r.msg || (r.ok ? "Bonus mil gaya" : "Nahi hua"));
+  if (r.ok) load();
+};
+window.redeemPromo = async () => {
+  const code = $("promo-code").value.trim();
+  if (!code) { toast("Pehle promo code dalo"); return; }
+  const r = await api("/api/promo/redeem", { code });
+  toast(r.msg || "Ho gaya");
+  if (r.ok) { $("promo-code").value = ""; load(); }
+};
+
+// ---------- sponsored tasks ----------
+let LAST_TASKS = [];
+let TASK_CAT = "all";
+const CAT_LABEL = { telegram: "➤ TELEGRAM", twitter: "𝕏 TWITTER", other: "▦ OTHER" };
+const CAT_ICON = { telegram: "📢", twitter: "𝕏", other: "🎯" };
+async function loadTasks() {
+  const box = $("tasks-list");
+  box.innerHTML = `<div class="card"><div class="card-sub">Loading…</div></div>`;
+  const r = await api("/api/tasks");
+  if (!r.ok) { box.innerHTML = ""; return; }
+  LAST_TASKS = r.tasks;
+  renderTasks();
+}
+function renderTasks() {
+  const box = $("tasks-list");
+  const list = LAST_TASKS.filter(t => TASK_CAT === "all" || (t.category || "telegram") === TASK_CAT);
+  if (!LAST_TASKS.length) {
+    box.innerHTML = `<div class="card"><div class="card-title">Abhi koi sponsored task nahi hai</div>
+      <div class="card-sub">Naye paid tasks yahan aayenge — businesses ke campaigns shuru hote hi.</div></div>`;
+    return;
+  }
+  if (!list.length) {
+    box.innerHTML = `<div class="card"><div class="card-sub">Is category me abhi koi task nahi hai.</div></div>`;
+    return;
+  }
+  box.innerHTML = list.map(t => `
+    <div class="card task-card">
+      <div class="task-head">
+        <span class="task-ico">${CAT_ICON[t.category || "telegram"]}</span>
+        <div class="task-main">
+          <div class="task-title">${esc(t.title)}</div>
+          <div class="card-sub">${esc(t.description || "")}</div>
+        </div>
+        <div class="task-reward">+${fmt(t.reward_coins)}</div>
+      </div>
+      <div class="task-actions">
+        ${t.my_status === "approved" ? `<span class="done-pill">✅ COMPLETED</span>`
+          : t.my_status === "pending" ? `<span class="pend-pill">⏳ Admin check me hai</span>`
+          : `${t.link ? `<button class="btn-open" data-u="${esc(t.link)}" onclick="openTaskLink(this.dataset.u)">🔗 Open</button>` : ""}
+             ${t.verify_mode === "channel"
+                ? `<button class="btn-claim" onclick="channelCheck(${t.id})">✅ Check Karo</button>`
+                : `<button class="btn-claim" onclick="claimTask(${t.id})">✔ Complete Karo</button>`}`}
+      </div>
+    </div>`).join("");
+}
+window.openTaskLink = (url) => {
+  if (!url) return;
+  try { if (url.includes("t.me/") && tg?.openTelegramLink) { tg.openTelegramLink(url); return; } } catch (e) {}
+  try { if (tg?.openLink) { tg.openLink(url); return; } } catch (e) {}
+  window.open(url, "_blank");
+};
+window.channelCheck = async (taskId) => {
+  const r = await api("/api/tasks/" + taskId + "/channel-check", {});
+  toast(r.msg || (r.ok ? "Ho gaya" : "Nahi hua"));
+  if (r.ok) load();
+};
+window.grantCoins = async () => {
+  const user_id = $("gr-user").value;
+  const coins = parseInt($("gr-amount").value, 10) || 0;
+  if (!user_id) { toast("Pehle player chuno"); return; }
+  if (coins <= 0) { toast("Coins ki matra dalo"); return; }
+  const r = await api("/api/owner/grant", { user_id, coins });
+  toast(r.msg || "Ho gaya");
+  if (r.ok) { $("gr-amount").value = ""; loadOwner(); }
+};
+window.createPromo = async () => {
+  const code = $("np-code").value.trim();
+  const coins = parseInt($("np-coins").value, 10) || 0;
+  const max_uses = parseInt($("np-uses").value, 10) || 0;
+  if (!code || coins <= 0) { toast("Code aur coins dalo"); return; }
+  const r = await api("/api/owner/promos", { code, coins, max_uses });
+  toast(r.msg || "Ho gaya");
+  if (r.ok) { $("np-code").value = ""; $("np-coins").value = ""; $("np-uses").value = ""; loadOwner(); }
+};
+window.deactivatePromo = async (code) => {
+  const r = await api("/api/owner/promos/deactivate", { code });
+  toast(r.msg || "Ho gaya");
+  loadOwner();
+};
+window.reduceCoins = async () => {
+  const user_id = $("gr-user").value;
+  const coins = parseInt($("gr-amount").value, 10) || 0;
+  if (!user_id) { toast("Pehle player chuno"); return; }
+  if (coins <= 0) { toast("Coins ki matra dalo"); return; }
+  const r = await api("/api/owner/reduce", { user_id, coins });
+  toast(r.msg || "Ho gaya");
+  if (r.ok) { $("gr-amount").value = ""; loadOwner(); }
+};
+window.revDecide = async (id, action) => {
+  const r = await api("/api/owner/referrals/decide", { id, action });
+  toast(r.msg || "Ho gaya");
+  loadOwner();
+};
+window.unbanUser = async (userId) => {
+  const r = await api("/api/owner/unban", { user_id: userId });
+  toast(r.msg || "Ho gaya");
+  loadOwner();
+};
+window.claimTask = async (taskId) => {
+  const r = await api("/api/tasks/" + taskId + "/claim", {});
+  toast(r.msg || (r.ok ? "Ho gaya" : "Nahi hua"));
+  if (r.ok) load();
+};
+window.submitProof = async (taskId) => {
+  const v = $("proof-" + taskId).value.trim();
+  if (!v) { toast("Pehle proof dalo"); return; }
+  const r = await api("/api/tasks/submit", { task_id: taskId, proof: v });
+  toast(r.msg || (r.ok ? "Ho gaya" : "Nahi hua"));
+  if (r.ok) { loadTasks(); S = await api("/api/state"); render(); }
+};
+
+// ---------- owner / admin ----------
+async function loadOwner() {
+  try {
+    const st = await api("/api/owner/stats");
+    if (st.ok) {
+      $("owner-stats").textContent =
+        "Total Players: " + st.total_players + " · Aaj Join: " + st.joined_today +
+        " · Bot Starts: " + st.bot_starts +
+        " · Coin Liability: ₹" + Number(st.estimated_coin_value_rupees || 0).toFixed(2) +
+        " · Open Tickets: " + (st.open_support_tickets || 0);
+      const sel = $("gr-user");
+      const keep = sel.value;
+      sel.innerHTML = (st.players || []).map(p =>
+        `<option value="${esc(p.user_id)}">${p.uname ? "@" + esc(p.uname) : esc(p.user_id)} — ${fmt(p.coins)} coins</option>`).join("");
+      if (keep) sel.value = keep;
+      $("owner-promos").innerHTML = (st.promos || []).map(p =>
+        `<div class="wd-row"><span>🎟️ ${esc(p.code)} · ${fmt(p.coins)} coins</span><span>${p.active ? "ON" : "BAND"} · ${fmt(p.used_count)}/${p.max_uses ? fmt(p.max_uses) : "∞"} use${p.active ? ` · <a href="#" onclick="deactivatePromo('${p.code}');return false;">band karo</a>` : ""}</span></div>`).join("")
+        || `<div class="card-sub">Abhi koi promo code nahi hai.</div>`;
+      $("owner-recent").innerHTML = (st.recent || []).map(x =>
+        `<div class="wd-row"><span>${x.uname ? "@" + esc(x.uname) + " · " : ""}${esc(x.user_id.replace("tg", "TG "))} · ${fmt(x.lifetime_coins)} coins</span>` +
+        `<span>${x.created_at ? new Date(x.created_at * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("");
+    }
+  } catch (e) {}
+  try {
+    const sb = await api("/api/owner/submissions");
+    if (sb.ok) {
+      $("owner-subs").innerHTML = (sb.submissions || []).map(s => `
+        <div class="owner-row">
+          <div class="wd-row"><span>#${s.id} · ${esc(s.task_title)} · ${esc(s.user_id)}</span><span class="st-${s.status}">${s.status.toUpperCase()}</span></div>
+          <div class="card-sub">Proof: ${esc(s.proof)} · Reward: ${fmt(s.reward_coins)} coins</div>
+          ${s.status === "pending" ? `<div class="ref-row"><button onclick="decideSub(${s.id},'approve')">Approve</button><button onclick="decideSub(${s.id},'reject')">Reject</button></div>` : ""}
+        </div>`).join("") || `<div class="card-sub">Koi submission nahi</div>`;
+      const rf = await api("/api/owner/referrals");
+      if (rf.ok) {
+        $("owner-referrals").innerHTML = (rf.reviews || []).map(r => `
+          <div class="owner-row">
+            <div class="wd-row"><span>${esc(r.referrer)} → ${esc(r.referred)}</span><span>${fmt(r.reward_coins)} coins HOLD</span></div>
+            <div class="card-sub">Dono ek hi network se hain — reward tumhare faisle par ruka hai.</div>
+            <div class="ref-row"><button onclick="revDecide(${r.id},'approve')">Approve — Reward Do</button><button onclick="revDecide(${r.id},'reject')">Reject</button></div>
+          </div>`).join("") || `<div class="card-sub">Review me kuch nahi hai</div>`;
+        $("owner-suspicious").innerHTML = (rf.suspicious || []).map(x => `
+          <div class="owner-row">
+            <div class="wd-row"><span>⚠️ ${esc(x.label)}</span><span>${fmt(x.lifetime_coins)} coins</span></div>
+            <div class="card-sub">${esc(x.reason || "")} — sirf network match hai, doshi pakka nahi. Jaanch karke faisla lo — ye account band nahi hai.</div>
+          </div>`).join("") || `<div class="card-sub">Koi suspicious account nahi hai</div>`;
+        $("owner-banned").innerHTML = (rf.banned || []).map(b => `
+          <div class="owner-row">
+            <div class="wd-row"><span>${esc(b.label)}</span><span>${fmt(b.lifetime_coins)} coins</span></div>
+            <div class="card-sub">${esc(b.reason || "")}</div>
+            <div class="ref-row"><button onclick="unbanUser('${b.user_id}')">Unban Karo</button></div>
+          </div>`).join("") || `<div class="card-sub">Koi banned account nahi hai</div>`;
+      }
+      $("owner-tasks").innerHTML = (sb.tasks || []).map(t =>
+        `<div class="wd-row"><span>Task #${t.id} · ${esc(t.title)}</span><span>${CAT_LABEL[t.category || "telegram"]} · ${fmt(t.reward_coins)} coins${t.budget_coins ? ` · Budget ${fmt(t.spent_coins || 0)}/${fmt(t.budget_coins)}` : ""} · ${t.active ? "ON" : "OFF"}</span></div>`).join("");
+    }
+  } catch (e) {}
+  const r = await api("/api/owner/withdrawals");
+  if (!r.ok) return;
+  $("owner-summary").textContent = "Pending: " + r.pending_count + " requests · ₹" + r.pending_rupees;
+  const support = await api("/api/owner/support/tickets");
+  if (support.ok) {
+    $("owner-support-tickets").innerHTML = (support.tickets || []).map(t => `
+      <div class="owner-row"><div class="wd-row"><span>#${t.id} · ${esc(t.user_id)} · ${esc(t.category)}</span><b>${esc(t.status)}</b></div>
+      <div class="card-sub">${esc(t.message)}</div>
+      ${t.status === "open" ? `<button onclick="closeSupportTicket(${t.id})">Close Ticket</button>` : ""}</div>`).join("") || '<div class="card-sub">No support tickets.</div>';
+  }
+  $("owner-list").innerHTML = r.withdrawals.map(w => `
+    <div class="owner-row">
+      <div class="wd-row"><span>#${w.id} · ${esc(w.user_id)}</span><span class="st-${w.status}">${w.status === "rejected" ? "FAILED" : w.status.toUpperCase()}</span></div>
+      <div class="card-sub">₹${w.amount_rupees} → ${esc(w.upi_id)}</div>
+      ${w.holder_name ? `<div class="card-sub">👤 ${esc(w.holder_name)}</div>` : `<div class="card-sub">👤 Naam nahi diya (purani request)</div>`}
+      ${w.txn_id ? `<div class="card-sub">🧾 Txn: ${esc(w.txn_id)}</div>` : ""}
+      ${w.utr ? `<div class="card-sub">🏦 UTR: ${esc(w.utr)}</div>` : ""}
+      ${w.payment_date ? `<div class="card-sub">📅 Payment Date: ${esc(w.payment_date)}</div>` : ""}
+      ${w.status === "pending" ? `<input id="txn-${w.id}" placeholder="Transaction ID — payment ke baad dalo" style="text-transform:none"><input id="utr-${w.id}" placeholder="UTR / UPI Reference Number" style="text-transform:none"><input id="pdate-${w.id}" type="date"><div class="ref-row"><button onclick="decideWd(${w.id},'paid')">Paid kar diya</button><button onclick="decideWd(${w.id},'reject')">Reject / Failed</button></div>` : ""}
+    </div>`).join("");
+}
+window.closeSupportTicket = async (id) => {
+  const r = await api("/api/owner/support/tickets/close", {id});
+  toast(r.msg || "Ho gaya");
+  loadOwner();
+};
+window.decideWd = async (id, action) => {
+  let txn_id = "", utr = "", payment_date = "";
+  if (action === "paid") {
+    const gx = p => { const e = $(p + "-" + id); return e ? e.value.trim() : ""; };
+    txn_id = gx("txn"); utr = gx("utr"); payment_date = gx("pdate");
+    if (!txn_id && !utr) { toast("Transaction ID ya UTR dalo — wahi payment ka proof hai"); return; }
+  }
+  const rr = await api("/api/owner/withdrawals/decide", { id, action, txn_id, utr, payment_date });
+  toast(rr.msg || "Ho gaya");
+  S = await api("/api/state"); render();
+};
+window.decideSub = async (id, action) => {
+  const rr = await api("/api/owner/submissions/decide", { id, action });
+  toast(rr.msg || "Ho gaya");
+  S = await api("/api/state"); render();
+};
+
+// ---------- Spin Wheel ----------
+let SPIN_ROT = 0, SPINNING = false, WHEEL_KEY = "";
+const WHEEL_COLORS = ["#7c4dff", "#ffb300", "#00897b", "#c2185b", "#3949ab", "#ef6c00", "#2e7d32", "#5e35b1"];
+function renderSpin() {
+  if (!S || !S.spin || !$("wheel")) return;
+  $("spin-info").textContent = "🎟️ Free spin bacha: " + S.spin.free_left + " · Extra spin: " + S.spin.credits;
+  const segs = S.spin.segments || [];
+  const key = segs.join(",");
+  if (!segs.length || key === WHEEL_KEY) return;
+  WHEEL_KEY = key;
+  const step = 360 / segs.length;
+  $("wheel").style.background = "conic-gradient(from " + (-step / 2) + "deg, " +
+    segs.map((v, i) => WHEEL_COLORS[i % WHEEL_COLORS.length] + " " + (i * step) + "deg " + ((i + 1) * step) + "deg").join(", ") + ")";
+  document.querySelectorAll(".wheel-label").forEach(e => e.remove());
+  segs.forEach((v, i) => {
+    const s = document.createElement("span");
+    s.className = "wheel-label";
+    s.textContent = v;
+    s.style.transform = "rotate(" + (i * step) + "deg) translateY(-104px)";
+    $("wheel").appendChild(s);
+  });
+}
+async function spinNow() {
+  if (SPINNING) return;
+  const r = await api("/api/spin", {});
+  if (!r.ok) { toast(r.msg || "Spin nahi ho paya"); return; }
+  SPINNING = true;
+  $("spin-result").textContent = "";
+  $("btn-spin").disabled = true;
+  const segs = (S && S.spin && S.spin.segments) || [50, 500, 150, 300, 100, 250, 200, 100];
+  const step = 360 / segs.length;
+  const target = -r.index * step;
+  const delta = (((target - (SPIN_ROT % 360)) % 360) + 360) % 360;
+  SPIN_ROT += 360 * 5 + delta;
+  $("wheel").style.transform = "rotate(" + SPIN_ROT + "deg)";
+  setTimeout(() => {
+    SPINNING = false;
+    $("btn-spin").disabled = false;
+    $("spin-result").textContent = "🎉 " + r.prize + " Coins jeete!";
+    toast("🎡 Spin: +" + r.prize + " coins!");
+    if (r.state) { S = r.state; render(); }
+  }, 4900);
+}
+function spinAd() {
+  // Same proven ad flow as Watch Ads (Monetag first, AdsGram fallback,
+  // one-time token + age gates) — but the claim carries purpose "spin",
+  // so the server pays +1 spin credit instead of the +100 coins.
+  const monetagFn = window.show_12248440;
+  const blockId = window.SLIMEFI_ADS_BLOCK_ID;
+  const useMonetag = typeof monetagFn === "function";
+  if (!useMonetag && (!blockId || !window.Adsgram)) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
+  const startP = api("/api/ad/start", { v: 30 });
+  const t0 = Date.now();
+  let claimed = false;
+  const tryClaim = async done => {
+    if (claimed) return; claimed = true;
+    const st = await startP;
+    if (!st.ok) { toast(st.msg || "Spin nahi mila — fir try karo"); return; }
+    const need = (done ? 10000 : 17000) - (Date.now() - t0);
+    const send = async () => {
+      const r = await api("/api/ad/claim", { token: st.token, done: done ? 1 : 0, purpose: "spin" });
+      if (r.ok) { toast("🎡 +1 Spin mila!"); if (r.state) { S = r.state; render(); } }
+      else toast(r.msg || "Spin nahi mila — fir try karo");
+    };
+    if (need > 0) setTimeout(send, need); else send();
+  };
+  let settled = false;
+  const onDone = d => { settled = true; tryClaim(d); };
+  const onFail = () => {
+    settled = true;
+    if (Date.now() - t0 >= 15000) tryClaim(false);
+    else toast("Ad load nahi hua — fir try karo");
+  };
+  if (useMonetag) {
+    monetagFn()
+      .then(res => {
+        if (res && res.reward_event_type === "non_valued") { settled = true; toast("Is ad ka reward nahi bana — ek aur try karo"); return; }
+        onDone(true);
+      })
+      .catch(onFail);
+  } else {
+    window.Adsgram.init({ blockId }).show()
+      .then(res => {
+        settled = true;
+        if (Date.now() - t0 >= 15000 || (res && res.done)) tryClaim(!!(res && res.done));
+        else toast("Ad pura dekho, tabhi spin milega");
+      })
+      .catch(onFail);
+  }
+  const iv = setInterval(() => {
+    if (claimed || settled) { clearInterval(iv); return; }
+    if (Date.now() - t0 >= 20000) { clearInterval(iv); tryClaim(false); }
+  }, 1000);
+}
+
+// ---------- reward history + support ----------
+async function loadHistory() {
+  const box = $("history-list"); if (!box) return;
+  box.innerHTML = '<div class="card-sub">Loading…</div>';
+  const r = await api("/api/history");
+  if (!r.ok) { box.textContent = "History load nahi hui."; return; }
+  box.innerHTML = (r.history || []).map(x => `<div class="wd-row"><span>${esc(x.note || x.type)}</span><b>${x.coins > 0 ? "+" : ""}${fmt(x.coins)} 🪙</b></div><div class="card-sub">${x.ts ? new Date(x.ts*1000).toLocaleString("en-IN") : ""}</div>`).join("") || '<div class="card-sub">Abhi koi activity nahi hai.</div>';
+}
+async function loadSupportTickets() {
+  const box = $("support-ticket-list"); if (!box) return;
+  const r = await api("/api/support/tickets");
+  box.innerHTML = '<h3>My Support Tickets</h3>' + ((r.tickets || []).map(t => `<div class="wd-row"><span>#${t.id} · ${esc(t.category)}</span><b>${esc(t.status)}</b></div><div class="card-sub">${esc(t.message)}</div>`).join("") || '<div class="card-sub">Abhi koi ticket nahi hai.</div>');
+}
+$("support-submit").onclick = async () => {
+  const message = $("support-message").value.trim();
+  const category = $("support-category").value;
+  const r = await api("/api/support/tickets", {category, message});
+  toast(r.msg || "Request submit nahi hui");
+  if (r.ok) { $("support-message").value = ""; loadSupportTickets(); }
+};
+
+// ---------- wiring ----------
+$("btn-spin").onclick = spinNow;
+$("btn-spin-ad").onclick = spinAd;
+$("btn-withdraw").onclick = () => {
+  const upi = $("upi-input").value.trim();
+  const amt = Number($("wd-input").value);
+  const holder_name = $("wd-name").value.trim();
+  if (!holder_name) { toast("Account holder ka naam dalo"); return; }
+  if (upi && Number.isFinite(amt) && amt > 0) act("/api/withdraw", { upi_id: upi, amount_rupees: amt.toFixed(2), holder_name });
+  else toast("UPI ID aur amount dono dalo");
+};
+$("btn-ad").onclick = () => {
+  const monetagFn = window.show_12248440;
+  const blockId = window.SLIMEFI_ADS_BLOCK_ID;
+  const useMonetag = typeof monetagFn === "function";
+  if (!useMonetag && (!blockId || !window.Adsgram)) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
+  // Token fetch and ad start TOGETHER: the ad must open straight from the
+  // tap — if we wait for the network first, the webview blocks the ad.
+  const startP = api("/api/ad/start", { v: 30 });
+  const t0 = Date.now();
+  let claimed = false;
+  const tryClaim = async done => {
+    if (claimed) return; claimed = true;
+    const st = await startP;
+    if (!st.ok) { toast(st.msg || "Reward nahi mila — fir try karo"); return; }
+    // The server rejects claims whose one-time token is too young (done:
+    // under 8s, no-signal: under 15s) WITHOUT burning the token — wait
+    // out the margin here so a genuine claim is not lost.
+    const need = (done ? 10000 : 17000) - (Date.now() - t0);
+    const send = () => act("/api/ad/claim", { token: st.token, done: done ? 1 : 0 });
+    if (need > 0) setTimeout(send, need); else send();
+  };
+  // Some Telegram clients play the ad but NEVER answer the SDK promise
+  // (their WebApp bridge drops the completion callback) — the ad closes
+  // and nothing happens. So: claim from whichever comes first — the SDK
+  // settling after 15s+, or a 20-second timer. The server still gates
+  // every claim on the one-time token's age (15s+ without the signal),
+  // so instant closes and load failures stay unpaid.
+  let settled = false;
+  const onDone = isDone => { settled = true; tryClaim(isDone); };
+  const onFail = () => {
+    settled = true;
+    if (Date.now() - t0 >= 15000) tryClaim(false);
+    else toast("Ad load nahi hua — fir try karo");
+  };
+  if (useMonetag) {
+    // Monetag Rewarded Interstitial, zone 12248440. Its promise resolves
+    // after the ad closes: reward_event_type 'valued' means the view is
+    // paid; 'non_valued' means this ad earns nothing — no claim then.
+    monetagFn()
+      .then(res => {
+        if (res && res.reward_event_type === "non_valued") {
+          settled = true;
+          toast("Is ad ka reward nahi bana — ek aur try karo");
+          return;
+        }
+        onDone(true);
+      })
+      .catch(onFail);
+  } else {
+    // AdsGram fallback (test block).
+    window.Adsgram.init({ blockId }).show()
+      .then(res => {
+        settled = true;
+        if (Date.now() - t0 >= 15000 || (res && res.done)) tryClaim(!!(res && res.done));
+        else toast("Ad pura dekho, tabhi coins milenge");
+      })
+      .catch(onFail);
+  }
+  const iv = setInterval(() => {
+    if (claimed || settled) { clearInterval(iv); return; }
+    if (Date.now() - t0 >= 20000) { clearInterval(iv); tryClaim(false); }
+  }, 1000);
+};
+window.openPayouts = () => {
+  const url = "https://SlimeFi.pythonanywhere.com/payouts";
+  try { if (tg && tg.openLink) { tg.openLink(url); return; } } catch (e) {}
+  window.open(url, "_blank");
+};
+$("btn-ref").onclick = () => {
+  const code = $("ref-input").value.trim();
+  if (code) act("/api/referral/apply", { code });
+};
+$("btn-nt").onclick = async () => {
+  const body = { title: $("nt-title").value.trim(), description: $("nt-desc").value.trim(),
+                 link: $("nt-link").value.trim(), reward_coins: parseInt($("nt-reward").value, 10) || 0,
+                 budget_coins: parseInt($("nt-budget").value, 10) || 0,
+                 category: $("nt-category").value, verify_mode: $("nt-mode").value };
+  const r = await api("/api/owner/tasks", body);
+  toast(r.msg || "Ho gaya");
+  if (r.ok) { $("nt-title").value = ""; $("nt-desc").value = ""; $("nt-link").value = ""; $("nt-reward").value = ""; $("nt-budget").value = ""; loadOwner(); }
+};
+document.querySelectorAll(".tabbar button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabbar button").forEach(x => x.classList.remove("active"));
+  document.querySelectorAll(".pane").forEach(x => x.classList.remove("active"));
+  b.classList.add("active");
+  $("tab-" + b.dataset.tab).classList.add("active");
+});
+$("btn-copy").onclick = async () => {
+  if (!S) return;
+  try { await navigator.clipboard.writeText(S.referral_code); toast("Invite code copy ho gaya"); }
+  catch (e) { toast("Invite code: " + S.referral_code); }
+};
+$("btn-share").onclick = () => {
+  if (!S) return;
+  const link = "https://t.me/SlimeFi_bot?start=" + S.referral_code;
+  const shareUrl = "https://t.me/share/url?url=" + encodeURIComponent(link) +
+    "&text=" + encodeURIComponent("SlimeFi par mere saath earn karo!");
+  if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl);
+  else toast("Dost ko ye link bhejo: " + link);
+};
+document.querySelectorAll(".bottom-nav .nav-item").forEach(b =>
+  b.onclick = () => go(b.dataset.go));
+document.querySelectorAll(".chip[data-cat]").forEach(ch => ch.onclick = () => {
+  TASK_CAT = ch.dataset.cat;
+  document.querySelectorAll(".chip[data-cat]").forEach(x =>
+    x.classList.toggle("active", x === ch));
+  renderTasks();
+});
+load();
+setInterval(load, 30000);
+
+// ===== Slime pet transformation (from the user's video) =====
+// The slime hops around; every few seconds the magic rings flare, a flash
+// bursts, and it transforms into the slime-girl for a few seconds.
+(function () {
+  const stage = document.querySelector(".pet-stage");
+  if (!stage) return;
+  let girl = false;
+  const swap = () => {
+    if (document.hidden) { setTimeout(swap, 2000); return; }
+    girl = !girl;
+    stage.classList.add("tf-flash");
+    setTimeout(() => {
+      stage.classList.toggle("tf-on", girl);
+      stage.classList.remove("tf-flash");
+    }, 240);
+    setTimeout(swap, girl ? 4500 : 8000);
+  };
+  setTimeout(swap, 5000);
+})();
+
+</script>
+</body>
+</html>
