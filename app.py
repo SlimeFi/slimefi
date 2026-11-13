@@ -151,7 +151,7 @@ SPIN_WEIGHTS = [26, 4, 18, 10, 24, 12, 14, 20]           # relative chances (500
 MIN_WITHDRAW_RUPEES = 10      # minimum UPI withdrawal request
 PAYOUTS_ENABLED = os.environ.get("PAYOUTS_ENABLED", "0") == "1"  # UPI payout master switch (owner)
 ALLOW_DEV_AUTH = os.environ.get("ALLOW_DEV_AUTH", "0") == "1"    # local testing only: trust X-User-Id
-REFERRAL_REWARD_COINS = 500   # paid to the inviter when the referred user completes
+REFERRAL_REWARD_COINS = 1000   # paid to the inviter when the referred user completes
                               # their first qualifying activity (ad / quest / daily /
                               # approved sponsored task) — never on join alone
 OWNER_ID = os.environ.get("OWNER_ID", "")          # Telegram user key of the owner, e.g. "tg123456789"
@@ -731,10 +731,14 @@ def ad_start():
 
 @app.post("/api/ad/claim")
 def ad_claim():
-    """Reward for one completed ad. A valid one-time token from
+    """Claim endpoint for one ad session. A valid one-time token from
     /api/ad/start is mandatory: no token, someone else's token, a reused
     (duplicate/replayed) token, a too-fast claim or an expired token
-    earns nothing."""
+    earns nothing. Since v34, watch-ad COINS are credited only by the
+    Monetag valued postback (owner decision: "sirf valued ad par coin
+    do") — a non-spin claim here validates + logs and returns
+    credited:false without burning the token. Spin claims
+    (purpose="spin") are unchanged: they pay +1 spin credit here."""
     data = request.get_json(silent=True) or {}
     token = (data.get("token") or "").strip()
     today = str(date.today())
@@ -765,26 +769,32 @@ def ad_claim():
         if left > 0:
             adlog(c, u["user_id"], "claim_reject", f"cooldown {int(left)}")
             return jsonify({"ok": False, "msg": f"Thoda ruko, agla ad {int(left)} sec me milega."})
+        spin_mode = data.get("purpose") == "spin"
+        if not spin_mode:
+            # v34 (owner decision, 2026-11-13: "Sirf valued ad par coin
+            # do"): a client claim NEVER credits coins for a watch-ad.
+            # The only coin path is the Monetag valued postback, which
+            # shares this session row — so the token is deliberately NOT
+            # burned here and ads_today is untouched; a valued postback
+            # that arrives after this claim can still pay exactly once.
+            adlog(c, u["user_id"], "claim_nocredit",
+                  f"done={1 if data.get('done') else 0} age={int(age)}")
+            return jsonify({"ok": True, "credited": False, "reward": 0,
+                            "spin_credit": False,
+                            "state": state_payload(c, u)})
         cur = c.execute("UPDATE ad_sessions SET used=1 WHERE token=? AND used=0", (token,))
         if cur.rowcount != 1:
             return jsonify({"ok": False, "msg": "Is ad ka reward pehle hi mil chuka hai"})
-        spin_mode = data.get("purpose") == "spin"
-        if spin_mode:
-            # Spin page ad: the reward is +1 spin credit, not coins.
-            c.execute("""UPDATE users SET spin_credits=spin_credits+1,
-                         ads_today=?, ads_date=?, last_ad_at=? WHERE user_id=?""",
-                      (watched + 1, today, time.time(), u["user_id"]))
-            log(c, u["user_id"], "ad_spin", {"spin": 1}, f"Rewarded ad #{watched + 1} -> +1 spin")
-        else:
-            c.execute("""UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+?,
-                         ads_today=?, ads_date=?, last_ad_at=? WHERE user_id=?""",
-                      (AD_REWARD_COINS, AD_REWARD_COINS, watched + 1, today, time.time(), u["user_id"]))
-            log(c, u["user_id"], "ad", {"coins": AD_REWARD_COINS}, f"Rewarded ad #{watched + 1}")
+        # Spin page ad: the reward is +1 spin credit, not coins.
+        c.execute("""UPDATE users SET spin_credits=spin_credits+1,
+                     ads_today=?, ads_date=?, last_ad_at=? WHERE user_id=?""",
+                  (watched + 1, today, time.time(), u["user_id"]))
+        log(c, u["user_id"], "ad_spin", {"spin": 1}, f"Rewarded ad #{watched + 1} -> +1 spin")
         maybe_qualify_referral(c, u)
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
-        adlog(c, u["user_id"], "claim_ok", f"done={1 if data.get('done') else 0} age={int(age)} spin={1 if spin_mode else 0}")
-        return jsonify({"ok": True, "reward": 0 if spin_mode else AD_REWARD_COINS,
-                        "spin_credit": spin_mode, "state": state_payload(c, u)})
+        adlog(c, u["user_id"], "claim_ok", f"done={1 if data.get('done') else 0} age={int(age)} spin=1")
+        return jsonify({"ok": True, "reward": 0,
+                        "spin_credit": True, "state": state_payload(c, u)})
 
 @app.post("/api/spin")
 def spin():
