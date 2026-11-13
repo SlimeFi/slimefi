@@ -52,7 +52,7 @@ def verify_init_data(init_data):
 def telegram_auth():
     """Identity must be proven: verified Telegram initData or the owner's
     secret key. Bare X-User-Id is trusted only in local dev (ALLOW_DEV_AUTH)."""
-    if not request.path.startswith("/api/") or request.path in ("/api/health", "/api/payouts"):
+    if not request.path.startswith("/api/") or request.path in ("/api/health", "/api/payouts", "/api/monetag/postback"):
         return None
     # Owner's personal panel link carries a secret key: it maps straight to
     # the owner's Telegram identity even when his Telegram client does not
@@ -157,6 +157,8 @@ REFERRAL_REWARD_COINS = 500   # paid to the inviter when the referred user compl
 OWNER_ID = os.environ.get("OWNER_ID", "")          # Telegram user key of the owner, e.g. "tg123456789"
 OWNER_KEY = os.environ.get("OWNER_KEY", "")        # secret in the owner's personal panel link (startapp param)
 ADSGRAM_BLOCK_ID = os.environ.get("ADSGRAM_BLOCK_ID", "")  # set when the AdsGram block is live
+MONETAG_POSTBACK_SECRET = os.environ.get("MONETAG_POSTBACK_SECRET", "")  # long random string, set in Monetag postback URL + env
+MONETAG_ZONE_ID = os.environ.get("MONETAG_ZONE_ID", "12248440")
 
 # ---------------- db ----------------
 def db():
@@ -214,6 +216,12 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS ad_log(
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, event TEXT, detail TEXT, ts REAL
+        );
+        CREATE TABLE IF NOT EXISTS monetag_postbacks(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, ymid TEXT, event_type TEXT,
+            reward_event_type TEXT, zone_id TEXT, estimated_price TEXT,
+            telegram_id TEXT, credited INTEGER DEFAULT 0, ts REAL,
+            UNIQUE(ymid, event_type)
         );
         CREATE TABLE IF NOT EXISTS tasks(
             id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT,
@@ -278,6 +286,9 @@ def init_db():
                          ("payment_date", "ALTER TABLE withdrawals ADD COLUMN payment_date TEXT DEFAULT ''")]:
             if col not in wcols:
                 c.execute(ddl)
+        scols = {r[1] for r in c.execute("PRAGMA table_info(ad_sessions)")}
+        if "ymid" not in scols:
+            c.execute("ALTER TABLE ad_sessions ADD COLUMN ymid TEXT DEFAULT ''")
         # v30 migration: old cash wallet was created by manually converting coins.
         # Move that value back into coins once, preserving total user value.
         for row in c.execute("SELECT user_id, cash_paise FROM users WHERE COALESCE(cash_paise,0)>0").fetchall():
@@ -705,9 +716,17 @@ def ad_start():
             return jsonify({"ok": False, "msg": f"Thoda ruko, agla ad {int(left)} sec me milega."})
         c.execute("DELETE FROM ad_sessions WHERE created_at < ?", (time.time() - 3600,))
         token = secrets.token_urlsafe(24)
-        c.execute("INSERT INTO ad_sessions(token,user_id,created_at,used) VALUES(?,?,?,0)",
-                  (token, u["user_id"], time.time()))
-        adlog(c, u["user_id"], "start", f"v={data.get('v')}")
+        # Monetag S2S: the Mini App generates a unique ymid per ad show and
+        # passes it here in parallel with calling the SDK, so the later
+        # server postback can be matched to this exact session/user.
+        ymid = (data.get("ymid") or "").strip()
+        if ymid and (len(ymid) > 64 or not re.fullmatch(r"[A-Za-z0-9._-]+", ymid)):
+            ymid = ""
+        if ymid and c.execute("SELECT 1 FROM ad_sessions WHERE ymid=?", (ymid,)).fetchone():
+            ymid = ""
+        c.execute("INSERT INTO ad_sessions(token,user_id,created_at,used,ymid) VALUES(?,?,?,0,?)",
+                  (token, u["user_id"], time.time(), ymid))
+        adlog(c, u["user_id"], "start", f"v={data.get('v')} ymid={ymid}")
         return jsonify({"ok": True, "token": token})
 
 @app.post("/api/ad/claim")
@@ -727,7 +746,9 @@ def ad_claim():
             return jsonify({"ok": False, "msg": "Reward link sahi nahi hai — naya ad dekh kar try karo"})
         if row["used"]:
             adlog(c, u["user_id"], "claim_reject", "used")
-            return jsonify({"ok": False, "msg": "Is ad ka reward pehle hi mil chuka hai"})
+            u2 = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
+            return jsonify({"ok": False, "msg": "Is ad ka reward pehle hi mil chuka hai",
+                            "state": state_payload(c, u2)})
         age = time.time() - (row["created_at"] or 0)
         min_age = AD_MIN_WATCH_SEC if data.get("done") else AD_MIN_OPEN_SEC
         if age < min_age:
@@ -800,6 +821,75 @@ def spin():
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
         return jsonify({"ok": True, "prize": prize, "index": idx,
                         "state": state_payload(c, u)})
+
+@app.get("/api/monetag/postback")
+def monetag_postback():
+    """Monetag server-to-server reward postback (GET, from Monetag's servers,
+    no Telegram initData). Secret in the postback URL (stored only in the
+    Monetag dashboard) proves the request came from Monetag. A 'valued'
+    impression credits the session matched by ymid exactly once; the same
+    ad_sessions.used flag as /api/ad/claim makes client-claim and postback
+    mutually exclusive, so double-crediting is impossible. Duplicate
+    postbacks (Monetag does not dedupe) are absorbed by UNIQUE(ymid,
+    event_type). Non-valued events and clicks are logged only, with
+    estimated_price kept for revenue accounting."""
+    if not MONETAG_POSTBACK_SECRET:
+        return jsonify({"ok": False, "msg": "postback disabled"}), 503
+    provided = request.args.get("secret", "")
+    if not provided or not hmac.compare_digest(provided, MONETAG_POSTBACK_SECRET):
+        return jsonify({"ok": False}), 403
+    ymid = (request.args.get("ymid") or "").strip()
+    event_type = request.args.get("event_type") or ""
+    reward = request.args.get("reward_event_type") or ""
+    zone_id = request.args.get("zone_id") or ""
+    est = request.args.get("estimated_price") or ""
+    tg_id = request.args.get("telegram_id") or ""
+    today = str(date.today())
+    with _lock, db() as c:
+        cur = c.execute(
+            "INSERT OR IGNORE INTO monetag_postbacks(ymid,event_type,reward_event_type,zone_id,estimated_price,telegram_id,ts,credited) VALUES(?,?,?,?,?,?,?,0)",
+            (ymid, event_type, reward, zone_id, est, tg_id, time.time()))
+        row = c.execute("SELECT * FROM ad_sessions WHERE ymid=?", (ymid,)).fetchone() if ymid else None
+        who = row["user_id"] if row else "monetag"
+        if cur.rowcount != 1:
+            adlog(c, who, "postback_dup", f"ymid={ymid} ev={event_type}")
+            return jsonify({"ok": True, "dup": True})
+        if not row:
+            adlog(c, "monetag", "postback_unknown_ymid", f"ymid={ymid} ev={event_type} reward={reward} est={est}")
+            return jsonify({"ok": True, "unknown": True})
+        if event_type != "impression" or reward != "valued" or (zone_id and zone_id != MONETAG_ZONE_ID):
+            adlog(c, who, "postback_nocredit", f"ymid={ymid} ev={event_type} reward={reward} zone={zone_id} est={est}")
+            return jsonify({"ok": True})
+        if row["used"]:
+            adlog(c, who, "postback_already_claimed", f"ymid={ymid} est={est}")
+            return jsonify({"ok": True, "already": True})
+        age = time.time() - (row["created_at"] or 0)
+        if age < AD_MIN_WATCH_SEC:
+            adlog(c, who, "postback_young", f"ymid={ymid} age={int(age)}")
+            return jsonify({"ok": False, "retry": True}), 503
+        u = roll_day(c, settle(c, get_user(c, who)))
+        if not u:
+            adlog(c, "monetag", "postback_unknown_user", f"ymid={ymid}")
+            return jsonify({"ok": True, "unknown": True})
+        watched = (u["ads_today"] or 0) if u["ads_date"] == today else 0
+        if watched >= AD_DAILY_LIMIT:
+            adlog(c, who, "postback_skip", f"ymid={ymid} cap est={est}")
+            return jsonify({"ok": True, "skip": "cap"})
+        left = AD_COOLDOWN_SEC - (time.time() - (u["last_ad_at"] or 0))
+        if left > 0:
+            adlog(c, who, "postback_skip", f"ymid={ymid} cooldown={int(left)} est={est}")
+            return jsonify({"ok": False, "retry": True}), 503
+        cur2 = c.execute("UPDATE ad_sessions SET used=1 WHERE token=? AND used=0", (row["token"],))
+        if cur2.rowcount != 1:
+            return jsonify({"ok": True, "already": True})
+        c.execute("""UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+?,
+                     ads_today=?, ads_date=?, last_ad_at=? WHERE user_id=?""",
+                  (AD_REWARD_COINS, AD_REWARD_COINS, watched + 1, today, time.time(), who))
+        log(c, who, "ad_monetag_postback", {"coins": AD_REWARD_COINS}, f"Monetag postback ymid={ymid} est={est}")
+        c.execute("UPDATE monetag_postbacks SET credited=1 WHERE ymid=? AND event_type=?", (ymid, event_type))
+        maybe_qualify_referral(c, u)
+        adlog(c, who, "postback_credit", f"ymid={ymid} est={est} age={int(age)} tg={tg_id}")
+        return jsonify({"ok": True, "credited": AD_REWARD_COINS})
 
 @app.post("/api/convert")
 def convert():
