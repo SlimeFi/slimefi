@@ -234,6 +234,15 @@ def init_db():
             category TEXT NOT NULL, message TEXT NOT NULL, status TEXT DEFAULT 'open',
             created_at REAL NOT NULL, updated_at REAL
         );
+        CREATE TABLE IF NOT EXISTS game_progress(
+            user_id TEXT PRIMARY KEY, xp INTEGER NOT NULL DEFAULT 0,
+            updated_at REAL NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS game_daily_claims(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL,
+            game_id TEXT NOT NULL, game_date TEXT NOT NULL, xp INTEGER NOT NULL,
+            created_at REAL NOT NULL, UNIQUE(user_id, game_id, game_date)
+        );
         """)
         # Earning columns added after the first release: add them to old DBs too.
         cols = {r[1] for r in c.execute("PRAGMA table_info(users)")}
@@ -551,6 +560,45 @@ def maybe_qualify_referral(c, user):
     _pay_referral(c, user, inv)
 
 # ---------------- routes ----------------
+
+
+# ---------------- Games Center (XP-only launch phase) ----------------
+GAME_XP = {"puzzle": 20, "quiz": 25}
+
+@app.get("/api/games/state")
+def games_state():
+    user_id = uid()
+    today = str(date.today())
+    with db() as c:
+        row = c.execute("SELECT xp FROM game_progress WHERE user_id=?", (user_id,)).fetchone()
+        xp = int(row["xp"] if row else 0)
+        claims = c.execute("SELECT game_id FROM game_daily_claims WHERE user_id=? AND game_date=?", (user_id, today)).fetchall()
+    claimed = [r["game_id"] for r in claims]
+    return jsonify({"ok": True, "xp": xp, "level": 1 + xp // 100, "claimed_today": claimed,
+                    "games": [{"id":"puzzle", "xp":GAME_XP["puzzle"]}, {"id":"quiz", "xp":GAME_XP["quiz"]}]})
+
+@app.post("/api/games/complete")
+def games_complete():
+    data = request.get_json(silent=True) or {}
+    game_id = str(data.get("game_id") or "")
+    if game_id not in GAME_XP:
+        return jsonify({"ok": False, "msg": "Game valid nahi hai"}), 400
+    user_id = uid()
+    today = str(date.today())
+    award = GAME_XP[game_id]
+    with _lock, db() as c:
+        try:
+            c.execute("INSERT INTO game_daily_claims(user_id,game_id,game_date,xp,created_at) VALUES(?,?,?,?,?)",
+                      (user_id, game_id, today, award, time.time()))
+        except sqlite3.IntegrityError:
+            row = c.execute("SELECT xp FROM game_progress WHERE user_id=?", (user_id,)).fetchone()
+            return jsonify({"ok": False, "msg": "Aaj ka reward pehle hi claim ho chuka hai", "xp": int(row["xp"] if row else 0)})
+        c.execute("INSERT INTO game_progress(user_id,xp,updated_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET xp=xp+excluded.xp, updated_at=excluded.updated_at",
+                  (user_id, award, time.time()))
+        xp = c.execute("SELECT xp FROM game_progress WHERE user_id=?", (user_id,)).fetchone()["xp"]
+    return jsonify({"ok": True, "xp_awarded": award, "xp": int(xp), "level": 1 + int(xp)//100,
+                    "msg": f"+{award} XP added! Coins balance change nahi hua."})
+
 @app.get("/api/health")
 def health():
     return jsonify({"ok": True, "game": "SlimeFi", "ts": time.time()})
