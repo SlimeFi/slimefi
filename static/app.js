@@ -46,23 +46,41 @@ function fmtCost(c) {
 
 // ---------- view navigation ----------
 function go(name) {
+  const target = $("view-" + name);
+  if (!target) { toast("Ye section available nahi hai"); return; }
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-  $("view-" + name).classList.add("active");
-  document.body.classList.toggle("in-game", name === "game");
+  target.classList.add("active");
+  document.body.classList.remove("in-game");
   document.querySelectorAll(".bottom-nav .nav-item").forEach(b =>
     b.classList.toggle("active", b.dataset.go === name));
   window.scrollTo(0, 0);
   if (name === "tasks") loadTasks();
+  if (name === "history") loadHistory();
+  if (name === "support") loadSupportTickets();
 }
 window.go = go;
 
 function render() {
   if (!S) return;
   // home
-  $("home-cash").textContent = Number(S.cash_rupees).toFixed(2);
+  const coinValue = Number(S.coins || 0) / Number(S.earn.coins_per_rupee || 1000);
+  $("home-cash").textContent = coinValue.toFixed(2);
+  $("home-coin-value").textContent = "₹" + coinValue.toFixed(2);
+  $("home-coins-small").textContent = fmt(S.coins);
+  $("home-value-small").textContent = "₹" + coinValue.toFixed(2);
   $("home-users").textContent = fmt(S.players);
   $("home-coins").textContent = fmt(S.coins);
   $("home-lifetime").textContent = fmt(S.lifetime_coins);
+  const level = (S.slime && S.slime.level) || 1;
+  const nextAt = S.slime && S.slime.next_at;
+  const prevAt = [0,1000,6000,21000,61000,161000,411000,1011000,2511000,6511000][Math.max(0, level - 1)] || 0;
+  const xpPct = nextAt ? Math.max(0, Math.min(100, ((S.lifetime_coins - prevAt) / Math.max(1, nextAt - prevAt)) * 100)) : 100;
+  $("home-level-label").textContent = "SLIME LEVEL " + level;
+  $("home-level-number").textContent = String(level).padStart(2, "0");
+  $("home-xp-label").textContent = nextAt ? fmt(Math.max(0, nextAt - S.lifetime_coins)) + " XP to next" : "MAX LEVEL";
+  $("home-xp-bar").style.width = xpPct + "%";
+  $("home-xp-caption").textContent = nextAt ? fmt(S.lifetime_coins) + " / " + fmt(nextAt) + " lifetime coins" : "Top Slime reached";
+  $("home-referral-caption").textContent = (S.invites || 0) + " friends in your squad · Invite more";
   $("home-pending-rew").textContent = "₹" + (S.pending_rewards_coins / S.earn.coins_per_rupee).toFixed(2);
   $("payouts-total").textContent = S.payouts_paid_count ? (S.payouts_paid_count + " payouts · ₹" + fmt(S.payouts_paid_rupees)) : "";
   const medals = ["🥇", "🥈", "🥉"];
@@ -74,23 +92,20 @@ function render() {
   $("payouts-list").innerHTML = (S.recent_payouts || []).map(p =>
     `<div class="wd-row"><span>✅ ₹${p.amount_rupees} → ${esc(p.upi)}${p.txn_id ? " · 🧾 " + esc(p.txn_id) : ""}${p.utr ? " · UTR " + esc(p.utr) : ""}</span><span>${p.ts ? new Date(p.ts * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("")
     || `<div class="card-sub">Abhi tak koi payout nahi hua — pehla payout yahin dikhega.</div>`;
-  $("home-pending").textContent = fmt(S.pending.coins + S.pending.wood + S.pending.crystals);
-  $("home-level").textContent = "Lv " + S.slime.level + " " + S.slime.name;
   // wallet
-  $("cash-amt").textContent = "₹" + Number(S.cash_rupees).toFixed(2);
+  $("cash-amt").textContent = "₹" + coinValue.toFixed(2);
   $("wallet-coins").textContent = fmt(S.coins);
-  $("pending-rew-line").textContent = "Pending rewards: " + fmt(S.pending_rewards_coins) + " coins (≈ ₹" +
-    (S.pending_rewards_coins / S.earn.coins_per_rupee).toFixed(2) + ") — admin approval ke baad milenge";
-  $("rate-line").textContent = S.earn.coins_per_rupee + " coins = ₹1";
+  $("wallet-coin-value").textContent = "₹" + coinValue.toFixed(2);
+  $("pending-rew-line").textContent = "Pending approval: " + fmt(S.pending_rewards_coins) + " Coins = ₹" +
+    (S.pending_rewards_coins / S.earn.coins_per_rupee).toFixed(2);
+  $("rate-line").textContent = fmt(S.earn.coins_per_rupee) + " Coins = ₹1";
   $("min-wd").textContent = "₹" + S.earn.min_withdraw_rupees;
   if (!S.earn.payouts_enabled) { $("btn-withdraw").disabled = true; $("btn-withdraw").textContent = "Withdraw abhi band hai"; }
   else { $("btn-withdraw").disabled = false; $("btn-withdraw").textContent = "Withdraw Request bhejo"; }
   $("my-withdrawals").innerHTML = (S.my_withdrawals || []).map(w =>
     `<div class="wd-row"><span>#${w.id} · ₹${w.amount_rupees}</span><span class="st-${w.status}">${w.status === "rejected" ? "FAILED" : w.status.toUpperCase()}</span></div>${w.holder_name ? `<div class="card-sub">👤 ${esc(w.holder_name)}</div>` : ""}${w.txn_id ? `<div class="card-sub">🧾 Txn: ${esc(w.txn_id)}</div>` : ""}${w.utr ? `<div class="card-sub">🏦 UTR: ${esc(w.utr)}</div>` : ""}${w.payment_date ? `<div class="card-sub">📅 Payment Date: ${esc(w.payment_date)}</div>` : ""}`).join("");
   // referral
-  $("ref-code").textContent = S.referral_code;
   $("ref-code2").textContent = S.referral_code;
-  $("squad-line").textContent = S.invites + " friends joined - Squad boost +" + S.squad_boost_pct + "%";
   $("squad-line2").textContent = S.invites + " friends joined · Har dost ki pehli activity par +500 coins";
   $("ref-apply-card").style.display = S.has_referrer ? "none" : "block";
   $("ref-applied-note").style.display = S.has_referrer ? "block" : "none";
@@ -100,48 +115,6 @@ function render() {
     ? (S.my_referrals || []).map(r => `<div class="wd-row"><span>${esc(r.label)}</span><span>${QLABEL[r.q] || ""}</span></div>`).join("")
     : `<div class="card-sub">Abhi koi referral nahi — apna code dosto ko bhejo.</div>`;
   $("ref-link-line").textContent = "Dost ko ye link bhejo: t.me/SlimeFi_bot?start=" + S.referral_code;
-  // game header + guardian
-  $("r-coins").textContent = S.coins;
-  $("r-wood").textContent = S.wood;
-  $("r-crystals").textContent = S.crystals;
-  $("r-level").textContent = "Lv " + S.slime.level;
-  $("slime-name").textContent = S.slime.name;
-  $("slime-sub").textContent = "Town Guardian - Level " + S.slime.level;
-  if (S.slime.next_at) {
-    const prevNeed = [0,1000,6000,21000,61000,161000,411000,1011000,2511000,6511000][S.slime.level - 1];
-    const pct = Math.min(100, Math.round((S.lifetime_coins - prevNeed) / (S.slime.next_at - prevNeed) * 100));
-    $("level-bar").style.width = pct + "%";
-    $("level-text").textContent = S.lifetime_coins + " / " + S.slime.next_at + " coins to Lv " + (S.slime.level + 1);
-  } else {
-    $("level-bar").style.width = "100%";
-    $("level-text").textContent = "MAX LEVEL";
-  }
-  $("pending-line").textContent = "Pending: " + S.pending.coins + " coins, " + S.pending.wood + " wood, " + S.pending.crystals + " crystals";
-  $("btn-daily").disabled = !S.daily_available;
-  $("btn-daily").textContent = S.daily_available ? "Claim Daily Reward" : "Daily Reward Claimed - Kal Phir Aana";
-
-  $("buildings").innerHTML = S.buildings.map(b => `
-    <div class="card">
-      <div class="card-top"><div class="card-title">${b.name}</div><div class="lvl">Lv ${b.level}</div></div>
-      <div class="card-sub">${b.resource ? ("Production: " + b.rate_per_hour + " " + b.resource + " / hour") : "Building upgrades ki limit badhata hai"}</div>
-      <div class="card-sub">Upgrade cost: <span class="cost">${fmtCost(b.next_cost)}</span>${b.capped_by_forge ? " - Dwarf Forge pehle upgrade karo" : ""}</div>
-      <button data-upgrade="${b.id}">${b.level === 0 ? "Build" : "Upgrade"}</button>
-    </div>`).join("");
-
-  $("recipes").innerHTML = S.recipes.map(r => `
-    <div class="card">
-      <div class="card-title">${r.title}</div>
-      <div class="card-sub">Give: <span class="cost">${fmtCost(r.give)}</span> &nbsp; Get: <span class="cost">${fmtCost(r.get)}</span></div>
-      <button data-refine="${r.id}">Refine</button>
-    </div>`).join("");
-
-  $("quests").innerHTML = S.quests.map(q => `
-    <div class="card">
-      <div class="card-top"><div class="card-title">${q.title}</div><div class="lvl">${q.progress}/${q.target}</div></div>
-      <div class="card-sub">Reward: <span class="cost">${fmtCost(q.reward)}</span></div>
-      <button data-quest="${q.id}" ${q.claimed || q.progress < q.target ? "disabled" : ""}>${q.claimed ? "Claimed" : "Claim Reward"}</button>
-    </div>`).join("");
-
   // ad card
   const e = S.earn;
   $("ad-count").textContent = e.ads_today + "/" + e.ad_daily_limit;
@@ -155,9 +128,6 @@ function render() {
   if (S.is_owner) { $("owner-panel").style.display = "block"; loadOwner(); }
   else { $("owner-panel").style.display = "none"; }
 
-  document.querySelectorAll("[data-upgrade]").forEach(b => b.onclick = () => act("/api/upgrade", { building_id: b.dataset.upgrade }));
-  document.querySelectorAll("[data-refine]").forEach(b => b.onclick = () => act("/api/refine", { recipe_id: b.dataset.refine }));
-  document.querySelectorAll("[data-quest]").forEach(b => b.onclick = () => act("/api/quest/claim", { quest_id: b.dataset.quest }));
 }
 async function act(path, body) {
   const r = await api(path, body || {});
@@ -336,7 +306,9 @@ async function loadOwner() {
     if (st.ok) {
       $("owner-stats").textContent =
         "Total Players: " + st.total_players + " · Aaj Join: " + st.joined_today +
-        " · Bot Starts: " + st.bot_starts;
+        " · Bot Starts: " + st.bot_starts +
+        " · Coin Liability: ₹" + Number(st.estimated_coin_value_rupees || 0).toFixed(2) +
+        " · Open Tickets: " + (st.open_support_tickets || 0);
       const sel = $("gr-user");
       const keep = sel.value;
       sel.innerHTML = (st.players || []).map(p =>
@@ -386,6 +358,13 @@ async function loadOwner() {
   const r = await api("/api/owner/withdrawals");
   if (!r.ok) return;
   $("owner-summary").textContent = "Pending: " + r.pending_count + " requests · ₹" + r.pending_rupees;
+  const support = await api("/api/owner/support/tickets");
+  if (support.ok) {
+    $("owner-support-tickets").innerHTML = (support.tickets || []).map(t => `
+      <div class="owner-row"><div class="wd-row"><span>#${t.id} · ${esc(t.user_id)} · ${esc(t.category)}</span><b>${esc(t.status)}</b></div>
+      <div class="card-sub">${esc(t.message)}</div>
+      ${t.status === "open" ? `<button onclick="closeSupportTicket(${t.id})">Close Ticket</button>` : ""}</div>`).join("") || '<div class="card-sub">No support tickets.</div>';
+  }
   $("owner-list").innerHTML = r.withdrawals.map(w => `
     <div class="owner-row">
       <div class="wd-row"><span>#${w.id} · ${esc(w.user_id)}</span><span class="st-${w.status}">${w.status === "rejected" ? "FAILED" : w.status.toUpperCase()}</span></div>
@@ -397,6 +376,11 @@ async function loadOwner() {
       ${w.status === "pending" ? `<input id="txn-${w.id}" placeholder="Transaction ID — payment ke baad dalo" style="text-transform:none"><input id="utr-${w.id}" placeholder="UTR / UPI Reference Number" style="text-transform:none"><input id="pdate-${w.id}" type="date"><div class="ref-row"><button onclick="decideWd(${w.id},'paid')">Paid kar diya</button><button onclick="decideWd(${w.id},'reject')">Reject / Failed</button></div>` : ""}
     </div>`).join("");
 }
+window.closeSupportTicket = async (id) => {
+  const r = await api("/api/owner/support/tickets/close", {id});
+  toast(r.msg || "Ho gaya");
+  loadOwner();
+};
 window.decideWd = async (id, action) => {
   let txn_id = "", utr = "", payment_date = "";
   if (action === "paid") {
@@ -465,7 +449,7 @@ function spinAd() {
   const blockId = window.SLIMEFI_ADS_BLOCK_ID;
   const useMonetag = typeof monetagFn === "function";
   if (!useMonetag && (!blockId || !window.Adsgram)) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
-  const startP = api("/api/ad/start", { v: 29 });
+  const startP = api("/api/ad/start", { v: 30 });
   const t0 = Date.now();
   let claimed = false;
   const tryClaim = async done => {
@@ -509,22 +493,36 @@ function spinAd() {
   }, 1000);
 }
 
+// ---------- reward history + support ----------
+async function loadHistory() {
+  const box = $("history-list"); if (!box) return;
+  box.innerHTML = '<div class="card-sub">Loading…</div>';
+  const r = await api("/api/history");
+  if (!r.ok) { box.textContent = "History load nahi hui."; return; }
+  box.innerHTML = (r.history || []).map(x => `<div class="wd-row"><span>${esc(x.note || x.type)}</span><b>${x.coins > 0 ? "+" : ""}${fmt(x.coins)} 🪙</b></div><div class="card-sub">${x.ts ? new Date(x.ts*1000).toLocaleString("en-IN") : ""}</div>`).join("") || '<div class="card-sub">Abhi koi activity nahi hai.</div>';
+}
+async function loadSupportTickets() {
+  const box = $("support-ticket-list"); if (!box) return;
+  const r = await api("/api/support/tickets");
+  box.innerHTML = '<h3>My Support Tickets</h3>' + ((r.tickets || []).map(t => `<div class="wd-row"><span>#${t.id} · ${esc(t.category)}</span><b>${esc(t.status)}</b></div><div class="card-sub">${esc(t.message)}</div>`).join("") || '<div class="card-sub">Abhi koi ticket nahi hai.</div>');
+}
+$("support-submit").onclick = async () => {
+  const message = $("support-message").value.trim();
+  const category = $("support-category").value;
+  const r = await api("/api/support/tickets", {category, message});
+  toast(r.msg || "Request submit nahi hui");
+  if (r.ok) { $("support-message").value = ""; loadSupportTickets(); }
+};
+
 // ---------- wiring ----------
 $("btn-spin").onclick = spinNow;
 $("btn-spin-ad").onclick = spinAd;
-$("btn-collect").onclick = () => act("/api/collect");
-$("btn-daily").onclick = () => act("/api/daily");
-$("btn-convert").onclick = () => {
-  const v = parseInt($("convert-input").value, 10);
-  if (v > 0) act("/api/convert", { coins: v });
-  else toast("Pehle coins ki sankhya dalo");
-};
 $("btn-withdraw").onclick = () => {
   const upi = $("upi-input").value.trim();
-  const amt = parseInt($("wd-input").value, 10);
+  const amt = Number($("wd-input").value);
   const holder_name = $("wd-name").value.trim();
   if (!holder_name) { toast("Account holder ka naam dalo"); return; }
-  if (upi && amt > 0) act("/api/withdraw", { upi_id: upi, amount_rupees: amt, holder_name });
+  if (upi && Number.isFinite(amt) && amt > 0) act("/api/withdraw", { upi_id: upi, amount_rupees: amt.toFixed(2), holder_name });
   else toast("UPI ID aur amount dono dalo");
 };
 $("btn-ad").onclick = () => {
@@ -534,7 +532,7 @@ $("btn-ad").onclick = () => {
   if (!useMonetag && (!blockId || !window.Adsgram)) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
   // Token fetch and ad start TOGETHER: the ad must open straight from the
   // tap — if we wait for the network first, the webview blocks the ad.
-  const startP = api("/api/ad/start", { v: 29 });
+  const startP = api("/api/ad/start", { v: 30 });
   const t0 = Date.now();
   let claimed = false;
   const tryClaim = async done => {

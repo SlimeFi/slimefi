@@ -10,7 +10,7 @@
 <script>window.SLIMEFI_ADS_BLOCK_ID = "59365"; /* AdsGram TEST Reward block (test platform 56001) — real block 59318 declined, swap back after approval */</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=21">
+<link rel="stylesheet" href="/static/style.css?v=31">
 </head>
 <body>
 
@@ -25,156 +25,77 @@
 
 <!-- ================= HOME ================= -->
 <section id="view-home" class="view active">
-  <div class="balance-duo">
-    <div class="balance-card cash-card">
-      <div class="balance-glow"></div>
-      <div class="balance-top"><span>REWARD BALANCE</span><span class="live-dot">● LIVE</span></div>
-      <div class="balance-value"><span class="currency">₹</span><strong id="home-cash">0.00</strong></div>
-      <div class="balance-foot"><span>Available rewards</span></div>
-      <button class="duo-btn" onclick="go('wallet')">Withdraw ↗</button>
-      <div class="duo-sub">Pending rewards<br><b id="home-pending-rew">₹0.00</b></div>
+  <div class="universe-hero">
+    <div class="hero-copy">
+      <div class="hero-kicker"><span class="pulse-dot"></span> YOUR REWARD UNIVERSE</div>
+      <h1>Small moves.<br><em>Real rewards.</em></h1>
+      <p>Complete quests, collect coins and level up your Slime.</p>
+      <button class="hero-cta" onclick="go('tasks')">Explore quests <span>↗</span></button>
     </div>
-    <div class="balance-card coin-card">
-      <div class="balance-glow gold-glow"></div>
-      <div class="balance-top"><span>🪙 MY COINS</span></div>
-      <div class="balance-value coin-value"><strong id="home-coins">0</strong></div>
-      <div class="balance-foot"><span>1000 coins = ₹1</span></div>
-      <button class="duo-btn gold" onclick="go('wallet')">₹ Me Badlo →</button>
-      <div class="duo-sub">Lifetime coins<br><b id="home-lifetime">0</b></div>
+    <div class="hero-mascot-wrap">
+      <div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div>
+      <div class="hero-star star-a">✦</div><div class="hero-star star-b">✧</div>
+      <img class="hero-mascot" src="/static/img/slime-pet.png" alt="SlimeFi mascot">
+      <div class="mascot-tag">SLIMEFI</div>
     </div>
+    <div class="hero-glow"></div>
   </div>
 
-  <div class="pet-stage" aria-hidden="true">
-    <span class="pet-spark s1">✦</span><span class="pet-spark s2">✦</span><span class="pet-spark s3">✦</span><span class="pet-spark s4">✦</span><span class="pet-spark s5">✧</span><span class="pet-spark s6">✦</span>
-    <div class="pet-track">
-      <div class="pet-bob">
-        <span class="pet-ring r1"></span>
-        <img class="pet-img" src="/static/img/slime-pet.png" alt="">
-        <img class="pet-girl" src="/static/img/slime-girl.png" alt="">
-        <span class="pet-ring r2"></span>
-        <span class="pet-flash"></span>
-      </div>
-      <div class="pet-circle"></div>
-      <div class="pet-shadow"></div>
+  <div class="home-balance-card">
+    <div class="balance-heading"><span>YOUR TOTAL BALANCE</span><span class="secure-chip">● SECURE WALLET</span></div>
+    <div class="balance-main-row">
+      <div><small>COIN VALUE</small><div class="rupee-total">₹<b id="home-cash">0.00</b></div></div>
+      <div class="coin-total-wrap"><small>AVAILABLE COINS</small><div class="coin-total">🪙 <b id="home-coins">0</b></div></div>
     </div>
-    <div class="pet-ground"></div>
+    <div class="balance-divider"></div>
+    <div class="balance-bottom-row"><span>1,000 Coins = ₹1</span><span>Lifetime: <b id="home-lifetime">0</b></span></div>
+    <div class="balance-actions"><button onclick="go('wallet')">Wallet details <span>↗</span></button><button class="balance-withdraw" onclick="go('wallet')">Withdraw</button></div>
+    <div class="sr-only" id="home-coin-value">₹0.00</div><div class="sr-only" id="home-coins-small">0</div><div class="sr-only" id="home-value-small">₹0.00</div>
   </div>
 
-  <div class="coins-strip" onclick="go('game')">
-    <span>🎮 Village pending: <b id="home-pending">0</b></span>
-    <span class="strip-sub">👥 <b id="home-users">0</b> players · Collect →</span>
+  <div class="level-panel">
+    <div class="level-avatar"><img src="/static/img/slime-pet.png" alt=""></div>
+    <div class="level-info"><div class="level-topline"><b id="home-level-label">SLIME LEVEL 1</b><span id="home-xp-label">Getting started</span></div>
+      <div class="xp-track"><span id="home-xp-bar"></span></div><small id="home-xp-caption">Keep completing activities to level up</small>
+    </div>
+    <div class="level-badge" id="home-level-number">01</div>
   </div>
 
-  <h2 class="v2-h">Earning Center</h2>
-  <div class="ec-grid">
-    <div class="ec-card" onclick="go('ads')">
-      <div class="ec-ico">📣</div>
-      <div class="ec-title">Sponsored Ads</div>
-      <span class="ec-btn">Explore</span>
-    </div>
-    <div class="ec-card" onclick="go('tasks')">
-      <div class="ec-ico">✅</div>
-      <div class="ec-title">Paid Tasks</div>
-      <span class="ec-btn">Explore</span>
-    </div>
-    <div class="ec-card dim">
-      <div class="ec-ico">🛍️</div>
-      <div class="ec-title">Affiliate</div>
-      <span class="ec-btn upcoming">Upcoming</span>
-    </div>
-    <div class="ec-card" onclick="go('referral')">
-      <div class="ec-ico">👥</div>
-      <div class="ec-title">Referral</div>
-      <span class="ec-btn">Explore</span>
-    </div>
-    <div class="ec-card" onclick="openPayouts()">
-      <div class="ec-ico">💸</div>
-      <div class="ec-title">Payout Portal</div>
-      <span class="ec-btn">Open</span>
-    </div>
-    <div class="ec-card dim">
-      <div class="ec-ico">👑</div>
-      <div class="ec-title">Premium</div>
-      <span class="ec-btn upcoming">Upcoming</span>
-    </div>
+  <div class="section-heading"><div><small>MAKE TODAY COUNT</small><h2>Quick missions</h2></div><span class="section-spark">✦</span></div>
+  <div class="mission-grid">
+    <button class="mission-tile mission-ads" onclick="go('ads')"><span class="mission-icon">▶</span><span class="mission-name">Watch ads</span><small>Sponsored rewards</small><b>START ↗</b></button>
+    <button class="mission-tile mission-quests" onclick="go('tasks')"><span class="mission-icon">⚡</span><span class="mission-name">Quest center</span><small>Complete tasks</small><b>EXPLORE ↗</b></button>
+    <button class="mission-tile mission-daily" onclick="go('daily')"><span class="mission-icon">🎁</span><span class="mission-name">Daily streak</span><small>Come back every day</small><b>CLAIM ↗</b></button>
+    <button class="mission-tile mission-spin" onclick="go('spin')"><span class="mission-icon">✧</span><span class="mission-name">Lucky spin</span><small>Try your daily spin</small><b>SPIN ↗</b></button>
   </div>
 
-  <div class="wide-card" onclick="go('game')">
-    <div>
-      <div class="wide-title">🎮 Village Game — Play &amp; Earn</div>
-      <div class="wide-sub">Buildings, daily rewards, quests — <span id="home-level">Lv 1 Basic Slime</span></div>
-    </div>
-    <span class="ec-btn">Open</span>
-  </div>
-  <div class="wide-card" onclick="go('spin')">
-    <div>
-      <div class="wide-title">🎡 Spin &amp; Win — Roz 1 FREE Spin</div>
-      <div class="wide-sub">Wheel ghumao, <span class="cost">50–500 coins</span> jeeto · Ad dekho = +1 Spin</div>
-    </div>
-    <span class="ec-btn">Play</span>
-  </div>
-  <div class="wide-card" onclick="go('model')">
-    <div>
-      <div class="wide-title">📈 Business Model</div>
-      <div class="wide-sub">Earn. Complete. Reward. — SlimeFi kaise kamata hai</div>
-    </div>
-    <span class="ec-btn">Open</span>
-  </div>
-  <div class="wide-card" onclick="go('support')">
-    <div>
-      <div class="wide-title">🛟 Support</div>
-      <div class="wide-sub">Madad, shikayat (grievance) aur safety rules</div>
-    </div>
-    <span class="ec-btn">Open</span>
+  <div class="community-banner" onclick="go('referral')">
+    <div class="community-icon">♧</div><div><small>GROW YOUR SQUAD</small><b>Invite friends. Earn together.</b><span id="home-referral-caption">Your invite link is ready inside</span></div><span class="community-arrow">→</span>
   </div>
 
-  <div class="card" style="margin-top:14px">
-    <div class="card-top"><div class="card-title">🏆 Recent Payouts</div><div class="lvl" id="payouts-total"></div></div>
-    <div id="payouts-list"></div>
-    <div class="card-sub">Har payout UPI se verify karke bheja jata hai — ye public list sabke liye saboot hai ki SlimeFi sach me pay karta hai.</div>
+  <div class="home-mini-stats"><div><small>SLIMEFI MEMBERS</small><b id="home-users">0</b></div><div><small>PENDING REWARDS</small><b id="home-pending-rew">₹0.00</b></div><div><small>PLATFORM</small><b>Rewards</b></div></div>
+
+  <div class="section-heading compact"><div><small>YOUR ACCOUNT</small><h2>More to explore</h2></div></div>
+  <div class="more-grid">
+    <button onclick="go('leaderboard')"><span>🏆</span><b>Leaderboard</b><small>Top community</small></button>
+    <button onclick="go('history')"><span>📜</span><b>Reward history</b><small>Track activity</small></button>
+    <button onclick="go('support')"><span>🛟</span><b>Help center</b><small>We're here to help</small></button>
+    <button onclick="go('model')"><span>◈</span><b>How it works</b><small>Platform details</small></button>
   </div>
 
-  <!-- ADMIN PANEL (owner only) -->
-  <div class="card" id="owner-panel" style="display:none; margin-top:14px">
-    <div class="card-title">👑 Admin Panel</div>
-    <div class="card-sub" id="owner-stats"></div>
-    <div id="owner-recent"></div>
-    <div class="card-sub" id="owner-summary"></div>
-    <div id="owner-list"></div>
-    <div class="card-title" style="margin-top:14px">Task Submissions — Approve / Reject</div>
-    <div id="owner-subs"></div>
-    <div class="card-title" style="margin-top:14px">Referral Review — Same-Network (Hold)</div>
-    <div id="owner-referrals"></div>
-    <div class="card-title" style="margin-top:14px">⚠️ Suspicious Accounts — sirf jaanch ke liye (band nahi)</div>
-    <div id="owner-suspicious"></div>
-    <div class="card-title" style="margin-top:14px">🚫 Banned Accounts</div>
-    <div id="owner-banned"></div>
-    <div class="card-title" style="margin-top:14px">🪙 Coins Do / Kato</div>
-    <div class="ref-row"><select id="gr-user"></select></div>
-    <div class="ref-row"><input id="gr-amount" type="number" placeholder="Coins ki matra" style="text-transform:none"><button class="small-btn" onclick="grantCoins()">Coins Do</button><button class="small-btn danger-btn" onclick="reduceCoins()">Coins Kato</button></div>
-    <div class="card-sub">Dene se balance + lifetime badhega (level aur leaderboard bhi). Kaatne se dono ghatega, 0 se neeche nahi jayega. Hisaab ledger me record rahega.</div>
-    <div class="card-title" style="margin-top:14px">🎟️ Promo Code Banao</div>
-    <div class="ref-row"><input id="np-code" placeholder="CODE (jaise WELCOME100)" style="text-transform:uppercase"></div>
-    <div class="ref-row"><input id="np-coins" type="number" placeholder="Coins" style="text-transform:none"><input id="np-uses" type="number" placeholder="Kitne log (0 = unlimited)" style="text-transform:none"><button class="small-btn" onclick="createPromo()">Banao</button></div>
-    <div id="owner-promos"></div>
-    <div class="card-title" style="margin-top:14px">Naya Sponsored Task Banao</div>
-    <div class="ref-row"><input id="nt-title" placeholder="Task title — jese Channel join karo" style="text-transform:none"></div>
-    <div class="ref-row"><input id="nt-desc" placeholder="Description — kya karna hai" style="text-transform:none"></div>
-    <div class="ref-row"><input id="nt-link" placeholder="Link (optional)" style="text-transform:none"></div>
-    <div class="ref-row">
-      <input id="nt-reward" type="number" placeholder="Reward coins" style="text-transform:none; max-width:140px">
-      <input id="nt-budget" type="number" placeholder="Total budget coins (khali = unlimited)" style="text-transform:none; max-width:220px">
-    </div>
-    <div class="ref-row">
-      <select id="nt-mode"><option value="proof">Direct Complete (proof nahi)</option><option value="channel">Channel auto-check (proof nahi)</option></select>
-      <select id="nt-category">
-        <option value="telegram">Telegram task</option>
-        <option value="twitter">Twitter / X task</option>
-        <option value="other">Other task</option>
-      </select>
-      <button id="btn-nt" class="small-btn">Task Banao</button>
-    </div>
-    <div id="owner-tasks"></div>
+  <div class="payout-proof-card"><div class="section-heading compact"><div><small>COMMUNITY ACTIVITY</small><h2>Recent payouts</h2></div><span class="payout-count" id="payouts-total"></span></div><div id="payouts-list"></div><p>Only payouts marked as paid by the admin appear here.</p></div>
+
+  <div class="card owner-admin-card" id="owner-panel" style="display:none; margin-top:14px">
+    <div class="card-title">👑 Admin Panel</div><div class="card-sub" id="owner-stats"></div><div id="owner-recent"></div><div class="card-sub" id="owner-summary"></div><div id="owner-list"></div>
+    <div class="card-title" style="margin-top:14px">🛟 Support Tickets</div><div id="owner-support-tickets"></div>
+    <div class="card-title" style="margin-top:14px">Task Submissions — Approve / Reject</div><div id="owner-subs"></div>
+    <div class="card-title" style="margin-top:14px">Referral Review — Same-Network (Hold)</div><div id="owner-referrals"></div>
+    <div class="card-title" style="margin-top:14px">⚠️ Suspicious Accounts — sirf jaanch ke liye (band nahi)</div><div id="owner-suspicious"></div>
+    <div class="card-title" style="margin-top:14px">🚫 Banned Accounts</div><div id="owner-banned"></div>
+    <div class="card-title" style="margin-top:14px">🪙 Coins Do / Kato</div><div class="ref-row"><select id="gr-user"></select></div><div class="ref-row"><input id="gr-amount" type="number" placeholder="Coins ki matra" style="text-transform:none"><button class="small-btn" onclick="grantCoins()">Coins Do</button><button class="small-btn danger-btn" onclick="reduceCoins()">Coins Kato</button></div>
+    <div class="card-sub">Admin adjustments are recorded in the ledger.</div>
+    <div class="card-title" style="margin-top:14px">🎟️ Promo Code Banao</div><div class="ref-row"><input id="np-code" placeholder="CODE" style="text-transform:uppercase"></div><div class="ref-row"><input id="np-coins" type="number" placeholder="Coins"><input id="np-uses" type="number" placeholder="Uses (0 = unlimited)"><button class="small-btn" onclick="createPromo()">Banao</button></div><div id="owner-promos"></div>
+    <div class="card-title" style="margin-top:14px">Naya Sponsored Task Banao</div><div class="ref-row"><input id="nt-title" placeholder="Task title" style="text-transform:none"></div><div class="ref-row"><input id="nt-desc" placeholder="Description" style="text-transform:none"></div><div class="ref-row"><input id="nt-link" placeholder="Link (optional)" style="text-transform:none"></div><div class="ref-row"><input id="nt-reward" type="number" placeholder="Reward coins"><input id="nt-budget" type="number" placeholder="Budget coins"></div><div class="ref-row"><select id="nt-mode"><option value="proof">Direct Complete</option><option value="channel">Channel auto-check</option></select><select id="nt-category"><option value="telegram">Telegram task</option><option value="twitter">Twitter / X task</option><option value="other">Other task</option></select><button id="btn-nt" class="small-btn">Task Banao</button></div><div id="owner-tasks"></div>
   </div>
 </section>
 
@@ -302,12 +223,10 @@
     <div class="stat-label">Available balance</div>
     <div class="wallet-amt" id="cash-amt">₹0.00</div>
     <div class="stat-label" id="pending-rew-line">Pending rewards: ₹0.00</div>
-    <div class="stat-label">Coins: <b id="wallet-coins">0</b> · Rate: <span id="rate-line">1000 coins = ₹1</span></div>
+    <div class="stat-label"><b id="wallet-coins">0</b> Coins = <b id="wallet-coin-value">₹0.00</b></div>
+    <div class="stat-label">Automatic rate: <span id="rate-line">1,000 Coins = ₹1</span></div>
   </div>
-  <div class="ref-row" style="margin-top:10px">
-    <input id="convert-input" type="number" placeholder="Coins — 1000, 2000, 5000..." style="text-transform:none">
-    <button id="btn-convert" class="small-btn">Convert</button>
-  </div>
+  <div class="card" style="margin-top:10px"><div class="card-sub">Ab alag se Convert karne ki zaroorat nahi. Withdrawal request par Coins aur unki ₹ value ek saath reserve ho jayegi.</div></div>
 
   <h2 class="v2-h">↓ Withdrawal request</h2>
   <div class="stat-row">
@@ -318,7 +237,7 @@
       <div class="stat-label">Verified eligible account par payout. Minimum <span id="min-wd">₹10</span> · Processing: 24–72 hours</div>
       <input id="wd-name" placeholder="Account Holder ka Naam (bank wala naam)" style="text-transform:none">
       <input id="upi-input" placeholder="Tumhara UPI ID" style="text-transform:none">
-      <input id="wd-input" type="number" placeholder="₹ Amount" style="text-transform:none">
+      <input id="wd-input" type="number" min="10" step="0.01" placeholder="₹ Amount (e.g. 10.00)" style="text-transform:none">
       <button id="btn-withdraw">Withdraw (UPI)</button>
       <div class="stat-label">Payment sirf isi naam wale account par jayega — admin pehle naam verify karega.</div>
     </div>
@@ -333,6 +252,13 @@
   <p class="note">Har transaction ki ledger entry banti hai — balance kabhi seedha edit nahi hota, taaki har reward aur payout audit ho sake. SlimeFi kabhi tumhara UPI PIN, OTP ya private key nahi mangta.</p>
 </section>
 
+<!-- ================= REWARD HISTORY ================= -->
+<section id="view-history" class="view">
+  <button class="back-btn" onclick="go('home')">← Home</button>
+  <h2 class="v2-h">📜 Reward History</h2>
+  <div class="card"><div class="card-sub">Recent coin credits, deductions and withdrawal updates.</div><div id="history-list"></div></div>
+</section>
+
 <!-- ================= BUSINESS MODEL ================= -->
 <section id="view-model" class="view">
   <button class="back-btn" onclick="go('home')">← Home</button>
@@ -341,7 +267,7 @@
   <p class="note" style="text-align:left">A real-revenue digital earning platform</p>
   <div class="stat-row">
     <div class="stat-card align-left"><div class="stat-big">₹0</div><div class="stat-label">Initial growth budget</div></div>
-    <div class="stat-card align-left"><div class="stat-big">2</div><div class="stat-label">Payout methods</div></div>
+    <div class="stat-card align-left"><div class="stat-big">1</div><div class="stat-label">Launch payout method (UPI)</div></div>
   </div>
   <h2 class="v2-h">Revenue sources</h2>
   <div class="card">
@@ -366,92 +292,26 @@
   <h2 class="v2-h">Support &amp; Grievance</h2>
   <div class="card">
     <div class="card-title">Madad chahiye?</div>
-    <div class="card-sub">Support channel jald aa raha hai. Tab tak koi bhi dikkat ho to game ke andar apni problem note rakho — naye updates me grievance support jud jayega.</div>
-    <div class="card-sub">Safety: SlimeFi kabhi tumhara <b>UPI PIN, OTP ya private crypto key</b> nahi mangta. Jo mange, wo fraud hai.</div>
-    <div class="card-sub">Privacy policy aur terms jald yahin milenge.</div>
+    <div class="card-sub">Apni problem yahan submit karo. Ticket ID ke saath request record hogi.</div>
+    <select id="support-category"><option value="account">Account</option><option value="coins">Coins / Rewards</option><option value="task">Task</option><option value="withdrawal">Withdrawal</option><option value="other">Other</option></select>
+    <textarea id="support-message" maxlength="1200" placeholder="Apni problem detail me likho (10–1200 characters)" rows="4"></textarea>
+    <button id="support-submit">Submit Support Ticket</button>
+    <div id="support-ticket-list"></div>
+    <div class="card-sub">Safety: SlimeFi kabhi tumhara <b>UPI PIN, OTP ya private crypto key</b> nahi mangta.</div>
   </div>
-</section>
-
-<!-- ================= GAME ================= -->
-<section id="view-game" class="view">
-  <button class="back-btn" onclick="go('home')">← Home</button>
-  <header class="topbar">
-    <div class="brand">VILLAGE</div>
-    <div class="resources">
-      <div class="pill"><i class="dot gold"></i><b id="r-coins">0</b></div>
-      <div class="pill"><i class="dot wood"></i><b id="r-wood">0</b></div>
-      <div class="pill"><i class="dot crys"></i><b id="r-crystals">0</b></div>
-      <div class="pill level"><b id="r-level">Lv 1</b></div>
-    </div>
-  </header>
-  <div class="slime-strip">
-    <div>
-      <div class="slime-name" id="slime-name">Basic Slime</div>
-      <div class="slime-sub" id="slime-sub">Town Guardian</div>
-    </div>
-    <div class="progress-wrap">
-      <div class="progress"><div id="level-bar"></div></div>
-      <div class="progress-text" id="level-text"></div>
-    </div>
-  </div>
-
-  <section id="tab-town" class="pane active">
-    <div class="hero">
-      <img src="/static/img/village.jpg" alt="Your village">
-      <button id="btn-collect" class="collect-btn">Collect Income</button>
-      <div class="pending" id="pending-line">Pending: 0 coins</div>
-    </div>
-    <button id="btn-daily" class="daily-btn">Claim Daily Reward</button>
-    <h2>Village Buildings</h2>
-    <div id="buildings" class="cards"></div>
-  </section>
-
-  <section id="tab-workshop" class="pane">
-    <div class="banner"><img src="/static/img/forge.jpg" alt="Dwarf Forge"></div>
-    <h2>Workshop - Refine Materials</h2>
-    <div id="recipes" class="cards"></div>
-    <p class="note">Raw materials ko refine karke coins banao. Building upgrades Town tab se hote hain, Dwarf Forge unki limit badhata hai.</p>
-  </section>
-
-  <section id="tab-quests" class="pane">
-    <div class="banner"><img src="/static/img/quests.jpg" alt="Quests"></div>
-    <h2>Daily Quests</h2>
-    <div id="quests" class="cards"></div>
-  </section>
-
-  <section id="tab-alliance" class="pane">
-    <div class="banner"><img src="/static/img/alliance.jpg" alt="Alliance"></div>
-    <h2>Alliance - Squad</h2>
-    <div class="card">
-      <div class="card-title">Your Referral Code</div>
-      <div class="ref-code" id="ref-code">-</div>
-      <div class="card-sub" id="squad-line">0 friends joined - Squad boost +0%</div>
-      <div class="card-sub">Pura referral system, 500 coins reward ke saath:</div>
-      <button onclick="go('referral')">Referral Center Kholo</button>
-    </div>
-  </section>
-
-  <nav class="tabbar">
-    <button data-tab="town" class="active">Town</button>
-    <button data-tab="workshop">Workshop</button>
-    <button data-tab="quests">Quests</button>
-    <button data-tab="alliance">Alliance</button>
-  </nav>
 </section>
 
 <!-- ================= BOTTOM NAV ================= -->
-<nav class="bottom-nav">
-  <button class="nav-item active" data-go="home"><span>🏠</span><small>Home</small></button>
-  <button class="nav-item" data-go="daily"><span>🎁</span><small>Check-In</small></button>
-  <button class="nav-item" data-go="tasks"><span>✅</span><small>Tasks</small></button>
-  <button class="nav-item nav-main" data-go="ads"><span>▶</span><small>Watch Ads</small></button>
-  <button class="nav-item" data-go="leaderboard"><span>🏆</span><small>Leaderboard</small></button>
-  <button class="nav-item" data-go="referral"><span>👥</span><small>Refer</small></button>
-  <button class="nav-item" data-go="wallet"><span>👛</span><small>Wallet</small></button>
+<nav class="bottom-nav v31-nav">
+  <button class="nav-item active" data-go="home"><span>⌂</span><small>Home</small></button>
+  <button class="nav-item" data-go="tasks"><span>⚡</span><small>Quests</small></button>
+  <button class="nav-item nav-main" data-go="ads"><span>▶</span><small>Earn</small></button>
+  <button class="nav-item" data-go="leaderboard"><span>♛</span><small>Ranks</small></button>
+  <button class="nav-item" data-go="wallet"><span>▣</span><small>Wallet</small></button>
 </nav>
 
 <div id="toast"></div>
 
-<script src="/static/app.js?v=29"></script>
+<script src="/static/app.js?v=31"></script>
 </body>
 </html>
