@@ -533,7 +533,11 @@ $("btn-ad").onclick = () => {
   if (!useMonetag && (!blockId || !window.Adsgram)) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
   // Token fetch and ad start TOGETHER: the ad must open straight from the
   // tap — if we wait for the network first, the webview blocks the ad.
-  const startP = api("/api/ad/start", { v: 30 });
+  // ymid is generated here (no await, tap gesture intact) and registered
+  // with /api/ad/start in parallel, so Monetag's server postback can be
+  // matched back to this exact session.
+  const ymid = "sf" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const startP = api("/api/ad/start", { v: 33, ymid });
   const t0 = Date.now();
   let claimed = false;
   const tryClaim = async done => {
@@ -564,7 +568,7 @@ $("btn-ad").onclick = () => {
     // Monetag Rewarded Interstitial, zone 12248440. Its promise resolves
     // after the ad closes: reward_event_type 'valued' means the view is
     // paid; 'non_valued' means this ad earns nothing — no claim then.
-    monetagFn()
+    monetagFn({ ymid, requestVar: "watch_ad" })
       .then(res => {
         if (res && res.reward_event_type === "non_valued") {
           settled = true;
