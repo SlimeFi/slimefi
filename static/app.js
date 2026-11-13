@@ -443,13 +443,12 @@ async function spinNow() {
   }, 4900);
 }
 function spinAd() {
-  // Same proven ad flow as Watch Ads (Monetag first, AdsGram fallback,
-  // one-time token + age gates) — but the claim carries purpose "spin",
-  // so the server pays +1 spin credit instead of the +100 coins.
+  // Same ad flow as Watch Ads (Monetag only, one-time token + age
+  // gates) — but the claim carries purpose "spin", so the server pays
+  // +1 spin credit instead of the +100 coins.
   const monetagFn = window.show_12248440;
-  const blockId = window.SLIMEFI_ADS_BLOCK_ID;
   const useMonetag = typeof monetagFn === "function";
-  if (!useMonetag && (!blockId || !window.Adsgram)) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
+  if (!useMonetag) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
   const startP = api("/api/ad/start", { v: 30 });
   const t0 = Date.now();
   let claimed = false;
@@ -480,13 +479,7 @@ function spinAd() {
       })
       .catch(onFail);
   } else {
-    window.Adsgram.init({ blockId }).show()
-      .then(res => {
-        settled = true;
-        if (Date.now() - t0 >= 15000 || (res && res.done)) tryClaim(!!(res && res.done));
-        else toast("Ad pura dekho, tabhi spin milega");
-      })
-      .catch(onFail);
+    onFail();
   }
   const iv = setInterval(() => {
     if (claimed || settled) { clearInterval(iv); return; }
@@ -526,11 +519,11 @@ $("btn-withdraw").onclick = () => {
   if (upi && Number.isFinite(amt) && amt > 0) act("/api/withdraw", { upi_id: upi, amount_rupees: amt.toFixed(2), holder_name });
   else toast("UPI ID aur amount dono dalo");
 };
+if ($("nav-ad")) $("nav-ad").onclick = () => { const b = $("btn-ad"); if (b) b.click(); };
 $("btn-ad").onclick = () => {
   const monetagFn = window.show_12248440;
-  const blockId = window.SLIMEFI_ADS_BLOCK_ID;
   const useMonetag = typeof monetagFn === "function";
-  if (!useMonetag && (!blockId || !window.Adsgram)) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
+  if (!useMonetag) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
   // v34 (owner decision: "sirf valued ad par coin do"): this client NEVER
   // claims coins. Coins are credited server-side only when Monetag's
   // valued postback arrives — so after the ad settles we poll /api/state
@@ -584,12 +577,7 @@ $("btn-ad").onclick = () => {
       .then(res => settle(!!(res && res.reward_event_type === "non_valued")))
       .catch(() => settle(false));
   } else {
-    // AdsGram fallback (test block): still attempt the show, but there
-    // is no server postback for it — the same confirming poll decides
-    // and in practice ends with "coin confirm nahi hua".
-    window.Adsgram.init({ blockId }).show()
-      .then(() => settle(false))
-      .catch(() => settle(false));
+    settle(false);
   }
 };
 window.openPayouts = () => {
@@ -629,7 +617,7 @@ $("btn-share").onclick = () => {
   if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl);
   else toast("Dost ko ye link bhejo: " + link);
 };
-document.querySelectorAll(".bottom-nav .nav-item").forEach(b =>
+document.querySelectorAll(".bottom-nav .nav-item[data-go]").forEach(b =>
   b.onclick = () => go(b.dataset.go));
 document.querySelectorAll(".chip[data-cat]").forEach(ch => ch.onclick = () => {
   TASK_CAT = ch.dataset.cat;
