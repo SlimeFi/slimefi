@@ -154,6 +154,9 @@ ALLOW_DEV_AUTH = os.environ.get("ALLOW_DEV_AUTH", "0") == "1"    # local testing
 REFERRAL_REWARD_COINS = 1000   # paid to the inviter when the referred user completes
                               # their first qualifying activity (ad / quest / daily /
                               # approved sponsored task) — never on join alone
+WELCOME_BONUS_COINS = 1000    # one-time bonus credited to every NEW account at
+                              # creation (owner order, 2026-11-14); ledger kind
+                              # "welcome_bonus"; NOT a referral qualifying activity
 OWNER_ID = os.environ.get("OWNER_ID", "")          # Telegram user key of the owner, e.g. "tg123456789"
 OWNER_KEY = os.environ.get("OWNER_KEY", "")        # secret in the owner's personal panel link (startapp param)
 ADSGRAM_BLOCK_ID = os.environ.get("ADSGRAM_BLOCK_ID", "")  # set when the AdsGram block is live
@@ -314,6 +317,12 @@ def get_user(c, user_id):
         c.execute("INSERT INTO buildings VALUES(?,?,?)", (user_id, bid, lvl))
     c.execute("INSERT INTO ledger(user_id,kind,note,ts) VALUES(?,?,?,?)",
               (user_id, "founding", "Village founded: Goblin Hut + Town Hall ready", now))
+    if WELCOME_BONUS_COINS > 0:
+        c.execute("UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+? WHERE user_id=?",
+                  (WELCOME_BONUS_COINS, WELCOME_BONUS_COINS, user_id))
+        c.execute("INSERT INTO ledger(user_id,kind,coins,wood,crystals,note,ts) VALUES(?,?,?,?,?,?,?)",
+                  (user_id, "welcome_bonus", WELCOME_BONUS_COINS, 0, 0,
+                   "New user welcome bonus", now))
     return c.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
 
 def get_buildings(c, user_id):
