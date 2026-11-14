@@ -8,7 +8,7 @@
 <script src='https://libtl.com/sdk.js' data-zone='12248440' data-sdk='show_12248440'></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=37">
+<link rel="stylesheet" href="/static/style.css?v=50">
 </head>
 <body>
 
@@ -84,17 +84,65 @@
 
   <div class="payout-proof-card"><div class="section-heading compact"><div><small>COMMUNITY ACTIVITY</small><h2>Recent payouts</h2></div><span class="payout-count" id="payouts-total"></span></div><div id="payouts-list"></div><p>Only payouts marked as paid by the admin appear here.</p></div>
 
-  <div class="card owner-admin-card" id="owner-panel" style="display:none; margin-top:14px">
-    <div class="card-title">👑 Admin Panel</div><div class="card-sub" id="owner-stats"></div><div id="owner-recent"></div><div class="card-sub" id="owner-summary"></div><div id="owner-list"></div>
-    <div class="card-title" style="margin-top:14px">🛟 Support Tickets</div><div id="owner-support-tickets"></div>
-    <div class="card-title" style="margin-top:14px">Task Submissions — Approve / Reject</div><div id="owner-subs"></div>
-    <div class="card-title" style="margin-top:14px">Referral Review — Same-Network (Hold)</div><div id="owner-referrals"></div>
-    <div class="card-title" style="margin-top:14px">⚠️ Suspicious Accounts — sirf jaanch ke liye (band nahi)</div><div id="owner-suspicious"></div>
-    <div class="card-title" style="margin-top:14px">🚫 Banned Accounts</div><div id="owner-banned"></div>
-    <div class="card-title" style="margin-top:14px">🪙 Coins Do / Kato</div><div class="ref-row"><select id="gr-user"></select></div><div class="ref-row"><input id="gr-amount" type="number" placeholder="Coins ki matra" style="text-transform:none"><button class="small-btn" onclick="grantCoins()">Coins Do</button><button class="small-btn danger-btn" onclick="reduceCoins()">Coins Kato</button></div>
-    <div class="card-sub">Admin adjustments are recorded in the ledger.</div>
-    <div class="card-title" style="margin-top:14px">🎟️ Promo Code Banao</div><div class="ref-row"><input id="np-code" placeholder="CODE" style="text-transform:uppercase"></div><div class="ref-row"><input id="np-coins" type="number" placeholder="Coins"><input id="np-uses" type="number" placeholder="Uses (0 = unlimited)"><button class="small-btn" onclick="createPromo()">Banao</button></div><div id="owner-promos"></div>
-    <div class="card-title" style="margin-top:14px">Naya Sponsored Task Banao</div><div class="ref-row"><input id="nt-title" placeholder="Task title" style="text-transform:none"></div><div class="ref-row"><input id="nt-desc" placeholder="Description" style="text-transform:none"></div><div class="ref-row"><input id="nt-link" placeholder="Link (optional)" style="text-transform:none"></div><div class="ref-row"><input id="nt-reward" type="number" placeholder="Reward coins"><input id="nt-budget" type="number" placeholder="Budget coins"></div><div class="ref-row"><select id="nt-mode"><option value="proof">Direct Complete</option><option value="channel">Channel auto-check</option></select><select id="nt-category"><option value="telegram">Telegram task</option><option value="twitter">Twitter / X task</option><option value="other">Other task</option></select><button id="btn-nt" class="small-btn">Task Banao</button></div><div id="owner-tasks"></div>
+  <div id="owner-panel" style="display:none; margin-top:14px">
+    <div class="adm-head"><span class="adm-crown">👑</span><div><div class="adm-title">Admin Panel</div><div class="card-sub" id="owner-stats"></div></div></div>
+    <div class="adm-tiles">
+      <div class="adm-tile"><div class="adm-num" id="adm-t-players">–</div><div class="adm-lbl">Total Players</div></div>
+      <div class="adm-tile green"><div class="adm-num" id="adm-t-today">–</div><div class="adm-lbl">Aaj ke Naye</div></div>
+      <div class="adm-tile"><div class="adm-num" id="adm-t-coins">–</div><div class="adm-lbl">Total Coins</div></div>
+      <div class="adm-tile green"><div class="adm-num" id="adm-t-pending">–</div><div class="adm-lbl">Pending Withdraw</div></div>
+    </div>
+
+    <div class="card adm-card">
+      <div class="adm-card-head"><span>💸 Pending Withdrawals</span><span class="adm-chip" id="adm-c-wd">0</span></div>
+      <div class="card-sub" id="owner-summary"></div><div id="owner-list"></div>
+    </div>
+
+    <div class="card adm-card">
+      <div class="adm-card-head"><span>🪙 Coins Do / Kato</span></div>
+      <div class="ref-row"><select id="gr-user"></select></div><div class="ref-row"><input id="gr-amount" type="number" placeholder="Coins ki matra" style="text-transform:none"><button class="small-btn" onclick="grantCoins()">Coins Do</button><button class="small-btn danger-btn" onclick="reduceCoins()">Coins Kato</button></div>
+      <div class="card-sub">Admin adjustments are recorded in the ledger.</div>
+    </div>
+
+    <div class="card adm-card">
+      <div class="adm-card-head"><span>🛟 Support Tickets</span><span class="adm-chip" id="adm-c-support">0</span></div>
+      <div id="owner-support-tickets"></div>
+    </div>
+
+    <div class="card adm-card">
+      <div class="adm-card-head"><span>📝 Task Submissions — Approve / Reject</span><span class="adm-chip" id="adm-c-subs">0</span></div>
+      <div id="owner-subs"></div>
+    </div>
+
+    <div class="card adm-card">
+      <div class="adm-card-head"><span>🔗 Referral Review — Same-Network (Hold)</span><span class="adm-chip" id="adm-c-ref">0</span></div>
+      <div id="owner-referrals"></div>
+    </div>
+
+    <div class="card adm-card">
+      <div class="adm-card-head"><span>⚠️ Suspicious Accounts — sirf jaanch ke liye (band nahi)</span><span class="adm-chip red" id="adm-c-susp">0</span></div>
+      <div id="owner-suspicious"></div>
+    </div>
+
+    <div class="card adm-card">
+      <div class="adm-card-head"><span>🚫 Banned Accounts</span><span class="adm-chip grey" id="adm-c-ban">0</span></div>
+      <div id="owner-banned"></div>
+    </div>
+
+    <div class="card adm-card">
+      <div class="adm-card-head"><span>👥 Recent Players</span></div>
+      <div id="owner-recent"></div>
+    </div>
+
+    <div class="card adm-card">
+      <div class="adm-card-head"><span>🎟️ Promo Code Banao</span><span class="adm-chip grey" id="adm-c-promo">–</span></div>
+      <div class="ref-row"><input id="np-code" placeholder="CODE" style="text-transform:uppercase"></div><div class="ref-row"><input id="np-coins" type="number" placeholder="Coins"><input id="np-uses" type="number" placeholder="Uses (0 = unlimited)"><button class="small-btn" onclick="createPromo()">Banao</button></div><div id="owner-promos"></div>
+    </div>
+
+    <div class="card adm-card">
+      <div class="adm-card-head"><span>➕ Naya Sponsored Task Banao</span></div>
+      <div class="ref-row"><input id="nt-title" placeholder="Task title" style="text-transform:none"></div><div class="ref-row"><input id="nt-desc" placeholder="Description" style="text-transform:none"></div><div class="ref-row"><input id="nt-link" placeholder="Link (optional)" style="text-transform:none"></div><div class="ref-row"><input id="nt-reward" type="number" placeholder="Reward coins"><input id="nt-budget" type="number" placeholder="Budget coins"></div><div class="ref-row"><select id="nt-mode"><option value="proof">Direct Complete</option><option value="channel">Channel auto-check</option></select><select id="nt-category"><option value="telegram">Telegram task</option><option value="twitter">Twitter / X task</option><option value="other">Other task</option></select><button id="btn-nt" class="small-btn">Task Banao</button></div><div id="owner-tasks"></div>
+    </div>
   </div>
 </section>
 
@@ -322,6 +370,6 @@
 
 <script src="/static/three.min.js"></script>
 <script src="/static/slime3d.js?v=2"></script>
-<script src="/static/app.js?v=38"></script>
+<script src="/static/app.js?v=50"></script>
 </body>
 </html>

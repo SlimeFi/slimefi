@@ -306,10 +306,13 @@ async function loadOwner() {
     const st = await api("/api/owner/stats");
     if (st.ok) {
       $("owner-stats").textContent =
-        "Total Players: " + st.total_players + " · Aaj Join: " + st.joined_today +
-        " · Bot Starts: " + st.bot_starts +
+        "Bot Starts: " + st.bot_starts +
         " · Coin Liability: ₹" + Number(st.estimated_coin_value_rupees || 0).toFixed(2) +
         " · Open Tickets: " + (st.open_support_tickets || 0);
+      $("adm-t-players").textContent = fmt(st.total_players);
+      $("adm-t-today").textContent = fmt(st.joined_today);
+      $("adm-t-coins").textContent = fmt(st.total_coin_balance);
+      $("adm-c-promo").textContent = (st.promos || []).filter(p => p.active).length + " active";
       const sel = $("gr-user");
       const keep = sel.value;
       sel.innerHTML = (st.players || []).map(p =>
@@ -332,6 +335,7 @@ async function loadOwner() {
           <div class="card-sub">Proof: ${esc(s.proof)} · Reward: ${fmt(s.reward_coins)} coins</div>
           ${s.status === "pending" ? `<div class="ref-row"><button onclick="decideSub(${s.id},'approve')">Approve</button><button onclick="decideSub(${s.id},'reject')">Reject</button></div>` : ""}
         </div>`).join("") || `<div class="card-sub">Koi submission nahi</div>`;
+      $("adm-c-subs").textContent = (sb.submissions || []).filter(s => s.status === "pending").length;
       const rf = await api("/api/owner/referrals");
       if (rf.ok) {
         $("owner-referrals").innerHTML = (rf.reviews || []).map(r => `
@@ -351,6 +355,9 @@ async function loadOwner() {
             <div class="card-sub">${esc(b.reason || "")}</div>
             <div class="ref-row"><button onclick="unbanUser('${b.user_id}')">Unban Karo</button></div>
           </div>`).join("") || `<div class="card-sub">Koi banned account nahi hai</div>`;
+        $("adm-c-ref").textContent = (rf.reviews || []).length;
+        $("adm-c-susp").textContent = (rf.suspicious || []).length;
+        $("adm-c-ban").textContent = (rf.banned || []).length;
       }
       $("owner-tasks").innerHTML = (sb.tasks || []).map(t =>
         `<div class="wd-row"><span>Task #${t.id} · ${esc(t.title)}</span><span>${CAT_LABEL[t.category || "telegram"]} · ${fmt(t.reward_coins)} coins${t.budget_coins ? ` · Budget ${fmt(t.spent_coins || 0)}/${fmt(t.budget_coins)}` : ""} · ${t.active ? "ON" : "OFF"}</span></div>`).join("");
@@ -359,8 +366,11 @@ async function loadOwner() {
   const r = await api("/api/owner/withdrawals");
   if (!r.ok) return;
   $("owner-summary").textContent = "Pending: " + r.pending_count + " requests · ₹" + r.pending_rupees;
+  $("adm-c-wd").textContent = r.pending_count;
+  $("adm-t-pending").textContent = "₹" + r.pending_rupees;
   const support = await api("/api/owner/support/tickets");
   if (support.ok) {
+    $("adm-c-support").textContent = (support.tickets || []).filter(t => t.status === "open").length;
     $("owner-support-tickets").innerHTML = (support.tickets || []).map(t => `
       <div class="owner-row"><div class="wd-row"><span>#${t.id} · ${esc(t.user_id)} · ${esc(t.category)}</span><b>${esc(t.status)}</b></div>
       <div class="card-sub">${esc(t.message)}</div>

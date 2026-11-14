@@ -420,3 +420,20 @@ body{background:radial-gradient(ellipse at 88% 0%,rgba(72,91,153,.22),transparen
 .ad-card .card-title{font-size:1.55rem;font-weight:900;letter-spacing:.2px;color:#fff}
 .ad-card .card-title::after{content:"";display:block;height:3px;width:64px;margin-top:6px;border-radius:3px;background:linear-gradient(90deg,#5cff7a,transparent)}
 .ad-card .gold-btn{background:linear-gradient(135deg,#5cff7a 0%,#22c55e 60%,#16a34a 100%);color:#06280f;box-shadow:0 8px 26px rgba(46,204,113,.45),inset 0 1px 0 rgba(255,255,255,.55)}
+
+/* ---- Admin Panel v50: clean sections, stat tiles, count chips ---- */
+.adm-head { display:flex; align-items:center; gap:10px; margin:4px 2px 12px; }
+.adm-crown { font-size:26px; }
+.adm-title { font-size:19px; font-weight:800; }
+.adm-tiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+.adm-tile { background:linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:12px 14px; }
+.adm-num { font-size:21px; font-weight:800; color:#ffe27a; }
+.adm-tile.green .adm-num { color:#7ee4a0; }
+.adm-lbl { font-size:11px; color:#8fa8bf; margin-top:3px; letter-spacing:.4px; text-transform:uppercase; }
+.adm-card { margin-top:0; margin-bottom:12px; }
+.adm-card-head { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:15px; font-weight:700; margin-bottom:10px; }
+.adm-chip { background:linear-gradient(135deg,#ffe27a,#e8930c); color:#231600; font-size:11.5px; font-weight:800; min-width:24px; text-align:center; padding:2px 8px; border-radius:999px; }
+.adm-chip.grey { background:rgba(255,255,255,.12); color:#cfe0ee; }
+.adm-chip.red { background:#ff5d5d; color:#2b0000; }
+#owner-panel .owner-row { border-top:none; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.05); border-radius:12px; padding:10px 11px; margin-bottom:8px; }
+#owner-panel .owner-row:last-child { margin-bottom:0; }
