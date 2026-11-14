@@ -1,3 +1,4 @@
+if (window.__ldSet) window.__ldSet(45); // loading-screen milestone: app.js booting (v44)
 const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 if (tg) { tg.ready(); tg.expand(); }
 let USER = "owner";
@@ -147,9 +148,11 @@ function showBan(notice) {
 }
 async function load() {
   S = await api("/api/state");
-  if (!S || S.ok === false) { if (S && S.msg) toast(S.msg); S = null; return; }
-  if (S.banned) { showBan(S.ban_notice); return; }
+  if (!S || S.ok === false) { if (S && S.msg) toast(S.msg); S = null; if (window.__ldDone) window.__ldDone(); return; }
+  if (S.banned) { showBan(S.ban_notice); if (window.__ldDone) window.__ldDone(); return; }
+  if (window.__ldSet) window.__ldSet(85); // loading-screen milestone: state applied (v44)
   render();
+  if (window.__ldDone) window.__ldDone(); // loading screen: first render complete (v44)
   try {
     const ref = new URLSearchParams(location.search).get("ref");
     if (ref && !localStorage.getItem("slimefi_ref_done")) {
@@ -745,7 +748,7 @@ function startRocket(){
 }
 function rkLaunch(){
   RK.flightId++; const fid=RK.flightId;
-  RK.phase='flying'; RK.startAt=performance.now(); RK.crashAt=1.2+Math.pow(Math.random(),2)*6.8; RK.mult=1;
+  RK.phase='flying'; RK.startAt=performance.now(); RK.crashAt=5.5+Math.random()*7.5; RK.mult=1;
   const rk=$('rk-rocket'),mu=$('rk-mult'),btn=$('rk-btn'),boom=$('rk-boom');
   if(rk){rk.style.opacity='1';rk.style.left='8%';rk.style.bottom='10%';rk.style.transform='rotate(42deg)';}
   if(mu){mu.className='rk-mult';mu.textContent='1.00x';}
@@ -759,7 +762,7 @@ function rkTick(now,fid){
   const mu=$('rk-mult'),rk=$('rk-rocket');
   if(!mu||!rk){rkCancelFlight();return;}
   const t=(now-RK.startAt)/1000;
-  RK.mult=Math.min(20,Math.exp(t*.16));
+  RK.mult=Math.min(20,Math.exp(t*.105));
   mu.textContent=RK.mult.toFixed(2)+'x';
   mu.classList.toggle('hot',RK.mult>=2);
   const p=Math.min(1,t/RK.crashAt);
@@ -796,6 +799,6 @@ function rkMainAction(){
   rkLaunch();
 }
 
-load();
+load().catch(function () { if (window.__ldDone) window.__ldDone(); }); // never trap the user behind the loader (v44)
 setInterval(load, 30000);
 

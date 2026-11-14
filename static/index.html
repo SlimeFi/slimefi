@@ -8,9 +8,63 @@
 <script src='https://libtl.com/sdk.js' data-zone='12248440' data-sdk='show_12248440'></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=37">
+<link rel="stylesheet" href="/static/style.css?v=38">
 </head>
 <body>
+
+<!-- ================= LOADING SCREEN (v44) ================= -->
+<div id="loader" aria-hidden="true">
+  <div class="ld-art">
+    <img class="ld-img" src="/static/img/loading-blue.jpg" alt="">
+    <div class="ld-track"><div class="ld-fill" id="ld-fill"></div></div>
+  </div>
+</div>
+<script>
+/* Loading-screen progress (v44). Defined inline so it is available from the
+   very first paint, before app.js arrives. Milestones: DOMContentLoaded 25,
+   app.js boot 45, /api/state applied 85, first render -> __ldDone().
+   A gentle creep inches the bar between milestones, and a 7s failsafe
+   guarantees the loader can never trap the user. */
+(function () {
+  var shown = 0, target = 10, cap = 24, done = false, fill = null;
+  var STAGES = [25, 45, 85, 100];
+  function paint() {
+    if (!fill) fill = document.getElementById("ld-fill");
+    if (fill) fill.style.width = shown.toFixed(1) + "%";
+  }
+  window.__ldSet = function (p) {
+    if (done) return;
+    p = Math.max(0, Math.min(100, p));
+    if (p > target) target = p;
+    for (var i = 0; i < STAGES.length; i++) {
+      cap = STAGES[i] - 2;
+      if (STAGES[i] > p) break;
+      cap = 100;
+    }
+  };
+  window.__ldDone = function () {
+    if (done) return;
+    done = true;
+    target = 100; shown = 100; paint();
+    clearInterval(iv);
+    setTimeout(function () {
+      var l = document.getElementById("loader");
+      if (!l) return;
+      l.classList.add("done");
+      setTimeout(function () { if (l.parentNode) l.parentNode.removeChild(l); }, 600);
+    }, 350);
+  };
+  var iv = setInterval(function () {
+    if (done) return;
+    if (shown < target) shown = Math.min(target, shown + Math.max(1.5, (target - shown) * 0.3));
+    else if (target < cap) target += 1;
+    paint();
+  }, 120);
+  document.addEventListener("DOMContentLoaded", function () { window.__ldSet(25); });
+  setTimeout(function () { window.__ldDone(); }, 7000);
+  paint();
+})();
+</script>
 
 <!-- ================= APP HEADER ================= -->
 <header class="app-header">
