@@ -888,8 +888,16 @@ def monetag_postback():
             return jsonify({"ok": True, "already": True})
         age = time.time() - (row["created_at"] or 0)
         if age < AD_MIN_WATCH_SEC:
-            adlog(c, who, "postback_young", f"ymid={ymid} age={int(age)}")
-            return jsonify({"ok": False, "retry": True}), 503
+            # A valued impression postback can legitimately arrive within
+            # a second of the start: Monetag sends it when the ad is
+            # SERVED, not when it finishes playing. The valued flag is
+            # Monetag's own paid decision on a secret-gated server call,
+            # so a young age is NOT a fraud signal on this path — log it
+            # and credit normally. (The old code returned 503 asking for
+            # a retry, but the retry was then swallowed as a duplicate,
+            # so real valued rewards were lost. Bug found 2026-11-14
+            # from the owner's live adlog: valued postbacks at age 0-1s.)
+            adlog(c, who, "postback_fast", f"ymid={ymid} age={int(age)}")
         u = roll_day(c, settle(c, get_user(c, who)))
         if not u:
             adlog(c, "monetag", "postback_unknown_user", f"ymid={ymid}")
@@ -901,6 +909,10 @@ def monetag_postback():
         left = AD_COOLDOWN_SEC - (time.time() - (u["last_ad_at"] or 0))
         if left > 0:
             adlog(c, who, "postback_skip", f"ymid={ymid} cooldown={int(left)} est={est}")
+            # Remove the dedupe row so Monetag's retry (after the
+            # cooldown) is processed fresh instead of eaten as a dup.
+            c.execute("DELETE FROM monetag_postbacks WHERE ymid=? AND event_type=?",
+                      (ymid, event_type))
             return jsonify({"ok": False, "retry": True}), 503
         cur2 = c.execute("UPDATE ad_sessions SET used=1 WHERE token=? AND used=0", (row["token"],))
         if cur2.rowcount != 1:
