@@ -723,7 +723,78 @@ window.completeGame=async function(id){
   if(r.ok){toast(r.msg||'XP added');await loadGames();$('game-stage').innerHTML=`<div class="game-success">✨<h3>Challenge complete!</h3><b>+${r.xp_awarded} XP</b><p>Coins balance change nahi hua.</p><button class="game-submit" onclick="closeGameStage()">BACK TO GAMES</button></div>`;}
   else {toast(r.msg||'Reward claim nahi hua');await loadGames();}
 };
-window.closeGameStage=()=>{$('game-stage').hidden=true;$('game-stage').innerHTML='';};
+window.closeGameStage=()=>{rkCancelFlight();$('game-stage').hidden=true;$('game-stage').innerHTML='';};
+
+// ---------- Rocket Flight: pure fun game — bina kisi inaam ke, sirf mazaa (owner order) ----------
+// Flight math ported from the owner's Rocket Crash build: multiplier = min(20, e^(t*0.105)),
+// flight ends at a random 5.5-13 s. Best/recent flights live only in memory (RK) —
+// nothing is saved, fetched or credited anywhere for this game.
+let RK={phase:'idle',startAt:0,crashAt:0,mult:1,raf:0,flightId:0,best:0,flights:[]};
+function rkCancelFlight(){RK.flightId++;RK.phase='idle';if(RK.raf)cancelAnimationFrame(RK.raf);RK.raf=0;}
+function rkStatsText(){
+  const best=RK.best?RK.best.toFixed(2)+'x':'—';
+  const recent=RK.flights.length?' · Recent: '+RK.flights.join(' · '):'';
+  return 'Best flight: '+best+recent;
+}
+function startRocket(){
+  rkCancelFlight();
+  const st=$('game-stage'); st.hidden=false;
+  st.innerHTML=`<div class="game-stage-top"><div><small>ROCKET FLIGHT · JUST FOR FUN</small><h3>Rocket Flight 🚀</h3></div><button onclick="closeGameStage()">✕</button></div><div class="rk-sky"><div class="rk-mult" id="rk-mult">1.00x</div><div class="rk-boom" id="rk-boom">💥</div><div class="rk-rocket" id="rk-rocket">🚀</div></div><div class="rk-stats" id="rk-stats"></div><div id="rk-controls"><button class="game-submit rk-btn" id="rk-btn" onclick="rkMainAction()">🚀 LAUNCH</button></div><p class="rk-note">Sirf mazaa ke liye — is game me koi inaam nahi milta.</p>`;
+  $('rk-stats').textContent=rkStatsText();
+  st.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function rkLaunch(){
+  RK.flightId++; const fid=RK.flightId;
+  RK.phase='flying'; RK.startAt=performance.now(); RK.crashAt=5.5+Math.random()*7.5; RK.mult=1;
+  const rk=$('rk-rocket'),mu=$('rk-mult'),btn=$('rk-btn'),boom=$('rk-boom');
+  if(rk){rk.style.opacity='1';rk.style.left='8%';rk.style.bottom='10%';rk.style.transform='rotate(42deg)';}
+  if(mu){mu.className='rk-mult';mu.textContent='1.00x';}
+  if(boom)boom.classList.remove('show');
+  if(btn){btn.textContent='✓ COLLECT';btn.classList.add('collect');}
+  RK.raf=requestAnimationFrame((now)=>rkTick(now,fid));
+}
+function rkTick(now,fid){
+  if(RK.phase!=='flying'||fid!==RK.flightId)return;
+  if(typeof now!=='number')now=performance.now();
+  const mu=$('rk-mult'),rk=$('rk-rocket');
+  if(!mu||!rk){rkCancelFlight();return;}
+  const t=(now-RK.startAt)/1000;
+  RK.mult=Math.min(20,Math.exp(t*.105));
+  mu.textContent=RK.mult.toFixed(2)+'x';
+  mu.classList.toggle('hot',RK.mult>=2);
+  const p=Math.min(1,t/RK.crashAt);
+  rk.style.left=(8+p*76)+'%';
+  rk.style.bottom=(10+p*66)+'%';
+  rk.style.transform=`rotate(${42+p*12}deg) scale(${1+p*.18})`;
+  if(t>=RK.crashAt){rkExplode();return;}
+  RK.raf=requestAnimationFrame((n)=>rkTick(n,fid));
+}
+function rkCollect(){
+  if(RK.phase!=='flying')return;
+  RK.phase='ended'; if(RK.raf)cancelAnimationFrame(RK.raf); RK.raf=0;
+  const m=RK.mult;
+  RK.best=Math.max(RK.best,m);
+  RK.flights.unshift('✓ '+m.toFixed(2)+'x'); RK.flights=RK.flights.slice(0,6);
+  const stats=$('rk-stats'); if(stats)stats.textContent=rkStatsText();
+  const ctl=$('rk-controls');
+  if(ctl)ctl.innerHTML=`<div class="game-success">🎉<h3>Collected at ${m.toFixed(2)}x</h3><p>Best flight: ${RK.best.toFixed(2)}x — badhiya timing!</p><button class="game-submit" onclick="startRocket()">PLAY AGAIN</button></div>`;
+}
+function rkExplode(){
+  RK.phase='ended'; if(RK.raf)cancelAnimationFrame(RK.raf); RK.raf=0;
+  const m=RK.mult;
+  RK.flights.unshift('💥 '+m.toFixed(2)+'x'); RK.flights=RK.flights.slice(0,6);
+  const rk=$('rk-rocket'),mu=$('rk-mult'),boom=$('rk-boom');
+  if(rk)rk.style.opacity='0';
+  if(mu)mu.classList.add('busted');
+  if(boom){boom.classList.remove('show');void boom.offsetWidth;boom.classList.add('show');}
+  const stats=$('rk-stats'); if(stats)stats.textContent=rkStatsText();
+  const ctl=$('rk-controls');
+  if(ctl)ctl.innerHTML=`<div class="game-success">💥<h3>Rocket phat gaya!</h3><p>Flight ${m.toFixed(2)}x par khatm ho gayi — thoda pehle Collect karna tha.</p><button class="game-submit" onclick="startRocket()">PLAY AGAIN</button></div>`;
+}
+function rkMainAction(){
+  if(RK.phase==='flying'){rkCollect();return;}
+  rkLaunch();
+}
 
 load();
 setInterval(load, 30000);

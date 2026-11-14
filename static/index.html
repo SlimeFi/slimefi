@@ -8,7 +8,7 @@
 <script src='https://libtl.com/sdk.js' data-zone='12248440' data-sdk='show_12248440'></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=36">
+<link rel="stylesheet" href="/static/style.css?v=37">
 </head>
 <body>
 
@@ -66,7 +66,7 @@
     <button class="mission-tile mission-spin" onclick="go('spin')"><span class="mission-icon">✧</span><span class="mission-name">Lucky spin</span><small>Try your daily spin</small><b>SPIN ↗</b></button>
   </div>
 
-  <button class="games-home-banner" onclick="go('games')"><span class="games-home-icon">🎮</span><span><small>NEW DESTINATION</small><b>Enter Games Center</b><em>Puzzle • Quiz • XP</em></span><strong>PLAY ↗</strong></button>
+  <button class="games-home-banner" onclick="go('games')"><span class="games-home-icon">🎮</span><span><small>NEW DESTINATION</small><b>Enter Games Center</b><em>Puzzle • Quiz • Rocket</em></span><strong>PLAY ↗</strong></button>
 
   <div class="community-banner" onclick="go('referral')">
     <div class="community-icon">♧</div><div><small>GROW YOUR SQUAD</small><b>Invite friends. Earn together.</b><span id="home-referral-caption">Your invite link is ready inside</span></div><span class="community-arrow">→</span>
@@ -125,6 +125,7 @@
   <div class="games-section-head"><div><small>PLAY & EARN XP</small><h2>Daily challenges</h2></div><span>↻ Resets daily</span></div>
   <div class="game-card puzzle-card"><div class="game-card-art">🧩</div><div class="game-card-info"><span class="game-tag">BRAIN GAME</span><h3>Puzzle Challenge</h3><p>Find the matching symbol in the grid.</p><b>+20 XP</b></div><button onclick="startPuzzle()" id="play-puzzle">PLAY</button></div>
   <div class="game-card quiz-card"><div class="game-card-art">🧠</div><div class="game-card-info"><span class="game-tag">5 QUESTIONS</span><h3>Daily Quiz</h3><p>Answer at least 3 correctly to complete.</p><b>+25 XP</b></div><button onclick="startQuiz()" id="play-quiz">PLAY</button></div>
+  <div class="game-card rocket-card"><div class="game-card-art">🚀</div><div class="game-card-info"><span class="game-tag">JUST FOR FUN</span><h3>Rocket Flight</h3><p>Rocket ko udao — khatm hone se pehle Collect karo.</p><b class="rk-free">NO REWARD · SIRF MAZAA</b></div><button onclick="startRocket()" id="play-rocket">PLAY</button></div>
   <div id="game-stage" class="game-stage" hidden></div>
   <div class="games-section-head"><div><small>PARTNER ZONE</small><h2>Sponsored Games</h2></div><span class="sponsor-label">SPONSORED</span></div>
   <div class="sponsor-empty"><div>🤝</div><b>Partner games are coming soon</b><p>Sponsored games will appear here after a partner campaign is approved. Paid placements will always be labelled.</p></div>
@@ -321,6 +322,6 @@
 
 <script src="/static/three.min.js"></script>
 <script src="/static/slime3d.js?v=2"></script>
-<script src="/static/app.js?v=37"></script>
+<script src="/static/app.js?v=38"></script>
 </body>
 </html>
