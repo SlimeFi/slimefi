@@ -437,3 +437,10 @@ body{background:radial-gradient(ellipse at 88% 0%,rgba(72,91,153,.22),transparen
 .adm-chip.red { background:#ff5d5d; color:#2b0000; }
 #owner-panel .owner-row { border-top:none; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.05); border-radius:12px; padding:10px 11px; margin-bottom:8px; }
 #owner-panel .owner-row:last-child { margin-bottom:0; }
+
+/* ---- Privacy Policy page v51 ---- */
+.policy-body h3 { font-size:15px; color:#ffd166; margin:16px 0 6px; }
+.policy-body h3:first-of-type { margin-top:10px; }
+.policy-body p, .policy-body li { font-size:13.5px; line-height:1.65; color:#d6e4f5; }
+.policy-body ul { padding-left:18px; margin:4px 0 8px; }
+.policy-body .muted { color:#8fa8bf; font-size:12px; }
