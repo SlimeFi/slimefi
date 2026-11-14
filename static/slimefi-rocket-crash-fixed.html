@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070a14">
+<title>SlimeFi • Rocket Crash</title>
+<style>
+:root{--bg:#070a14;--panel:#10172a;--panel2:#151f36;--line:#283957;--muted:#91a0bf;--white:#f4f7ff;--lime:#c6ff59;--cyan:#50e6ff;--red:#ff5578;--gold:#ffd36a}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -25%,#29345e 0%,#0a1020 42%,var(--bg) 75%);color:var(--white);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Arial;min-height:100vh}
+button{font:inherit;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}
+.app{max-width:980px;margin:auto;padding:16px 14px 32px}.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:950;letter-spacing:.3px}.logo{width:38px;height:38px;border-radius:13px;display:grid;place-items:center;color:#101725;background:linear-gradient(145deg,#e4ff9a,#70e7a8);font-size:22px;box-shadow:0 0 24px #a6ff6b55}
+.brand small{display:block;color:#8292b6;font-size:9px;letter-spacing:2px;font-weight:800;margin-top:1px}
+.balance{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid #455577;border-radius:13px;background:#111a2d;font-weight:900;font-variant-numeric:tabular-nums}.coin{color:var(--lime)}
+.headline{display:flex;justify-content:space-between;align-items:end;gap:10px;margin:12px 2px}.headline h1{font-size:clamp(22px,4vw,30px);margin:0;letter-spacing:-.7px}.headline p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.mode{font-size:10px;color:#c4d0eb;border:1px solid #344566;border-radius:99px;padding:7px 10px;background:#121b30;white-space:nowrap}
+.game{border:1px solid #314361;background:linear-gradient(150deg,#111b30,#0c1324 75%);border-radius:23px;overflow:hidden;box-shadow:0 22px 70px #0006}
+.stage{height:clamp(300px,58vw,470px);min-height:300px;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 100%,#183c55 0%,#10253b 30%,#0b162a 65%,#091120 100%)}
+.stage:before{content:"";position:absolute;inset:0;background:linear-gradient(transparent 94%,#8eeaff13 95%),linear-gradient(90deg,transparent 94%,#8eeaff10 95%);background-size:100% 42px,42px 100%;mask-image:linear-gradient(transparent,#000 30%);opacity:.6}
+.stars{position:absolute;inset:0;pointer-events:none}.star{position:absolute;width:2px;height:2px;border-radius:50%;background:#d8f7ff;opacity:.7;box-shadow:0 0 7px #9ceaff}
+.hud{position:absolute;top:17px;left:18px;right:18px;display:flex;justify-content:space-between;align-items:center;z-index:3}.live{font-size:10px;font-weight:900;letter-spacing:1.5px;color:#ff8aa3;display:flex;align-items:center;gap:7px}.dot{width:7px;height:7px;background:#ff587a;border-radius:50%;box-shadow:0 0 10px #ff587a;animation:pulse 1s infinite}.round{font-size:10px;color:#b4c4df;border:1px solid #3a4e6d;background:#0b1729bb;padding:7px 10px;border-radius:99px}
+.multiplier{position:absolute;top:37%;left:0;right:0;text-align:center;z-index:2;font-size:clamp(48px,12vw,92px);font-weight:1000;letter-spacing:-5px;color:#f7fbff;text-shadow:0 0 28px #56dcff55;font-variant-numeric:tabular-nums;transition:color .2s}.multiplier small{display:block;font-size:10px;letter-spacing:3px;color:#9bb0d2;margin-top:3px;font-weight:800}.multiplier.hot{color:var(--lime);text-shadow:0 0 28px #c6ff5966}.multiplier.busted{color:var(--red);text-shadow:0 0 30px #ff557866}
+.flight-path{position:absolute;left:0;right:0;bottom:0;height:66%;z-index:1;opacity:.9}.flight-path svg{width:100%;height:100%;overflow:visible}.path-glow{fill:none;stroke:#49ddff;stroke-width:3;filter:drop-shadow(0 0 8px #48dfff)}.path-dash{fill:none;stroke:#9ff6ff;stroke-width:1.3;stroke-dasharray:5 10;opacity:.55}
+.rocket{position:absolute;z-index:4;width:68px;height:68px;left:10%;bottom:15%;display:grid;place-items:center;font-size:48px;filter:drop-shadow(0 0 13px #4be8ff);transform:rotate(42deg);transition:filter .2s}
+.flame{position:absolute;left:11px;bottom:-16px;width:15px;height:29px;border-radius:50% 50% 60% 60%;background:linear-gradient(#fff4a6,#ff9d3d 48%,transparent);filter:blur(2px);opacity:0;transform:rotate(180deg)}
+.rocket.flying .flame{opacity:1;animation:flame .12s infinite alternate}
+.explosion{position:absolute;z-index:5;left:50%;top:52%;transform:translate(-50%,-50%) scale(.1);font-size:72px;opacity:0;pointer-events:none}.explosion.show{animation:boom .65s ease-out forwards}
+.controls{padding:17px;background:linear-gradient(180deg,#121d33,#0d1526);display:grid;grid-template-columns:1fr 1.1fr;gap:12px}
+.info-panel{border:1px solid #2c3c5a;border-radius:16px;padding:13px;background:#0d1628}.label{color:#8fa0c1;font-size:10px;font-weight:900;letter-spacing:1.3px;text-transform:uppercase}.reward{font-size:25px;font-weight:950;margin-top:5px;color:var(--lime);font-variant-numeric:tabular-nums}.hint{font-size:11px;color:#8fa0c1;margin-top:3px;line-height:1.4}
+.action-panel{display:flex;flex-direction:column;justify-content:center;gap:9px}.main-btn{width:100%;min-height:55px;border:0;border-radius:15px;background:linear-gradient(105deg,#d6ff72,#76e6a7);color:#101927;font-weight:1000;font-size:16px;letter-spacing:.2px;box-shadow:0 8px 25px #a6ff4c26;transition:transform .15s,filter .15s}.main-btn:active{transform:scale(.98)}.main-btn.collect{background:linear-gradient(105deg,#55ecff,#8ba9ff);box-shadow:0 8px 25px #55ecff2c}.main-btn.wait{background:#273652;color:#9eacc8;box-shadow:none}
+.subline{text-align:center;font-size:10px;color:#8191b1}
+.bottom{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 17px 17px}.stat{border:1px solid #293957;border-radius:13px;background:#101a2e;padding:11px 13px;display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#9babc9}.stat b{color:#f1f5ff;font-size:12px;font-variant-numeric:tabular-nums}
+.history{margin-top:14px;border:1px solid #293957;border-radius:17px;background:#10182a;padding:14px}.history-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.history-head b{font-size:13px}.history-head span{font-size:10px;color:#8292b2}.history-list{display:flex;gap:8px;overflow:auto;padding-bottom:2px}.history-chip{white-space:nowrap;border:1px solid #344562;background:#17243a;border-radius:10px;padding:8px 10px;font-size:11px;color:#dce8ff}.history-chip.good{border-color:#54753f;color:#d8ff9e}.history-chip.bad{border-color:#754056;color:#ff9bb0}
+.footer{text-align:center;font-size:10px;color:#7182a3;line-height:1.55;margin:13px 8px 0}
+.sound{border:1px solid #344665;background:#121d32;color:#d9e5ff;border-radius:10px;padding:8px 10px;font-size:11px}
+@keyframes pulse{50%{opacity:.35;transform:scale(.75)}}@keyframes flame{to{transform:rotate(180deg) scaleY(.7);opacity:.7}}@keyframes boom{0%{opacity:0;transform:translate(-50%,-50%) scale(.1)}35%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.8)}}
+@media(max-width:560px){.app{padding:12px 10px 25px}.headline{align-items:center}.stage{height:350px}.controls{grid-template-columns:1fr 1.1fr;padding:11px;gap:8px}.info-panel{padding:10px}.reward{font-size:21px}.bottom{padding:0 11px 12px;gap:8px}.stat{padding:10px}.rocket{font-size:43px;width:58px;height:58px}.multiplier{top:36%}}
+</style></head>
+<body><main class="app">
+<header class="top"><div class="brand"><div class="logo">S</div><div>SlimeFi<small>ARCADE • ROCKET RUN</small></div></div><div class="balance">🟢 <span id="coins">1,000</span> <span class="coin">FUN COINS</span></div></header>
+<div class="headline"><div><h1>Rocket Crash</h1><p>Launch. Watch the multiplier rise. Collect your score before the flight ends.</p></div><span class="mode">FREE PLAY · NO COIN LOSS</span></div>
+<section class="game">
+<div class="stage" id="stage">
+<div class="stars" id="stars"></div>
+<div class="hud"><span class="live"><i class="dot"></i><span id="roundLabel">READY TO LAUNCH</span></span><button class="sound" id="soundBtn" onclick="toggleSound()">🔊 Sound On</button></div>
+<div class="multiplier" id="multiplier">1.00x<small id="multiCaption">YOUR FLIGHT SCORE</small></div>
+<div class="flight-path"><svg viewBox="0 0 900 330" preserveAspectRatio="none"><path id="flightPath" class="path-glow" d="M0 310 Q240 300 350 245 T900 20"/><path class="path-dash" d="M0 310 Q240 300 350 245 T900 20"/></svg></div>
+<div class="rocket" id="rocket"><span class="flame"></span>🚀</div><div class="explosion" id="explosion">💥</div>
+</div>
+<div class="controls">
+<div class="info-panel"><div class="label">Potential Fun Coin reward</div><div class="reward" id="reward">+0 FC</div><div class="hint">Reward grows with your flight score. No coins are staked or deducted.</div></div>
+<div class="action-panel"><button class="main-btn" id="mainBtn" onclick="mainAction()">🚀 Launch Rocket</button><div class="subline" id="subline">A new flight is ready</div></div>
+</div>
+<div class="bottom"><div class="stat"><span>Best flight</span><b id="best">—</b></div><div class="stat"><span>Flights collected</span><b id="played">0</b></div></div>
+</section>
+<section class="history"><div class="history-head"><b>Recent flights</b><span>THIS DEVICE</span></div><div class="history-list" id="history"><span class="hint">Your completed flights will appear here.</span></div></section>
+<div class="footer">Fun Coins are virtual arcade points only. No purchase, deposits, wagers, transfers, cash value or withdrawals. Your balance is saved locally in this browser.</div>
+</main>
+<script>
+/* Safe-storage shim: in sandboxed preview frames localStorage.setItem throws
+   and kills the game (its persist() has no try/catch). Fall back to memory. */
+(function(){try{localStorage.setItem('__sf_t','1');localStorage.removeItem('__sf_t');}
+catch(e){var m={};var mem={getItem:function(k){return k in m?m[k]:null},setItem:function(k,v){m[k]=String(v)},removeItem:function(k){delete m[k]},clear:function(){m={}}};
+try{Object.defineProperty(window,'localStorage',{value:mem,configurable:true});}catch(_){}}})();
+</script>
+<script>
+const STORE='slimefi_crash_arcade_v1';
+let state={coins:1000,best:0,played:0,history:[]};
+try{state={...state,...JSON.parse(localStorage.getItem(STORE)||'{}')}}catch(e){}
+let phase='ready',startAt=0,crashAt=0,mult=1,raf=0,sound=true,audio=null,round=0;
+const $=id=>document.getElementById(id);
+function persist(){localStorage.setItem(STORE,JSON.stringify(state));render()}
+function render(){ $('coins').textContent=state.coins.toLocaleString();$('best').textContent=state.best?state.best.toFixed(2)+'x':'—';$('played').textContent=state.played;$('history').innerHTML=state.history.length?state.history.slice(0,9).map(x=>`<span class="history-chip ${x.type}">${x.text}</span>`).join(''):'<span class="hint">Your completed flights will appear here.</span>'}
+function setButton(text,cls=''){ $('mainBtn').textContent=text;$('mainBtn').className='main-btn '+cls}
+function beep(freq=500,dur=.08,type='sine'){if(!sound)return;try{audio=audio||new(window.AudioContext||window.webkitAudioContext)();let o=audio.createOscillator(),g=audio.createGain();o.type=type;o.frequency.value=freq;g.gain.value=.035;o.connect(g);g.connect(audio.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+dur);o.stop(audio.currentTime+dur)}catch(e){}}
+function toggleSound(){sound=!sound;$('soundBtn').textContent=sound?'🔊 Sound On':'🔇 Sound Off';if(sound)beep(650)}
+function makeStars(){let box=$('stars');for(let i=0;i<52;i++){let s=document.createElement('i');s.className='star';s.style.left=Math.random()*100+'%';s.style.top=Math.random()*100+'%';s.style.opacity=(.2+Math.random()*.7);s.style.transform=`scale(${.5+Math.random()*1.4})`;box.appendChild(s)}}
+function launch(){if(phase!=='ready'&&phase!=='ended')return;phase='flying';round++;startAt=performance.now();crashAt=5.5+Math.random()*7.5;mult=1;$('roundLabel').textContent='ROCKET IN FLIGHT';$('multiCaption').textContent='FLIGHT MULTIPLIER';$('multiplier').className='multiplier hot';$('rocket').classList.add('flying');$('rocket').style.transition='none';$('explosion').classList.remove('show');$('reward').textContent='+0 FC';$('subline').textContent='Tap COLLECT before the flight ends';setButton('✓ Collect Fun Coins','collect');beep(440,.15,'triangle');tick()}
+function tick(now){if(phase!=='flying')return;let t=(now-startAt)/1000;mult=Math.min(20,Math.exp(t*.105));let reward=Math.floor((mult-1)*12)+5;$('multiplier').innerHTML=mult.toFixed(2)+'x<small>FLIGHT MULTIPLIER</small>';$('reward').textContent='+'+reward+' FC';let p=Math.min(1,t/crashAt);let x=10+p*76,y=15+p*65;$('rocket').style.left=x+'%';$('rocket').style.bottom=y+'%';$('rocket').style.transform=`rotate(${42+p*12}deg) scale(${1+p*.18})`;$('flightPath').style.strokeDasharray=`${Math.max(0,p*900)} 1200`;if(t>=crashAt){endFlight();return}if(t>2.2&&Math.floor(t*3)!==Math.floor((t-.016)*3))beep(250+Math.min(500,mult*40),.025,'sine');raf=requestAnimationFrame(tick)}
+function collect(){if(phase!=='flying')return;let reward=Math.floor((mult-1)*12)+5;state.coins+=reward;state.played++;state.best=Math.max(state.best,mult);state.history.unshift({type:'good',text:`✓ ${mult.toFixed(2)}x · +${reward} FC`});state.history=state.history.slice(0,12);phase='ended';cancelAnimationFrame(raf);$('rocket').classList.remove('flying');$('roundLabel').textContent='FLIGHT COLLECTED';$('multiCaption').textContent='NICE FLIGHT!';$('subline').textContent=`You collected ${reward} Fun Coins`;setButton('↻ Fly Again');beep(760,.2,'triangle');persist()}
+function endFlight(){phase='ended';cancelAnimationFrame(raf);$('rocket').classList.remove('flying');$('rocket').style.opacity='0';$('explosion').classList.remove('show');void $('explosion').offsetWidth;$('explosion').classList.add('show');$('multiplier').className='multiplier busted';$('multiplier').innerHTML='FLIGHT ENDED<small>TRY ANOTHER RUN</small>';$('reward').textContent='+0 FC';$('roundLabel').textContent='FLIGHT ENDED';$('subline').textContent='No coins lost. Try to collect earlier next time.';setButton('↻ Fly Again');beep(130,.35,'sawtooth');state.played++;state.history.unshift({type:'bad',text:`✦ Ended at ${mult.toFixed(2)}x · no loss`});state.history=state.history.slice(0,12);$('rocket').style.opacity='1';persist()}
+function mainAction(){if(phase==='ready'||phase==='ended'){ $('rocket').style.opacity='1';$('rocket').style.left='10%';$('rocket').style.bottom='15%';$('rocket').style.transform='rotate(42deg)';$('flightPath').style.strokeDasharray='0 1200';$('multiplier').className='multiplier';$('multiplier').innerHTML='1.00x<small>YOUR FLIGHT SCORE</small>';$('roundLabel').textContent='READY TO LAUNCH';launch()}else if(phase==='flying')collect()}
+makeStars();render();
+</script></body></html>

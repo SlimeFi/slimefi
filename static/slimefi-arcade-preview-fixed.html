@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090d20"><title>SlimeFi Arcade</title>
+<style>
+:root{--bg:#090d20;--panel:#141d39;--panel2:#1c294d;--line:#344775;--blue:#48b7ff;--purple:#a879ff;--gold:#ffd36b;--muted:#aab5d5;--green:#54e0a1;--red:#ff7189}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -10%,#263d78 0,#090d20 58%);color:#f5f7ff;font:15px system-ui,-apple-system,Segoe UI,sans-serif}
+.app{max-width:560px;min-height:100dvh;margin:auto;padding:16px 14px 34px}
+header{display:flex;justify-content:space-between;align-items:center;margin:4px 0 18px}.brand{font-size:25px;font-weight:950}.brand span{color:var(--blue)}.sub{font-size:10px;letter-spacing:2px;color:var(--muted)}
+.profile{background:#182344;border:1px solid var(--line);padding:8px 11px;border-radius:14px;font-size:12px}
+.balance{background:linear-gradient(120deg,#263b70,#34285d);border:1px solid #5366a1;border-radius:20px;padding:16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.balance small{color:#d0d8f4}.balance strong{display:block;font-size:27px;color:var(--gold)}button{font:inherit;cursor:pointer}.btn{border:0;border-radius:12px;padding:10px 14px;font-weight:850;background:linear-gradient(135deg,#ffd76f,#f2a83a);color:#38264b}
+.daily{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#14213e;border:1px solid var(--line);border-radius:15px;padding:12px;margin-bottom:20px}.daily p{margin:2px 0 0;color:var(--muted);font-size:11px}
+h2{font-size:17px;margin:0 0 10px}.games{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.game{background:linear-gradient(145deg,#1a274b,#121a34);border:1px solid var(--line);border-radius:17px;padding:13px;min-height:175px;display:flex;flex-direction:column}
+.art{height:76px;border-radius:12px;display:grid;place-items:center;font-size:43px;background:radial-gradient(circle at 50% 20%,#3b5790,#1a2445)}
+.game h3{margin:9px 0 3px;font-size:15px}.game p{margin:0;color:var(--muted);font-size:11px;line-height:1.4;flex:1}
+.open{margin-top:10px;width:100%;padding:9px;border-radius:10px;border:1px solid #5b75b1;background:#263b68;color:white;font-weight:800}
+.panel{background:#141d39;border:1px solid var(--line);border-radius:17px;padding:14px;margin-top:17px}
+.muted{color:var(--muted);font-size:12px}.row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.screen{display:none}.screen.active{display:block}.back{background:#24365f;color:white;border:1px solid #53699e;border-radius:10px;padding:8px 12px;margin-bottom:13px}
+.big{font-size:42px;text-align:center;margin:16px 0}.controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0}
+.secondary{background:#26375f;color:white;border:1px solid #53699e;border-radius:10px;padding:10px 13px;font-weight:750}
+.status{text-align:center;min-height:25px;color:var(--gold);font-weight:800;margin:10px 0}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:15px 0}.tile{aspect-ratio:1;border:1px solid #52699e;border-radius:10px;background:linear-gradient(145deg,#304879,#1b2a4d);color:white;font-size:22px;font-weight:900}
+.tile.revealed{background:#1c674f;border-color:#52d8a2}.tile.mine{background:#74334d;border-color:#ff829b}
+.wheel{width:210px;height:210px;border-radius:50%;margin:18px auto;background:conic-gradient(#ffd66d 0 45deg,#7c72ee 45deg 90deg,#4fc6a0 90deg 135deg,#f17c9c 135deg 180deg,#55a9ed 180deg 225deg,#a879ff 225deg 270deg,#f0a84a 270deg 315deg,#53c7d9 315deg);border:8px solid #dce4ff;display:grid;place-items:center;box-shadow:0 0 24px #6b8cff66}
+.wheel span{background:#101a34;border-radius:50%;padding:17px;font-weight:900}
+footer{text-align:center;color:#8795ba;font-size:10px;margin:22px 0 5px}
+@media(max-width:360px){.games{gap:8px}.game{padding:10px}.balance strong{font-size:23px}}
+</style></head>
+<body><div class="app">
+<header><div><div class="brand">💧 <span>SlimeFi</span> Arcade</div><div class="sub">PLAY • EXPLORE • HAVE FUN</div></div><div class="profile">🎮 Player</div></header>
+<div id="home" class="screen active">
+ <div class="balance"><div><small>🪙 FUN COINS · NON-CASH</small><strong id="coins">1,000</strong><small>Only for this arcade</small></div><div style="font-size:42px">🪙</div></div>
+ <div class="daily"><div><b>🎁 Daily Fun Bonus</b><p>Claim 100 free Fun Coins once per day</p></div><button class="btn" id="dailyBtn" onclick="dailyBonus()">Claim +100</button></div>
+ <h2>🎮 Choose your game</h2>
+ <div class="games">
+  <div class="game"><div class="art">🚀</div><h3>Crash Challenge</h3><p>Watch the multiplier climb and test your timing. No coins at risk.</p><button class="open" onclick="show('crash')">Play game</button></div>
+  <div class="game"><div class="art">💎</div><h3>Mines Puzzle</h3><p>Find safe gems on the board. Complete a safe-tile target for a badge.</p><button class="open" onclick="show('mines')">Play game</button></div>
+  <div class="game"><div class="art">🎡</div><h3>Lucky Spin</h3><p>One free spin each day for a fun surprise reward.</p><button class="open" onclick="show('spin')">Play game</button></div>
+  <div class="game"><div class="art">🎲</div><h3>Dice Challenge</h3><p>Pick a number and see how close your prediction gets.</p><button class="open" onclick="show('dice')">Play game</button></div>
+ </div>
+ <div class="panel"><div class="row"><b>🏆 Arcade achievements</b><span class="muted" id="achievementCount">0 / 4</span></div><p class="muted">Complete each mini-game challenge to collect achievement badges.</p><div id="badges" class="muted">No badges yet — start playing!</div></div>
+</div>
+<div id="crash" class="screen"><button class="back" onclick="show('home')">← Arcade</button><h2>🚀 Crash Challenge</h2><p class="muted">A timing and observation game. Rewards are fixed challenge bonuses; no stake or cash-out wagering.</p><div class="panel"><div class="big" id="multiplier">1.00×</div><div class="status" id="crashStatus">Press Start when ready</div><div class="controls"><button class="btn" id="crashStart" onclick="startCrash()">Start run</button><button class="secondary" id="crashStop" onclick="stopCrash()" disabled>Stop challenge</button></div><p class="muted" style="text-align:center">Complete a 5-second run to earn +20 Fun Coins. One reward per session.</p></div></div>
+<div id="mines" class="screen"><button class="back" onclick="show('home')">← Arcade</button><h2>💎 Mines Puzzle</h2><p class="muted">Find 5 safe gems. Avoid the hidden decoy tiles. This puzzle never deducts coins.</p><div class="panel"><div class="row"><b>Safe gems found</b><b id="safeCount">0 / 5</b></div><div class="grid" id="mineGrid"></div><div class="status" id="mineStatus">Tap a tile to reveal it</div><div class="controls"><button class="secondary" onclick="resetMines()">New puzzle</button></div></div></div>
+<div id="spin" class="screen"><button class="back" onclick="show('home')">← Arcade</button><h2>🎡 Lucky Spin</h2><div class="panel"><div class="wheel"><span>SPIN</span></div><div class="status" id="spinStatus">One free spin each day</div><div class="controls"><button class="btn" id="spinBtn" onclick="spin()">Spin for fun</button></div><p class="muted" style="text-align:center">Daily rewards: 10, 20, 30, 50 or 100 Fun Coins.</p></div></div>
+<div id="dice" class="screen"><button class="back" onclick="show('home')">← Arcade</button><h2>🎲 Dice Challenge</h2><div class="panel"><p class="muted">Choose a number. Exact match earns a fixed +15 Fun Coins challenge reward. One attempt per visit.</p><div class="controls" id="diceChoices"></div><div class="big" id="diceFace">🎲</div><div class="status" id="diceStatus">Pick a number from 1 to 6</div><button class="secondary" style="display:block;margin:auto" onclick="resetDice()">Try again</button></div></div>
+<footer>SlimeFi Arcade prototype · Fun Coins have no cash value, cannot be withdrawn, transferred or exchanged.</footer>
+</div>
+<script>
+(function(){try{localStorage.setItem('__sf_t','1');localStorage.removeItem('__sf_t');}
+catch(e){var m={};var mem={getItem:function(k){return k in m?m[k]:null},setItem:function(k,v){m[k]=String(v)},removeItem:function(k){delete m[k]},clear:function(){m={}}};
+try{Object.defineProperty(window,'localStorage',{value:mem,configurable:true});}catch(_){}}})();
+</script>
+<script>
+const KEY='slimefi_arcade_demo_v1';
+let data=JSON.parse(localStorage.getItem(KEY)||'null')||{coins:1000,lastDaily:'',lastSpin:'',badges:[]};
+function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
+function render(){document.getElementById('coins').textContent=data.coins.toLocaleString();let today=new Date().toLocaleDateString();let claimed=data.lastDaily===today;let b=document.getElementById('dailyBtn');b.disabled=claimed;b.textContent=claimed?'Claimed ✓':'Claim +100';document.getElementById('achievementCount').textContent=data.badges.length+' / 4';document.getElementById('badges').textContent=data.badges.length?data.badges.map(x=>'🏅 '+x).join(' · '):'No badges yet — start playing!';let sb=document.getElementById('spinBtn');if(sb){sb.disabled=data.lastSpin===today;sb.textContent=sb.disabled?'Come back tomorrow':'Spin for fun'}}
+function reward(n){data.coins+=n;save()}
+function badge(s){if(!data.badges.includes(s)){data.badges.push(s);save()}}
+function dailyBonus(){let t=new Date().toLocaleDateString();if(data.lastDaily===t)return;data.lastDaily=t;reward(100)}
+function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');if(id==='mines')resetMines();if(id==='dice')resetDice();render()}
+let crashTimer=null,crashSeconds=0,crashPaid=false;
+function startCrash(){clearInterval(crashTimer);crashSeconds=0;crashPaid=false;document.getElementById('crashStart').disabled=true;document.getElementById('crashStop').disabled=false;document.getElementById('crashStatus').textContent='Challenge running…';crashTimer=setInterval(()=>{crashSeconds++;document.getElementById('multiplier').textContent=(1+crashSeconds*.18).toFixed(2)+'×';if(crashSeconds>=5)finishCrash()},1000)}
+function finishCrash(){clearInterval(crashTimer);crashTimer=null;document.getElementById('crashStart').disabled=false;document.getElementById('crashStop').disabled=true;document.getElementById('crashStatus').textContent='Challenge complete! +20 Fun Coins';if(!crashPaid){crashPaid=true;reward(20);badge('Crash Finisher')}}
+function stopCrash(){if(crashSeconds>=5)finishCrash();else{clearInterval(crashTimer);crashTimer=null;document.getElementById('crashStart').disabled=false;document.getElementById('crashStop').disabled=true;document.getElementById('crashStatus').textContent='Run ended. Try again!'}}
+let mineSafe=new Set(),mineFound=0,mineDone=false;
+function resetMines(){mineSafe=new Set();while(mineSafe.size<15)mineSafe.add(Math.floor(Math.random()*25));mineFound=0;mineDone=false;document.getElementById('safeCount').textContent='0 / 5';document.getElementById('mineStatus').textContent='Tap a tile to reveal it';let g=document.getElementById('mineGrid');g.innerHTML='';for(let i=0;i<25;i++){let b=document.createElement('button');b.className='tile';b.textContent='?';b.onclick=()=>reveal(b,i);g.appendChild(b)}}
+function reveal(b,i){if(mineDone||b.disabled)return;b.disabled=true;if(mineSafe.has(i)){b.textContent='💎';b.classList.add('revealed');mineFound++;document.getElementById('safeCount').textContent=mineFound+' / 5';if(mineFound>=5){mineDone=true;document.getElementById('mineStatus').textContent='Puzzle solved! +25 Fun Coins';reward(25);badge('Gem Finder')}}else{b.textContent='🫧';b.classList.add('mine');document.getElementById('mineStatus').textContent='Decoy tile! Puzzle continues — no coins lost.'}}
+function spin(){let t=new Date().toLocaleDateString();if(data.lastSpin===t)return;data.lastSpin=t;let vals=[10,20,30,50,100],n=vals[Math.floor(Math.random()*vals.length)];document.querySelector('.wheel').style.transform='rotate(720deg)';document.getElementById('spinStatus').textContent='You got '+n+' Fun Coins!';reward(n);badge('Lucky Spinner')}
+function resetDice(){let c=document.getElementById('diceChoices');c.innerHTML='';for(let n=1;n<=6;n++){let b=document.createElement('button');b.className='secondary';b.textContent=n;b.onclick=()=>rollDice(n);c.appendChild(b)}document.getElementById('diceFace').textContent='🎲';document.getElementById('diceStatus').textContent='Pick a number from 1 to 6'}
+function rollDice(n){let d=1+Math.floor(Math.random()*6);document.getElementById('diceFace').textContent=['⚀','⚁','⚂','⚃','⚄','⚅'][d-1];document.getElementById('diceStatus').textContent='You picked '+n+' · Dice: '+d+(n===d?' · Exact match! +15 Fun Coins':' · Good try!');document.querySelectorAll('#diceChoices button').forEach(b=>b.disabled=true);if(n===d){reward(15);badge('Dice Expert')}}
+render();resetMines();resetDice();
+</script></body></html>
