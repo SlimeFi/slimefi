@@ -745,7 +745,7 @@ function startRocket(){
 }
 function rkLaunch(){
   RK.flightId++; const fid=RK.flightId;
-  RK.phase='flying'; RK.startAt=performance.now(); RK.crashAt=5.5+Math.random()*7.5; RK.mult=1;
+  RK.phase='flying'; RK.startAt=performance.now(); RK.crashAt=1.2+Math.pow(Math.random(),2)*6.8; RK.mult=1;
   const rk=$('rk-rocket'),mu=$('rk-mult'),btn=$('rk-btn'),boom=$('rk-boom');
   if(rk){rk.style.opacity='1';rk.style.left='8%';rk.style.bottom='10%';rk.style.transform='rotate(42deg)';}
   if(mu){mu.className='rk-mult';mu.textContent='1.00x';}
@@ -759,7 +759,7 @@ function rkTick(now,fid){
   const mu=$('rk-mult'),rk=$('rk-rocket');
   if(!mu||!rk){rkCancelFlight();return;}
   const t=(now-RK.startAt)/1000;
-  RK.mult=Math.min(20,Math.exp(t*.105));
+  RK.mult=Math.min(20,Math.exp(t*.16));
   mu.textContent=RK.mult.toFixed(2)+'x';
   mu.classList.toggle('hot',RK.mult>=2);
   const p=Math.min(1,t/RK.crashAt);
