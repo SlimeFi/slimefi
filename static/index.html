@@ -8,66 +8,9 @@
 <script src='https://libtl.com/sdk.js' data-zone='12248440' data-sdk='show_12248440'></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=40">
+<link rel="stylesheet" href="/static/style.css?v=37">
 </head>
 <body>
-
-<!-- ================= LOADING SCREEN (v44) ================= -->
-<div id="loader" aria-hidden="true">
-  <div class="ld-art">
-    <img class="ld-img" src="/static/img/loading-blue.jpg" alt="">
-    <div class="ld-bottom">
-      <div class="ld-track"><div class="ld-fill" id="ld-fill"></div></div>
-      <div class="ld-text">Loading your game hub...</div>
-    </div>
-  </div>
-</div>
-<script>
-/* Loading-screen progress (v44). Defined inline so it is available from the
-   very first paint, before app.js arrives. Milestones: DOMContentLoaded 25,
-   app.js boot 45, /api/state applied 85, first render -> __ldDone().
-   A gentle creep inches the bar between milestones, and a 7s failsafe
-   guarantees the loader can never trap the user. */
-(function () {
-  var shown = 0, target = 10, cap = 24, done = false, fill = null;
-  var STAGES = [25, 45, 85, 100];
-  function paint() {
-    if (!fill) fill = document.getElementById("ld-fill");
-    if (fill) fill.style.width = shown.toFixed(1) + "%";
-  }
-  window.__ldSet = function (p) {
-    if (done) return;
-    p = Math.max(0, Math.min(100, p));
-    if (p > target) target = p;
-    for (var i = 0; i < STAGES.length; i++) {
-      cap = STAGES[i] - 2;
-      if (STAGES[i] > p) break;
-      cap = 100;
-    }
-  };
-  window.__ldDone = function () {
-    if (done) return;
-    done = true;
-    target = 100; shown = 100; paint();
-    clearInterval(iv);
-    setTimeout(function () {
-      var l = document.getElementById("loader");
-      if (!l) return;
-      l.classList.add("done");
-      setTimeout(function () { if (l.parentNode) l.parentNode.removeChild(l); }, 600);
-    }, 350);
-  };
-  var iv = setInterval(function () {
-    if (done) return;
-    if (shown < target) shown = Math.min(target, shown + Math.max(1.5, (target - shown) * 0.3));
-    else if (target < cap) target += 1;
-    paint();
-  }, 120);
-  document.addEventListener("DOMContentLoaded", function () { window.__ldSet(25); });
-  setTimeout(function () { window.__ldDone(); }, 7000);
-  paint();
-})();
-</script>
 
 <!-- ================= APP HEADER ================= -->
 <header class="app-header">
@@ -80,62 +23,39 @@
 
 <!-- ================= HOME ================= -->
 <section id="view-home" class="view active">
-  <!-- ===== v46 home header: user name + level ===== -->
-  <div class="hm-header">
-    <div class="hm-avatar"><img id="home-user-avatar" src="/static/img/slime-pet.png" alt=""><span class="hm-avatar-badge">✓</span></div>
-    <div class="hm-user">
-      <div class="hm-name" id="home-user-name">SlimeFi Player</div>
-      <div class="hm-level" id="home-user-level">Level 1</div>
+  <div class="universe-hero">
+    <div class="hero-copy">
+      <div class="hero-kicker"><span class="pulse-dot"></span> YOUR REWARD UNIVERSE</div>
+      <h1>Small moves.<br><em>Real rewards.</em></h1>
+      <p>Complete quests, collect coins and level up your Slime.</p>
+      <button class="hero-cta" onclick="go('tasks')">Explore quests <span>↗</span></button>
     </div>
+    <div class="hero-mascot-wrap">
+      <div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div>
+      <div class="hero-star star-a">✦</div><div class="hero-star star-b">✧</div>
+      <div id="slime3d"><img class="hero-mascot slime3d-fallback" src="/static/img/slime-pet.png" alt="SlimeFi mascot"></div>
+    </div>
+    <div class="hero-glow"></div>
   </div>
 
-  <!-- ===== v46 home: balance card + daily bonus card ===== -->
-  <div class="hm-card hm-balance">
-    <div class="hm-bal-icon">🪙</div>
-    <div class="hm-bal-mid">
-      <div class="hm-bal-label">Your Coins</div>
-      <div class="hm-bal-num" id="home-coins">0</div>
-      <div class="hm-bal-sub">≈ ₹<b id="home-cash">0.00</b> · Lifetime: <b id="home-lifetime">0</b> coins</div>
+  <div class="home-balance-card">
+    <div class="balance-heading"><span>YOUR TOTAL BALANCE</span><span class="secure-chip">● SECURE WALLET</span></div>
+    <div class="balance-main-row">
+      <div><small>COIN VALUE</small><div class="rupee-total">₹<b id="home-cash">0.00</b></div></div>
+      <div class="coin-total-wrap"><small>AVAILABLE COINS</small><div class="coin-total">🪙 <b id="home-coins">0</b></div></div>
     </div>
-    <button type="button" class="hm-lime-btn hm-withdraw" onclick="go('wallet')">Withdraw</button>
-    <span class="sr-only" id="home-coin-value">₹0.00</span><span class="sr-only" id="home-coins-small">0</span><span class="sr-only" id="home-value-small">₹0.00</span>
+    <div class="balance-divider"></div>
+    <div class="balance-bottom-row"><span>1,000 Coins = ₹1</span><span>Lifetime: <b id="home-lifetime">0</b></span></div>
+    <div class="balance-actions"><button onclick="go('wallet')">Wallet details <span>↗</span></button><button class="balance-withdraw" onclick="go('wallet')">Withdraw</button></div>
+    <div class="sr-only" id="home-coin-value">₹0.00</div><div class="sr-only" id="home-coins-small">0</div><div class="sr-only" id="home-value-small">₹0.00</div>
   </div>
 
-  <div class="hm-card hm-daily">
-    <div class="hm-daily-icon">🎁</div>
-    <div class="hm-daily-mid">
-      <div class="hm-daily-label">Today's Bonus</div>
-      <div class="hm-daily-amt">+<span id="hm-daily-amount">50</span> <small>coins</small></div>
+  <div class="level-panel">
+    <div class="level-avatar"><img src="/static/img/slime-pet.png" alt=""></div>
+    <div class="level-info"><div class="level-topline"><b id="home-level-label">SLIME LEVEL 1</b><span id="home-xp-label">Getting started</span></div>
+      <div class="xp-track"><span id="home-xp-bar"></span></div><small id="home-xp-caption">Keep completing activities to level up</small>
     </div>
-    <div class="hm-daily-action" id="hm-daily-action"></div>
-  </div>
-
-  <!-- ===== v46 home: welcome banner / quick access / featured games ===== -->
-  <div class="hm-card hm-welcome">
-    <div class="hm-welcome-copy">
-      <h2>Welcome to SlimeFi!</h2>
-      <p>Play Games, Complete Tasks and Earn Rewards</p>
-      <button type="button" class="hm-lime-btn hm-letsgo">Let's Go</button>
-    </div>
-    <img class="hm-welcome-slime" src="/static/img/slime-pet.png" alt="">
-  </div>
-
-  <div class="hm-section-head"><h2>Quick Access</h2><span class="hm-seeall">See All →</span></div>
-  <div class="hm-quick">
-    <button type="button" class="hm-tile" onclick="go('games')"><span class="hm-tile-ico qa-games">🎮</span><span class="hm-tile-label">Games</span></button>
-    <button type="button" class="hm-tile" onclick="go('tasks')"><span class="hm-tile-ico qa-tasks">✅</span><span class="hm-tile-label">Tasks</span></button>
-    <button type="button" class="hm-tile" onclick="hmWatchAds()"><span class="hm-tile-ico qa-ads">📺</span><span class="hm-tile-label">Watch Ads</span></button>
-    <button type="button" class="hm-tile" onclick="go('referral')"><span class="hm-tile-ico qa-refer">🔗</span><span class="hm-tile-label">Refer</span></button>
-  </div>
-
-  <div class="hm-section-head"><h2>Featured Games</h2></div>
-  <div class="hm-card hm-featured">
-    <div class="hm-feat-art"><span class="hm-feat-star fs1">✦</span><span class="hm-feat-rocket">🚀</span><span class="hm-feat-star fs2">✧</span></div>
-    <div class="hm-feat-copy">
-      <h3>Rocket Flight</h3>
-      <p>Timing is Everything!</p>
-      <button type="button" class="hm-lime-btn hm-playnow" onclick="go('games');startRocket()">Play Now</button>
-    </div>
+    <div class="level-badge" id="home-level-number">01</div>
   </div>
 
   <div class="section-heading"><div><small>MAKE TODAY COUNT</small><h2>Quick missions</h2></div><span class="section-spark">✦</span></div>
@@ -389,40 +309,19 @@
   </div>
 </section>
 
-<!-- ================= PROFILE (v46) ================= -->
-<section id="view-profile" class="view">
-  <div class="pf-head">
-    <img class="pf-avatar" id="profile-avatar" src="/static/img/slime-pet.png" alt="">
-    <div class="pf-name" id="profile-name">SlimeFi Player</div>
-    <div class="pf-level" id="profile-level">Level 1</div>
-    <div class="pf-id" id="profile-id"></div>
-  </div>
-  <div class="pf-card">
-    <div class="pf-row"><span>Coin Balance</span><b id="profile-coins">0 coins</b></div>
-    <div class="pf-row"><span>Balance Value</span><b id="profile-cash">₹0.00</b></div>
-    <div class="pf-row"><span>Referral Code</span><span class="pf-code-wrap"><b id="profile-ref-code">-</b><button type="button" class="pf-copy" id="profile-copy">Copy</button></span></div>
-  </div>
-  <div class="pf-links">
-    <button type="button" class="pf-link" onclick="go('referral')"><span>🔗 Refer &amp; Earn</span><span class="pf-arrow">→</span></button>
-    <button type="button" class="pf-link" onclick="go('leaderboard')"><span>🏆 Leaderboard</span><span class="pf-arrow">→</span></button>
-    <button type="button" class="pf-link" onclick="go('support')"><span>🛟 Support</span><span class="pf-arrow">→</span></button>
-    <button type="button" class="pf-link" id="profile-admin" style="display:none" onclick="pfGotoAdmin()"><span>👑 Admin Panel</span><span class="pf-arrow">→</span></button>
-  </div>
-</section>
-
-<!-- ================= BOTTOM NAV (v46 — owner photo style) ================= -->
-<nav class="bottom-nav v46-nav">
-  <button class="nav-item active" data-go="home"><span class="nav-tile nav-glyph">🏠</span><small>Home</small></button>
-  <button class="nav-item" data-go="tasks"><span class="nav-tile nav-glyph">✅</span><small>Tasks</small></button>
-  <button class="nav-item" data-go="games"><span class="nav-tile nav-glyph">🎮</span><small>Games</small></button>
-  <button class="nav-item" data-go="wallet"><span class="nav-tile nav-glyph">👛</span><small>Wallet</small></button>
-  <button class="nav-item" data-go="profile"><span class="nav-tile nav-glyph">👤</span><small>Profile</small></button>
+<!-- ================= BOTTOM NAV ================= -->
+<nav class="bottom-nav v31-nav">
+  <button class="nav-item active" data-go="home"><span class="nav-tile nav-img"><img src="/static/img/nav-home.png" alt="Home"></span><small>Home</small></button>
+  <button class="nav-item" data-go="tasks"><span class="nav-tile nav-img"><img src="/static/img/nav-quest.png" alt="Quests"></span><small>Quests</small></button>
+  <button class="nav-item nav-ad" id="nav-ad"><span class="nav-tile nav-img"><img src="/static/img/nav-watch.png" alt="Watch Ad"></span><small>Watch Ad</small></button>
+  <button class="nav-item" data-go="wallet"><span class="nav-tile nav-img"><img src="/static/img/nav-wallet.png" alt="Wallet"></span><small>Wallet</small></button>
+  <button class="nav-item" data-go="referral"><span class="nav-tile nav-img"><img src="/static/img/nav-refer.png" alt="Refer"></span><small>Refer</small></button>
 </nav>
 
 <div id="toast"></div>
 
 <script src="/static/three.min.js"></script>
 <script src="/static/slime3d.js?v=2"></script>
-<script src="/static/app.js?v=40"></script>
+<script src="/static/app.js?v=38"></script>
 </body>
 </html>
