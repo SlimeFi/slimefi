@@ -154,8 +154,9 @@ ALLOW_DEV_AUTH = os.environ.get("ALLOW_DEV_AUTH", "0") == "1"    # local testing
 REFERRAL_REWARD_COINS = 1000   # paid to the inviter when the referred user completes
                               # their first qualifying activity (ad / quest / daily /
                               # approved sponsored task) — never on join alone
-WELCOME_BONUS_COINS = 1000    # one-time bonus credited to every NEW account at
-                              # creation (owner order, 2026-11-14); ledger kind
+WELCOME_BONUS_COINS = 5000    # one-time bonus credited to every NEW account at
+                              # creation (owner order, 2026-11-14; raised 1000 -> 5000
+                              # = Rs5 on owner order, 2026-11-15); ledger kind
                               # "welcome_bonus"; NOT a referral qualifying activity
 OWNER_ID = os.environ.get("OWNER_ID", "")          # Telegram user key of the owner, e.g. "tg123456789"
 OWNER_KEY = os.environ.get("OWNER_KEY", "")        # secret in the owner's personal panel link (startapp param)
