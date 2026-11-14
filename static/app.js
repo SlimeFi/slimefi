@@ -74,14 +74,14 @@ function render() {
   $("home-coins").textContent = fmt(S.coins);
   $("home-lifetime").textContent = fmt(S.lifetime_coins);
   const level = (S.slime && S.slime.level) || 1;
-  const nextAt = S.slime && S.slime.next_at;
-  const prevAt = [0,1000,6000,21000,61000,161000,411000,1011000,2511000,6511000][Math.max(0, level - 1)] || 0;
-  const xpPct = nextAt ? Math.max(0, Math.min(100, ((S.lifetime_coins - prevAt) / Math.max(1, nextAt - prevAt)) * 100)) : 100;
-  $("home-level-label").textContent = "SLIME LEVEL " + level;
-  $("home-level-number").textContent = String(level).padStart(2, "0");
-  $("home-xp-label").textContent = nextAt ? fmt(Math.max(0, nextAt - S.lifetime_coins)) + " XP to next" : "MAX LEVEL";
-  $("home-xp-bar").style.width = xpPct + "%";
-  $("home-xp-caption").textContent = nextAt ? fmt(S.lifetime_coins) + " / " + fmt(nextAt) + " lifetime coins" : "Top Slime reached";
+  $("home-user-level").textContent = "Level " + level;
+  // profile view (v46)
+  $("profile-level").textContent = "Level " + level;
+  $("profile-coins").textContent = fmt(S.coins) + " coins";
+  $("profile-cash").textContent = "₹" + coinValue.toFixed(2);
+  $("profile-ref-code").textContent = S.referral_code;
+  $("profile-id").textContent = pfIdLabel();
+  $("profile-admin").style.display = S.is_owner ? "" : "none";
   $("home-referral-caption").textContent = (S.invites || 0) + " friends in your squad · Invite more";
   $("home-pending-rew").textContent = "₹" + (S.pending_rewards_coins / S.earn.coins_per_rupee).toFixed(2);
   $("payouts-total").textContent = S.payouts_paid_count ? (S.payouts_paid_count + " payouts · ₹" + fmt(S.payouts_paid_rupees)) : "";
@@ -90,6 +90,7 @@ function render() {
     `<div class="wd-row"><span>${medals[i] || (i + 1) + "."} ${esc(p.label)} · Lv ${p.level}</span><span>${fmt(p.coins)} coins</span></div>`).join("")
     || `<div class="card-sub">Abhi koi player nahi hai — pehle tum bano!</div>`;
   renderDaily();
+  renderHomeDaily();
   renderSpin();
   $("payouts-list").innerHTML = (S.recent_payouts || []).map(p =>
     `<div class="wd-row"><span>✅ ₹${p.amount_rupees} → ${esc(p.upi)}${p.txn_id ? " · 🧾 " + esc(p.txn_id) : ""}${p.utr ? " · UTR " + esc(p.utr) : ""}</span><span>${p.ts ? new Date(p.ts * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("")
@@ -184,6 +185,79 @@ window.claimDaily = async () => {
   toast(r.msg || (r.ok ? "Bonus mil gaya" : "Nahi hua"));
   if (r.ok) load();
 };
+
+// ---------- v46 home: user header + daily bonus card + quick access ----------
+// Name/avatar come from the Telegram WebApp user (same client source the app
+// already uses for identity); the state payload carries no name/photo fields.
+(function initHomeUser() {
+  try {
+    const u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+    if (!u) return;
+    const name = [u.first_name, u.last_name].filter(Boolean).join(" ") || (u.username ? "@" + u.username : "");
+    if (name) {
+      $("home-user-name").textContent = name;
+      const pn = $("profile-name"); if (pn) pn.textContent = name;
+    }
+    if (u.photo_url) {
+      const setPic = img => {
+        if (!img) return;
+        img.onerror = () => { img.onerror = null; img.src = "/static/img/slime-pet.png"; };
+        img.src = u.photo_url;
+      };
+      setPic($("home-user-avatar"));
+      setPic($("profile-avatar"));
+    }
+  } catch (e) {}
+})();
+// Profile view helpers (v46): identity label, referral-code copy (same
+// behaviour as the Refer view's Copy button), owner-only Admin shortcut.
+function pfIdLabel() {
+  try {
+    const u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+    if (u && u.username) return "@" + u.username;
+    if (u && u.id) return "ID: " + u.id;
+  } catch (e) {}
+  return S && S.user_id ? "ID: " + String(S.user_id).replace(/^tg/, "") : "";
+}
+window.pfGotoAdmin = () => {
+  go("home");
+  setTimeout(() => { const p = $("owner-panel"); if (p) p.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80);
+};
+const pfCopyBtn = $("profile-copy");
+if (pfCopyBtn) pfCopyBtn.onclick = async () => {
+  if (!S) return;
+  try { await navigator.clipboard.writeText(S.referral_code); toast("Invite code copy ho gaya"); }
+  catch (e) { toast("Invite code: " + S.referral_code); }
+};
+// Quick Access "Watch Ads" tile: reuse EXACTLY what the bottom-nav Watch Ad
+// button does — it clicks the real #btn-ad (Monetag flow) in place.
+window.hmWatchAds = () => { const b = $("btn-ad"); if (b) b.click(); };
+let HM_CD_IV = null;
+function hmStopCountdown() { if (HM_CD_IV) { clearInterval(HM_CD_IV); HM_CD_IV = null; } }
+function hmCountdownTick() {
+  const el = $("hm-daily-timer");
+  if (!el) { hmStopCountdown(); return; }
+  const end = new Date(); end.setHours(24, 0, 0, 0);
+  const s = Math.max(0, Math.floor((end - Date.now()) / 1000));
+  const p2 = n => String(n).padStart(2, "0");
+  el.textContent = p2(Math.floor(s / 3600)) + ":" + p2(Math.floor((s % 3600) / 60)) + ":" + p2(s % 60);
+}
+function renderHomeDaily() {
+  if (!S) return;
+  const amtEl = $("hm-daily-amount"), box = $("hm-daily-action");
+  if (!amtEl || !box) return;
+  const table = S.daily_table || [50, 75, 100, 150, 200, 300, 500];
+  const cd = S.daily_cycle_day || 1;
+  amtEl.textContent = fmt(table[cd - 1] || 0);
+  if (S.daily_available) {
+    hmStopCountdown();
+    box.innerHTML = `<button type="button" class="hm-lime-btn hm-claim-btn" onclick="claimDaily()">Claim</button>`;
+  } else {
+    box.innerHTML = `<span class="hm-claimed">Claimed ✅</span><span class="hm-timer"><span class="hm-timer-ico">🕛</span><span id="hm-daily-timer">--:--:--</span></span>`;
+    hmCountdownTick();
+    if (!HM_CD_IV) HM_CD_IV = setInterval(hmCountdownTick, 1000);
+  }
+}
 window.redeemPromo = async () => {
   const code = $("promo-code").value.trim();
   if (!code) { toast("Pehle promo code dalo"); return; }
@@ -493,7 +567,7 @@ function spinAdRun() {
   const monetagFn = window.show_12248440;
   const useMonetag = typeof monetagFn === "function";
   if (!useMonetag) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
-  const startP = api("/api/ad/start", { v: 39 });
+  const startP = api("/api/ad/start", { v: 40 });
   const t0 = Date.now();
   let claimed = false;
   const tryClaim = async done => {
@@ -579,7 +653,7 @@ function watchAdRun() {
   // matched back to this exact session.
   const ymid = "sf" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const base = S ? { coins: S.coins || 0, ads: (S.earn && S.earn.ads_today) || 0 } : { coins: 0, ads: 0 };
-  const startP = api("/api/ad/start", { v: 39, ymid });
+  const startP = api("/api/ad/start", { v: 40, ymid });
   const btn = $("btn-ad");
   let confirming = false;
   const confirmReward = async nonValued => {
