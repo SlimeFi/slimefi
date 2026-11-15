@@ -248,6 +248,10 @@ def init_db():
             category TEXT NOT NULL, message TEXT NOT NULL, status TEXT DEFAULT 'open',
             created_at REAL NOT NULL, updated_at REAL
         );
+        CREATE TABLE IF NOT EXISTS warnings(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL,
+            message TEXT NOT NULL, ts REAL NOT NULL, seen INTEGER DEFAULT 0
+        );
         CREATE TABLE IF NOT EXISTS game_progress(
             user_id TEXT PRIMARY KEY, xp INTEGER NOT NULL DEFAULT 0,
             updated_at REAL NOT NULL DEFAULT 0
@@ -432,9 +436,13 @@ def state_payload(c, user):
             "resource": cfg["resource"], "rate_per_hour": cfg["rate"] * bl if cfg["resource"] else 0,
             "next_cost": upgrade_cost(bid, bl), "capped_by_forge": maxed,
         })
+    warn = c.execute(
+        "SELECT id,message,ts FROM warnings WHERE user_id=? AND seen=0 "
+        "ORDER BY id DESC LIMIT 1", (user["user_id"],)).fetchone()
     return {
         "user_id": user["user_id"],
         "just_created": bool(getattr(g, "just_created", False)),
+        "warning": ({"id": warn["id"], "message": warn["message"], "ts": warn["ts"]} if warn else None),
         "welcome_bonus_coins": WELCOME_BONUS_COINS,
         "coins": user["coins"], "wood": user["wood"], "crystals": user["crystals"],
         "pending": {"coins": int(user["pending_coins"]), "wood": int(user["pending_wood"]),
@@ -1577,6 +1585,88 @@ def owner_reduce():
         log(c, target, "owner_reduce", {"coins": -cut}, "Owner ne coins kaate (Admin Panel se)")
         return jsonify({"ok": True, "balance": new_coins,
                         "msg": f"{cut} coins kaat liye. Naya balance: {new_coins} coins"})
+
+@app.get("/api/owner/activity")
+def owner_activity():
+    """v55: ONE player's full activity for the Admin Panel — coin history
+    (ledger + withdrawals) and ad events together, newest first, so the
+    owner no longer has to dig through everyone's mixed stream."""
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    target = (request.args.get("user_id") or "").strip()
+    with db() as c:
+        u = c.execute("SELECT * FROM users WHERE user_id=?", (target,)).fetchone()
+        if not u:
+            return jsonify({"ok": False, "msg": "Player nahi mila"})
+        items = []
+        for r in c.execute("SELECT kind,coins,note,ts FROM ledger WHERE user_id=? ORDER BY id DESC LIMIT 40", (target,)):
+            items.append({"type": r["kind"], "coins": r["coins"], "note": r["note"] or "", "ts": r["ts"], "src": "coin"})
+        for r in c.execute("SELECT id,amount_paise,status,created_at,decided_at FROM withdrawals WHERE user_id=? ORDER BY id DESC LIMIT 10", (target,)):
+            items.append({"type": "withdrawal_" + r["status"], "coins": -int(r["amount_paise"]) * 10,
+                          "note": f"Withdrawal #{r['id']} · ₹{r['amount_paise']/100:.2f} · {r['status']}",
+                          "ts": r["decided_at"] or r["created_at"], "src": "coin"})
+        for r in c.execute("SELECT event,detail,ts FROM ad_log WHERE user_id=? AND event!='client_check' ORDER BY id DESC LIMIT 40", (target,)):
+            items.append({"type": "ad_" + r["event"], "coins": 0, "note": r["detail"] or "", "ts": r["ts"], "src": "ad"})
+        items.sort(key=lambda x: x["ts"] or 0, reverse=True)
+        warns = [{"id": w["id"], "message": w["message"], "ts": w["ts"], "seen": w["seen"]}
+                 for w in c.execute("SELECT id,message,ts,seen FROM warnings WHERE user_id=? ORDER BY id DESC LIMIT 10", (target,))]
+        return jsonify({"ok": True,
+                        "player": {"user_id": u["user_id"], "dname": display_name(c, target),
+                                   "coins": u["coins"], "lifetime_coins": u["lifetime_coins"],
+                                   "ads_today": (u["ads_today"] or 0) if u["ads_date"] == str(date.today()) else 0,
+                                   "banned": bool(u["banned"]), "ban_reason": u["ban_reason"] or "",
+                                   "created_at": u["created_at"], "invites": u["invites"] or 0},
+                        "activity": items[:60], "warnings": warns})
+
+
+@app.post("/api/owner/ban")
+def owner_ban():
+    """v55: manual ban from the Admin Panel (before this only unban
+    existed, so the owner could not ban anyone from the panel)."""
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    data = request.get_json(silent=True) or {}
+    target = (data.get("user_id") or "").strip()
+    with _lock, db() as c:
+        u = c.execute("SELECT * FROM users WHERE user_id=?", (target,)).fetchone()
+        if not u or target == "owner":
+            return jsonify({"ok": False, "msg": "Player nahi mila"})
+        c.execute("UPDATE users SET banned=1, ban_reason=? WHERE user_id=?",
+                  ("Owner ne ban kiya (Admin Panel se)", target))
+        return jsonify({"ok": True, "msg": "Player ban ho gaya"})
+
+
+@app.post("/api/owner/warn")
+def owner_warn():
+    """v55: owner sends a warning to one player; it pops up in that
+    player's app on their next open until they tap 'Samajh Gaya'."""
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    data = request.get_json(silent=True) or {}
+    target = (data.get("user_id") or "").strip()
+    message = (data.get("message") or "").strip()[:300]
+    if not message:
+        return jsonify({"ok": False, "msg": "Warning ka message likho"})
+    with _lock, db() as c:
+        u = c.execute("SELECT * FROM users WHERE user_id=?", (target,)).fetchone()
+        if not u or target == "owner":
+            return jsonify({"ok": False, "msg": "Player nahi mila"})
+        c.execute("INSERT INTO warnings(user_id,message,ts,seen) VALUES(?,?,?,0)",
+                  (target, message, time.time()))
+        return jsonify({"ok": True, "msg": "Warning bhej di — user ko app me dikhegi"})
+
+
+@app.post("/api/warning/seen")
+def warning_seen():
+    data = request.get_json(silent=True) or {}
+    try:
+        wid = int(data.get("id") or 0)
+    except (TypeError, ValueError):
+        wid = 0
+    with _lock, db() as c:
+        c.execute("UPDATE warnings SET seen=1 WHERE id=? AND user_id=?", (wid, uid()))
+        return jsonify({"ok": True})
+
 
 @app.post("/api/owner/unban")
 def owner_unban():
