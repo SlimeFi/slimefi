@@ -42,6 +42,8 @@ def verify_init_data(init_data):
         user = json.loads(pairs.get("user", "{}"))
         try:
             g.tg_username = user.get("username") or ""
+            g.tg_first_name = ((user.get("first_name") or "") + " " +
+                               (user.get("last_name") or "")).strip()
         except Exception:
             pass
         return user.get("id")
@@ -264,6 +266,7 @@ def init_db():
                          ("referred_qualified", "ALTER TABLE users ADD COLUMN referred_qualified INTEGER DEFAULT 0"),
                          ("last_ad_at", "ALTER TABLE users ADD COLUMN last_ad_at REAL DEFAULT 0"),
                          ("username", "ALTER TABLE users ADD COLUMN username TEXT DEFAULT ''"),
+                         ("first_name", "ALTER TABLE users ADD COLUMN first_name TEXT DEFAULT ''"),
                          ("ip_fp", "ALTER TABLE users ADD COLUMN ip_fp TEXT DEFAULT ''"),
                          ("banned", "ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0"),
                          ("ban_reason", "ALTER TABLE users ADD COLUMN ban_reason TEXT DEFAULT ''"),
@@ -306,14 +309,23 @@ def get_user(c, user_id):
     row = c.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
     if row:
         uname = getattr(g, "tg_username", "")
-        if uname and row["username"] != uname:
-            c.execute("UPDATE users SET username=? WHERE user_id=?", (uname, user_id))
+        fname = getattr(g, "tg_first_name", "")
+        new_uname = uname if uname and row["username"] != uname else row["username"]
+        new_fname = fname if fname and row["first_name"] != fname else row["first_name"]
+        if new_uname != row["username"] or new_fname != row["first_name"]:
+            c.execute("UPDATE users SET username=?, first_name=? WHERE user_id=?",
+                      (new_uname, new_fname, user_id))
             row = c.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
         return row
     code = "SLIME-" + secrets.token_hex(3).upper()
     now = time.time()
     c.execute("INSERT INTO users(user_id,last_settle,referral_code,quest_date,created_at) VALUES(?,?,?,?,?)",
               (user_id, now, code, str(date.today()), now))
+    _uname = getattr(g, "tg_username", "")
+    _fname = getattr(g, "tg_first_name", "")
+    if _uname or _fname:
+        c.execute("UPDATE users SET username=?, first_name=? WHERE user_id=?",
+                  (_uname, _fname, user_id))
     for bid, lvl in START_LEVELS.items():
         c.execute("INSERT INTO buildings VALUES(?,?,?)", (user_id, bid, lvl))
     c.execute("INSERT INTO ledger(user_id,kind,note,ts) VALUES(?,?,?,?)",
@@ -328,6 +340,23 @@ def get_user(c, user_id):
                             # /api/state payload flags it so the client shows
                             # the one-time welcome popup to NEW users only
     return c.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
+
+def display_name(c, user_id):
+    """Best human label for a user: Telegram first name (falling back to the
+    /start record in seen_starts), combined with @username when both exist;
+    '' when neither is known."""
+    r = c.execute(
+        "SELECT COALESCE(NULLIF(first_name,''), "
+        "(SELECT s.first_name FROM seen_starts s WHERE s.tg_id=users.user_id), '') fn, "
+        "COALESCE(NULLIF(username,''), "
+        "(SELECT s.username FROM seen_starts s WHERE s.tg_id=users.user_id), '') un "
+        "FROM users WHERE user_id=?", (user_id,)).fetchone()
+    if not r:
+        return ""
+    if r["fn"] and r["un"]:
+        return r["fn"] + " (@" + r["un"] + ")"
+    return r["fn"] or (("@" + r["un"]) if r["un"] else "")
+
 
 def get_buildings(c, user_id):
     rows = {r["building_id"]: r["level"] for r in
@@ -1024,7 +1053,12 @@ def owner_support_tickets():
         return jsonify({"ok": False, "msg": "Owner only"}), 403
     with db() as c:
         rows = c.execute("SELECT id,user_id,category,message,status,created_at FROM support_tickets ORDER BY id DESC LIMIT 100").fetchall()
-        return jsonify({"ok": True, "tickets": [dict(r) for r in rows]})
+        tickets = []
+        for r in rows:
+            d = dict(r)
+            d["dname"] = display_name(c, r["user_id"])
+            tickets.append(d)
+        return jsonify({"ok": True, "tickets": tickets})
 
 @app.post("/api/owner/support/tickets/close")
 def owner_support_ticket_close():
@@ -1055,12 +1089,16 @@ def owner_stats():
     rows = conn.execute(
         "SELECT u.user_id, u.lifetime_coins, u.created_at, u.invites, "
         "COALESCE(NULLIF(u.username,''), "
-        "(SELECT s.username FROM seen_starts s WHERE s.tg_id = u.user_id), '') AS uname "
+        "(SELECT s.username FROM seen_starts s WHERE s.tg_id = u.user_id), '') AS uname, "
+        "COALESCE(NULLIF(u.first_name,''), "
+        "(SELECT s.first_name FROM seen_starts s WHERE s.tg_id = u.user_id), '') AS dname "
         "FROM users u WHERE u.user_id != 'owner' ORDER BY u.created_at DESC LIMIT 10").fetchall()
     players = conn.execute(
         "SELECT u.user_id, u.coins, u.lifetime_coins, "
         "COALESCE(NULLIF(u.username,''), "
-        "(SELECT s.username FROM seen_starts s WHERE s.tg_id = u.user_id), '') AS uname "
+        "(SELECT s.username FROM seen_starts s WHERE s.tg_id = u.user_id), '') AS uname, "
+        "COALESCE(NULLIF(u.first_name,''), "
+        "(SELECT s.first_name FROM seen_starts s WHERE s.tg_id = u.user_id), '') AS dname "
         "FROM users u WHERE u.user_id != 'owner' ORDER BY u.created_at DESC LIMIT 50").fetchall()
     promos = conn.execute(
         "SELECT code, coins, max_uses, used_count, active FROM promo_codes "
@@ -1363,7 +1401,8 @@ def owner_submissions():
         return jsonify({"ok": False, "msg": "Owner only"}), 403
     with _lock, db() as c:
         subs = [{"id": s["id"], "task_id": s["task_id"], "task_title": s["title"],
-                 "user_id": s["user_id"], "proof": s["proof"], "status": s["status"],
+                 "user_id": s["user_id"], "dname": display_name(c, s["user_id"]),
+                 "proof": s["proof"], "status": s["status"],
                  "reward_coins": s["reward_coins"]}
                 for s in c.execute(
                     "SELECT s.*, t.title, t.reward_coins FROM task_submissions s "
@@ -1410,11 +1449,8 @@ def owner_referrals():
         return jsonify({"ok": False, "msg": "Owner only"}), 403
     with db() as c:
         def uname_of(c, user_id):
-            r = c.execute(
-                "SELECT COALESCE(NULLIF(username,''), "
-                "(SELECT s.username FROM seen_starts s WHERE s.tg_id=users.user_id), '') u "
-                "FROM users WHERE user_id=?", (user_id,)).fetchone()
-            return ("@" + r["u"]) if r and r["u"] else user_id
+            lbl = display_name(c, user_id)
+            return lbl if lbl else user_id
         reviews = []
         for r in c.execute("SELECT * FROM referral_reviews WHERE status='pending' ORDER BY created_at DESC LIMIT 20"):
             reviews.append({"id": r["id"], "referrer": uname_of(c, r["referrer_id"]),
