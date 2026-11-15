@@ -324,6 +324,9 @@ def get_user(c, user_id):
         c.execute("INSERT INTO ledger(user_id,kind,coins,wood,crystals,note,ts) VALUES(?,?,?,?,?,?,?)",
                   (user_id, "welcome_bonus", WELCOME_BONUS_COINS, 0, 0,
                    "New user welcome bonus", now))
+    g.just_created = True   # v53: this request created the account -> the
+                            # /api/state payload flags it so the client shows
+                            # the one-time welcome popup to NEW users only
     return c.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
 
 def get_buildings(c, user_id):
@@ -402,6 +405,8 @@ def state_payload(c, user):
         })
     return {
         "user_id": user["user_id"],
+        "just_created": bool(getattr(g, "just_created", False)),
+        "welcome_bonus_coins": WELCOME_BONUS_COINS,
         "coins": user["coins"], "wood": user["wood"], "crystals": user["crystals"],
         "pending": {"coins": int(user["pending_coins"]), "wood": int(user["pending_wood"]),
                     "crystals": int(user["pending_crystals"])},
