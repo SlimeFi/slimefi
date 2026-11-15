@@ -105,6 +105,15 @@
     </div>
 
     <div class="card adm-card">
+      <div class="adm-card-head"><span>🔍 Player Activity — Username Se Dekho</span></div>
+      <div class="ref-row"><select id="act-user"></select><button class="small-btn" onclick="loadActivity()">Dekho</button></div>
+      <div class="card-sub" id="act-summary">Player chuno — uski saari activity alag dikhegi (coins, ads, tasks, withdraw).</div>
+      <div class="ref-row"><input id="warn-text" placeholder="Warning message likho" style="text-transform:none"><button class="small-btn" onclick="warnUser()">⚠️ Warning Bhejo</button><button class="small-btn danger-btn" id="act-ban-btn" onclick="banToggle()" style="display:none">🚫 Ban Karo</button></div>
+      <div id="act-warnings"></div>
+      <div id="owner-activity"></div>
+    </div>
+
+    <div class="card adm-card">
       <div class="adm-card-head"><span>🛟 Support Tickets</span><span class="adm-chip" id="adm-c-support">0</span></div>
       <div id="owner-support-tickets"></div>
     </div>
@@ -442,8 +451,17 @@
   </div>
 </div>
 
+<div id="warn-popup" class="wp-overlay" style="display:none">
+  <div class="wp-card">
+    <div class="wp-gift">⚠️</div>
+    <div class="wp-title">Owner ki Warning</div>
+    <div class="wp-rule" id="warn-msg" style="text-transform:none"></div>
+    <button class="wp-btn" onclick="ackWarning()">Samajh Gaya</button>
+  </div>
+</div>
+
 <script src="/static/three.min.js"></script>
 <script src="/static/slime3d.js?v=2"></script>
-<script src="/static/app.js?v=54"></script>
+<script src="/static/app.js?v=55"></script>
 </body>
 </html>

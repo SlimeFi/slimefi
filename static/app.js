@@ -149,6 +149,12 @@ function closeWelcome() {
   const wp = document.getElementById("welcome-popup");
   if (wp) wp.style.display = "none";
 }
+let WARN_ID = 0;
+function ackWarning() {
+  const wp = document.getElementById("warn-popup");
+  if (wp) wp.style.display = "none";
+  if (WARN_ID) { api("/api/warning/seen", { id: WARN_ID }); WARN_ID = 0; }
+}
 async function load() {
   S = await api("/api/state");
   if (!S || S.ok === false) { if (S && S.msg) toast(S.msg); S = null; return; }
@@ -164,6 +170,11 @@ async function load() {
         const wp = document.getElementById("welcome-popup"); if (wp) wp.style.display = "flex";
       }
     } catch (e) {}
+  }
+  if (S.warning) {
+    WARN_ID = S.warning.id;
+    const wm = document.getElementById("warn-msg"); if (wm) wm.textContent = S.warning.message;
+    const wx = document.getElementById("warn-popup"); if (wx) wx.style.display = "flex";
   }
   try {
     const ref = new URLSearchParams(location.search).get("ref");
@@ -297,6 +308,58 @@ window.revDecide = async (id, action) => {
   toast(r.msg || "Ho gaya");
   loadOwner();
 };
+const ACT_LABEL = {
+  welcome_bonus: "🎁 Welcome Bonus", owner_grant: "👑 Owner ne coins diye", owner_reduce: "👑 Owner ne coins kaate",
+  spin: "🎡 Spin Wheel", daily: "📅 Daily Bonus", referral: "🔗 Referral Reward", referral_reward: "🔗 Referral Reward",
+  task: "📝 Task Reward", quest: "⭐ Quest Reward", ad: "📺 Ad Reward", ad_reward: "📺 Ad Reward",
+  promo: "🎟️ Promo Code", bitlabs: "📋 BitLabs Survey",
+  ad_postback_credit: "📺 Ad — valued (coin mila)", ad_start: "📺 Ad start", ad_postback_skip: "📺 Ad skip (cooldown)",
+  ad_postback_nocredit: "📺 Ad — non valued (coin nahi)", ad_claim_ok: "📺 Ad claim OK", ad_postback_fast: "📺 Ad postback (fast)",
+  ad_claim_nocredit: "📺 Ad claim — credit nahi", ad_start_reject: "📺 Ad start reject"
+};
+let ACT_PLAYER = null;
+window.loadActivity = async () => {
+  const user_id = $("act-user").value;
+  if (!user_id) { toast("Pehle player chuno"); return; }
+  const r = await api("/api/owner/activity?user_id=" + encodeURIComponent(user_id));
+  if (!r.ok) { toast(r.msg || "Nahi hua"); return; }
+  ACT_PLAYER = r.player;
+  const p = r.player;
+  $("act-summary").innerHTML =
+    `<b>${esc(p.dname || p.user_id)}</b> · Balance: ${fmt(p.coins)} coins · Lifetime: ${fmt(p.lifetime_coins)} · Aaj ke ads: ${p.ads_today} · Referrals: ${p.invites}` +
+    (p.created_at ? ` · Join: ${new Date(p.created_at * 1000).toLocaleDateString("en-IN")}` : "") +
+    (p.banned ? ` · <b>🚫 BANNED</b> (${esc(p.ban_reason || "")})` : "");
+  const bb = $("act-ban-btn");
+  bb.style.display = "";
+  bb.textContent = p.banned ? "✅ Unban Karo" : "🚫 Ban Karo";
+  $("act-warnings").innerHTML = (r.warnings || []).map(w =>
+    `<div class="card-sub">⚠️ ${esc(w.message)} · ${new Date(w.ts * 1000).toLocaleString("en-IN")} · ${w.seen ? "User ne dekh li ✓" : "User ne abhi nahi dekhi"}</div>`).join("");
+  $("owner-activity").innerHTML = (r.activity || []).map(x => `
+    <div class="wd-row"><span>${ACT_LABEL[x.type] || esc(x.type)}</span><b>${x.coins ? (x.coins > 0 ? "+" : "") + fmt(x.coins) + " 🪙" : ""}</b></div>
+    <div class="card-sub">${esc((x.note || "").slice(0, 110))}${x.ts ? " · " + new Date(x.ts * 1000).toLocaleString("en-IN") : ""}</div>`).join("")
+    || `<div class="card-sub">Is player ki abhi koi activity nahi hai.</div>`;
+};
+window.warnUser = async () => {
+  const user_id = $("act-user").value;
+  const message = $("warn-text").value.trim();
+  if (!user_id) { toast("Pehle player chuno"); return; }
+  if (!message) { toast("Warning ka message likho"); return; }
+  const r = await api("/api/owner/warn", { user_id, message });
+  toast(r.msg || "Ho gaya");
+  if (r.ok) { $("warn-text").value = ""; loadActivity(); }
+};
+window.banToggle = async () => {
+  if (!ACT_PLAYER) { toast("Pehle player ki activity dekho"); return; }
+  if (ACT_PLAYER.banned) {
+    const r = await api("/api/owner/unban", { user_id: ACT_PLAYER.user_id });
+    toast(r.msg || "Ho gaya");
+  } else {
+    if (!confirm("Pakka? Ye player ban ho jayega — app use nahi kar payega.")) return;
+    const r = await api("/api/owner/ban", { user_id: ACT_PLAYER.user_id });
+    toast(r.msg || "Ho gaya");
+  }
+  loadActivity(); loadOwner();
+};
 window.unbanUser = async (userId) => {
   const r = await api("/api/owner/unban", { user_id: userId });
   toast(r.msg || "Ho gaya");
@@ -333,6 +396,8 @@ async function loadOwner() {
       sel.innerHTML = (st.players || []).map(p =>
         `<option value="${esc(p.user_id)}">${p.dname ? esc(p.dname) + (p.uname ? " (@" + esc(p.uname) + ")" : "") : (p.uname ? "@" + esc(p.uname) : esc(p.user_id))} — ${fmt(p.coins)} coins</option>`).join("");
       if (keep) sel.value = keep;
+      const asel = $("act-user");
+      if (asel) { const akeep = asel.value; asel.innerHTML = sel.innerHTML; if (akeep) asel.value = akeep; }
       $("owner-promos").innerHTML = (st.promos || []).map(p =>
         `<div class="wd-row"><span>🎟️ ${esc(p.code)} · ${fmt(p.coins)} coins</span><span>${p.active ? "ON" : "BAND"} · ${fmt(p.used_count)}/${p.max_uses ? fmt(p.max_uses) : "∞"} use${p.active ? ` · <a href="#" onclick="deactivatePromo('${p.code}');return false;">band karo</a>` : ""}</span></div>`).join("")
         || `<div class="card-sub">Abhi koi promo code nahi hai.</div>`;
