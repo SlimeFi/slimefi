@@ -145,11 +145,26 @@ function showBan(notice) {
   el.querySelector(".ban-text").textContent = notice || "MULTIPLE ACCOUNTS DETECTED";
   document.querySelectorAll(".bottomnav, .tabbar").forEach(n => n.style.display = "none");
 }
+function closeWelcome() {
+  const wp = document.getElementById("welcome-popup");
+  if (wp) wp.style.display = "none";
+}
 async function load() {
   S = await api("/api/state");
   if (!S || S.ok === false) { if (S && S.msg) toast(S.msg); S = null; return; }
   if (S.banned) { showBan(S.ban_notice); return; }
   render();
+  if (S.just_created) {
+    try {
+      if (!localStorage.getItem("slimefi_wp53")) {
+        localStorage.setItem("slimefi_wp53", "1");
+        const wb = S.welcome_bonus_coins || 5000;
+        const ce = document.getElementById("wp-coins"); if (ce) ce.textContent = Number(wb).toLocaleString("en-IN");
+        const re = document.getElementById("wp-rupees"); if (re) re.textContent = Math.floor(wb / 1000);
+        const wp = document.getElementById("welcome-popup"); if (wp) wp.style.display = "flex";
+      }
+    } catch (e) {}
+  }
   try {
     const ref = new URLSearchParams(location.search).get("ref");
     if (ref && !localStorage.getItem("slimefi_ref_done")) {

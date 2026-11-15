@@ -8,7 +8,7 @@
 <script src='https://libtl.com/sdk.js' data-zone='12248440' data-sdk='show_12248440'></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=51">
+<link rel="stylesheet" href="/static/style.css?v=53">
 </head>
 <body>
 
@@ -427,8 +427,23 @@
 
 <div id="toast"></div>
 
+<!-- ================= WELCOME POPUP (v53 — new users only, shown once) ================= -->
+<div id="welcome-popup" class="wp-overlay" style="display:none">
+  <div class="wp-card">
+    <div class="wp-gift">🎁</div>
+    <div class="wp-title">🎉 Welcome to SlimeFi!</div>
+    <div class="wp-free">Aapko mile hai</div>
+    <div class="wp-coins"><span id="wp-coins">5,000</span> Coins FREE</div>
+    <div class="wp-rupees">= ₹<span id="wp-rupees">5</span> Welcome Bonus</div>
+    <div class="wp-added">Coins aapke balance me add ho gaye hai ✅</div>
+    <div class="wp-rule">🪙 <b>1000 Coins = ₹1</b></div>
+    <div class="wp-rule">💸 Minimum Withdrawal sirf <b>₹10</b> · UPI par</div>
+    <button class="wp-btn" onclick="closeWelcome()">Start Earning 🚀</button>
+  </div>
+</div>
+
 <script src="/static/three.min.js"></script>
 <script src="/static/slime3d.js?v=2"></script>
-<script src="/static/app.js?v=50"></script>
+<script src="/static/app.js?v=53"></script>
 </body>
 </html>
