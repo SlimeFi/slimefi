@@ -148,6 +148,7 @@ AD_MIN_WATCH_SEC = 8          # a real ad cannot finish faster than this
 AD_MIN_OPEN_SEC = 15          # middle path: no 'done' signal -> token must be this old (ad stayed open)
 AD_TOKEN_TTL_SEC = 300        # an ad-start token dies after 5 minutes
 SPIN_FREE_PER_DAY = 1         # Spin Wheel: one free spin daily (owner, 2026-11-13)
+SPIN_DAILY_LIMIT = 5          # v56: total spins per day = 1 free + 4 via ads (owner, 2026-11-15)
 SPIN_SEGMENTS = [50, 500, 150, 300, 100, 250, 200, 100]  # wheel prizes in coins
 SPIN_WEIGHTS = [26, 4, 18, 10, 24, 12, 14, 20]           # relative chances (500 is rare)
 MIN_WITHDRAW_RUPEES = 10      # minimum UPI withdrawal request
@@ -392,6 +393,14 @@ def roll_day(c, user):
         return c.execute("SELECT * FROM users WHERE user_id=?", (user["user_id"],)).fetchone()
     return user
 
+def _spins_used_today(c, user_id):
+    """v56: total spins taken today (free + ad-credit), counted from the
+    ledger's 'spin' prize rows so the daily cap needs no extra column."""
+    start = time.mktime(date.today().timetuple())
+    return c.execute("SELECT COUNT(*) n FROM ledger WHERE user_id=? AND kind='spin' AND ts>=?",
+                     (user_id, start)).fetchone()["n"]
+
+
 def slime_level(lifetime):
     lvl = 1
     for i, (need, _name) in enumerate(SLIME_LEVELS):
@@ -456,6 +465,8 @@ def state_payload(c, user):
         "spin": {
             "free_left": max(0, SPIN_FREE_PER_DAY - ((user["spins_today"] or 0) if user["spins_date"] == today else 0)),
             "credits": user["spin_credits"] or 0,
+            "used_today": _spins_used_today(c, user["user_id"]),
+            "daily_limit": SPIN_DAILY_LIMIT,
             "segments": SPIN_SEGMENTS,
             "free_per_day": SPIN_FREE_PER_DAY,
         },
@@ -775,6 +786,10 @@ def ad_start():
         if watched >= AD_DAILY_LIMIT:
             adlog(c, u["user_id"], "start_reject", "cap")
             return jsonify({"ok": False, "msg": f"Aaj ke {AD_DAILY_LIMIT} ads ho gaye. Kal phir try karo."})
+        if (data.get("purpose") == "spin"
+                and _spins_used_today(c, u["user_id"]) + (u["spin_credits"] or 0) >= SPIN_DAILY_LIMIT):
+            adlog(c, u["user_id"], "start_reject", "spin_cap")
+            return jsonify({"ok": False, "msg": f"Aaj ke {SPIN_DAILY_LIMIT} spin pure ho gaye. Kal phir try karo."})
         left = AD_COOLDOWN_SEC - (time.time() - (u["last_ad_at"] or 0))
         if left > 0:
             adlog(c, u["user_id"], "start_reject", f"cooldown {int(left)}")
@@ -850,6 +865,10 @@ def ad_claim():
         cur = c.execute("UPDATE ad_sessions SET used=1 WHERE token=? AND used=0", (token,))
         if cur.rowcount != 1:
             return jsonify({"ok": False, "msg": "Is ad ka reward pehle hi mil chuka hai"})
+        # v56 backstop: never grant a spin credit past the daily total.
+        if _spins_used_today(c, u["user_id"]) + (u["spin_credits"] or 0) >= SPIN_DAILY_LIMIT:
+            adlog(c, u["user_id"], "claim_reject", "spin_cap")
+            return jsonify({"ok": False, "msg": f"Aaj ke {SPIN_DAILY_LIMIT} spin pure ho gaye. Kal phir try karo."})
         # Spin page ad: the reward is +1 spin credit, not coins.
         c.execute("""UPDATE users SET spin_credits=spin_credits+1,
                      ads_today=?, ads_date=?, last_ad_at=? WHERE user_id=?""",
@@ -872,6 +891,9 @@ def spin():
         u = roll_day(c, get_user(c, uid()))
         spins_today = (u["spins_today"] or 0) if u["spins_date"] == today else 0
         credits = u["spin_credits"] or 0
+        if _spins_used_today(c, u["user_id"]) >= SPIN_DAILY_LIMIT:
+            return jsonify({"ok": False,
+                            "msg": f"Aaj ke {SPIN_DAILY_LIMIT} spin pure ho gaye — kal phir milege"})
         if credits > 0:
             c.execute("UPDATE users SET spin_credits=spin_credits-1 WHERE user_id=?",
                       (u["user_id"],))
