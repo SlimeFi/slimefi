@@ -494,7 +494,7 @@ let SPIN_ROT = 0, SPINNING = false, WHEEL_KEY = "";
 const WHEEL_COLORS = ["#7c4dff", "#ffb300", "#00897b", "#c2185b", "#3949ab", "#ef6c00", "#2e7d32", "#5e35b1"];
 function renderSpin() {
   if (!S || !S.spin || !$("wheel")) return;
-  $("spin-info").textContent = "🎟️ Free spin bacha: " + S.spin.free_left + " · Extra spin: " + S.spin.credits;
+  $("spin-info").textContent = "🎟️ Free spin bacha: " + S.spin.free_left + " · Extra spin: " + S.spin.credits + " · Aaj ke spin: " + (S.spin.used_today || 0) + "/" + (S.spin.daily_limit || 5);
   const segs = S.spin.segments || [];
   const key = segs.join(",");
   if (!segs.length || key === WHEEL_KEY) return;
@@ -580,7 +580,7 @@ function spinAdRun() {
   const monetagFn = window.show_12248440;
   const useMonetag = typeof monetagFn === "function";
   if (!useMonetag) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
-  const startP = api("/api/ad/start", { v: 39 });
+  const startP = api("/api/ad/start", { v: 39, purpose: "spin" });
   const t0 = Date.now();
   let claimed = false;
   const tryClaim = async done => {
