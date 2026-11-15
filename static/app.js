@@ -331,13 +331,13 @@ async function loadOwner() {
       const sel = $("gr-user");
       const keep = sel.value;
       sel.innerHTML = (st.players || []).map(p =>
-        `<option value="${esc(p.user_id)}">${p.uname ? "@" + esc(p.uname) : esc(p.user_id)} — ${fmt(p.coins)} coins</option>`).join("");
+        `<option value="${esc(p.user_id)}">${p.dname ? esc(p.dname) + (p.uname ? " (@" + esc(p.uname) + ")" : "") : (p.uname ? "@" + esc(p.uname) : esc(p.user_id))} — ${fmt(p.coins)} coins</option>`).join("");
       if (keep) sel.value = keep;
       $("owner-promos").innerHTML = (st.promos || []).map(p =>
         `<div class="wd-row"><span>🎟️ ${esc(p.code)} · ${fmt(p.coins)} coins</span><span>${p.active ? "ON" : "BAND"} · ${fmt(p.used_count)}/${p.max_uses ? fmt(p.max_uses) : "∞"} use${p.active ? ` · <a href="#" onclick="deactivatePromo('${p.code}');return false;">band karo</a>` : ""}</span></div>`).join("")
         || `<div class="card-sub">Abhi koi promo code nahi hai.</div>`;
       $("owner-recent").innerHTML = (st.recent || []).map(x =>
-        `<div class="wd-row"><span>${x.uname ? "@" + esc(x.uname) + " · " : ""}${esc(x.user_id.replace("tg", "TG "))} · ${fmt(x.lifetime_coins)} coins</span>` +
+        `<div class="wd-row"><span>${x.dname ? esc(x.dname) + " · " : ""}${x.uname ? "@" + esc(x.uname) + " · " : ""}${esc(x.user_id.replace("tg", "TG "))} · ${fmt(x.lifetime_coins)} coins</span>` +
         `<span>${x.created_at ? new Date(x.created_at * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("");
     }
   } catch (e) {}
@@ -346,7 +346,7 @@ async function loadOwner() {
     if (sb.ok) {
       $("owner-subs").innerHTML = (sb.submissions || []).map(s => `
         <div class="owner-row">
-          <div class="wd-row"><span>#${s.id} · ${esc(s.task_title)} · ${esc(s.user_id)}</span><span class="st-${s.status}">${s.status.toUpperCase()}</span></div>
+          <div class="wd-row"><span>#${s.id} · ${esc(s.task_title)} · ${s.dname ? esc(s.dname) + " · " : ""}${esc(s.user_id)}</span><span class="st-${s.status}">${s.status.toUpperCase()}</span></div>
           <div class="card-sub">Proof: ${esc(s.proof)} · Reward: ${fmt(s.reward_coins)} coins</div>
           ${s.status === "pending" ? `<div class="ref-row"><button onclick="decideSub(${s.id},'approve')">Approve</button><button onclick="decideSub(${s.id},'reject')">Reject</button></div>` : ""}
         </div>`).join("") || `<div class="card-sub">Koi submission nahi</div>`;
@@ -387,7 +387,7 @@ async function loadOwner() {
   if (support.ok) {
     $("adm-c-support").textContent = (support.tickets || []).filter(t => t.status === "open").length;
     $("owner-support-tickets").innerHTML = (support.tickets || []).map(t => `
-      <div class="owner-row"><div class="wd-row"><span>#${t.id} · ${esc(t.user_id)} · ${esc(t.category)}</span><b>${esc(t.status)}</b></div>
+      <div class="owner-row"><div class="wd-row"><span>#${t.id} · ${t.dname ? esc(t.dname) + " · " : ""}${esc(t.user_id)} · ${esc(t.category)}</span><b>${esc(t.status)}</b></div>
       <div class="card-sub">${esc(t.message)}</div>
       ${t.status === "open" ? `<button onclick="closeSupportTicket(${t.id})">Close Ticket</button>` : ""}</div>`).join("") || '<div class="card-sub">No support tickets.</div>';
   }
