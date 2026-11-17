@@ -618,6 +618,17 @@ function spinAdRun() {
   }, 1000);
 }
 
+// ---------- Slime Rocket: owner-supplied crash game, fun-only ----------
+// The game is a self-contained page (demo/virtual coins in its own
+// localStorage — no API, no real coins, no reward of any kind), so it
+// runs isolated in an iframe inside the shared game stage.
+function startSlimeRocket(){
+  const st=$('game-stage');
+  st.hidden=false;
+  st.innerHTML=`<div class="game-stage-top"><div><small>SLIME ROCKET · JUST FOR FUN</small><h3>Slime Rocket 🛫</h3></div><button onclick="closeGameStage()">✕</button></div><iframe src="/static/slime-rocket.html" class="sr-frame" title="Slime Rocket game"></iframe><p class="rk-note">Sirf mazaa ke liye — ye demo coins wala game hai, isme koi inaam nahi milta.</p>`;
+  st.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
 // ---------- reward history + support ----------
 async function loadHistory() {
   const box = $("history-list"); if (!box) return;

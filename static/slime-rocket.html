@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:," />
+    <title>Slime Rocket — Demo</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Rubik+Mono+One&display=swap" rel="stylesheet" />
+    <style>
+      :root{
+        --bg:#0a0a0f;
+        --bg2:#12121a;
+        --panel:#17171f;
+        --panel2:#1e1e28;
+        --line:#2a2a38;
+        --text:#f2f2f5;
+        --muted:#9a9aad;
+        --red:#e8283c;
+        --red-dark:#b3122a;
+        --green:#22c55e;
+        --green-dark:#15803d;
+        --gold:#f5b921;
+        --chip-low:#3b4a63;
+        --chip-mid:#166e4f;
+        --chip-high:#8a6410;
+        --radius:14px;
+      }
+      *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+      html,body{ margin:0; padding:0; }
+      body{
+        background:
+          radial-gradient(120% 60% at 50% -10%, #1c1c2b 0%, var(--bg) 55%),
+          var(--bg);
+        color:var(--text);
+        font-family:"Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+        min-height:100vh;
+        min-height:100dvh;
+      }
+      button, input{ font-family:inherit; }
+      button{ cursor:pointer; }
+      button, [role="button"], input:not([type="checkbox"]){ min-height:2.75rem; }
+
+      .app{ max-width:480px; margin:0 auto; padding:10px 12px calc(18px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:10px; }
+
+      /* ---------- Header ---------- */
+      .topbar{ display:flex; align-items:center; gap:8px; }
+      .logo{ display:flex; align-items:center; gap:8px; font-weight:900; font-size:20px; letter-spacing:.4px; }
+      .logo .plane-badge{
+        width:34px; height:34px; border-radius:9px; background:var(--red);
+        display:grid; place-items:center; flex:none;
+        box-shadow:0 4px 14px rgba(232,40,60,.45);
+      }
+      .logo .plane-badge svg{ width:21px; height:21px; fill:#fff; transform:rotate(45deg); }
+      .logo span em{ font-style:normal; color:var(--red); }
+      .demo-badge{
+        margin-left:auto; background:#3a2b05; color:var(--gold);
+        border:1px solid #6b5310; font-size:11px; font-weight:700;
+        padding:5px 9px; border-radius:999px; letter-spacing:.4px; text-transform:uppercase; white-space:nowrap;
+      }
+
+      .balance-row{ display:flex; gap:8px; align-items:stretch; }
+      .balance-card{
+        flex:1; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+        padding:9px 12px; display:flex; align-items:center; gap:10px;
+      }
+      .coin{ width:30px; height:30px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #ffe08a, var(--gold) 60%, #c78f0a); display:grid; place-items:center; font-weight:900; color:#5c4303; font-size:15px; flex:none; }
+      .balance-card .lbl{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; line-height:1.1; }
+      .balance-card .amt{ font-size:19px; font-weight:800; line-height:1.15; font-variant-numeric:tabular-nums; }
+      .icon-btn{
+        width:46px; border-radius:var(--radius); border:1px solid var(--line); background:var(--panel);
+        color:var(--muted); font-size:19px; display:grid; place-items:center; flex:none;
+      }
+      .icon-btn:active{ transform:scale(.96); }
+      .icon-btn svg{ width:21px; height:21px; fill:currentColor; display:block; }
+      .icon-btn.on{ color:var(--gold); border-color:#6b5310; background:#241d08; }
+      .icon-btn.off{ color:#5c5c70; }
+      .icon-btn .slash{ display:none; }
+      .icon-btn.off .slash{ display:block; }
+      .sound-hint{
+        display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted);
+        background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:8px 12px; line-height:1.45;
+      }
+      .sound-hint strong{ color:var(--text); }
+      .sound-hint .dot{ width:8px; height:8px; border-radius:50%; background:#5c5c70; flex:none; }
+      .sound-hint.playing .dot{ background:var(--green); box-shadow:0 0 0 4px rgba(34,197,94,.18); animation:pulse 1.2s infinite; }
+      .sound-hint button{ margin-left:auto; flex:none; background:var(--panel2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:0 10px; font-size:12.5px; font-weight:700; min-height:2.2rem; }
+
+      .refill-banner{
+        display:none; background:#12291a; border:1px solid #1f5136; color:#b9f4cd;
+        border-radius:var(--radius); padding:10px 12px; font-size:13.5px; align-items:center; gap:10px;
+      }
+      .refill-banner.show{ display:flex; }
+      .refill-banner button{
+        margin-left:auto; background:var(--green); color:#04160a; border:none; font-weight:800;
+        border-radius:9px; padding:0 14px; font-size:13.5px; white-space:nowrap;
+      }
+
+      /* ---------- History ---------- */
+      .history{ display:flex; gap:6px; overflow-x:auto; padding:2px 0 4px; scrollbar-width:none; min-height:30px; align-items:center; }
+      .history::-webkit-scrollbar{ display:none; }
+      .history .h-label{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; flex:none; margin-right:2px; }
+      .hchip{
+        flex:none; font-size:12.5px; font-weight:700; padding:5px 10px; border-radius:999px;
+        background:var(--chip-low); color:#dbe6f7; font-variant-numeric:tabular-nums;
+        animation:chipIn .25s ease;
+      }
+      .hchip.mid{ background:var(--chip-mid); color:#c9f5df; }
+      .hchip.high{ background:var(--chip-high); color:#ffedb5; }
+      .hchip.instant{ background:#5c1a22; color:#ffc4cb; }
+      @keyframes chipIn{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
+      .history .empty{ font-size:12.5px; color:var(--muted); }
+
+      /* ---------- Stage ---------- */
+      .stage{
+        position:relative; border-radius:18px; overflow:hidden;
+        background:
+          radial-gradient(90% 90% at 50% 110%, #26203a 0%, transparent 60%),
+          linear-gradient(180deg, #14141f 0%, #0d0d14 100%);
+        border:1px solid var(--line);
+        aspect-ratio: 4 / 3.1;
+        min-height:250px;
+      }
+      .stage canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+      .grid-dots{ position:absolute; inset:0; opacity:.5; background-image:radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px); background-size:22px 22px; pointer-events:none; }
+      #planeEl{
+        position:absolute; width:52px; height:52px; left:0; top:0; pointer-events:none;
+        will-change:transform; filter:drop-shadow(0 6px 10px rgba(232,40,60,.5));
+      }
+      #planeEl svg{ width:100%; height:100%; fill:var(--red); display:block; }
+      .mult-wrap{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; text-align:center; padding:0 12px; }
+      .mult{
+        font-family:"Rubik Mono One", "Rubik", monospace;
+        font-size:clamp(44px, 15vw, 64px); line-height:1; letter-spacing:.5px;
+        text-shadow:0 6px 30px rgba(0,0,0,.6); font-variant-numeric:tabular-nums;
+      }
+      .mult.crashed{ color:var(--red); }
+      .mult.won{ color:var(--green); }
+      .stage-status{ margin-top:8px; font-size:14.5px; font-weight:600; color:#d7d7e2; text-shadow:0 2px 10px rgba(0,0,0,.7); }
+      .stage-status .sub{ display:block; font-size:12.5px; color:var(--muted); font-weight:500; margin-top:2px; }
+      .countdown-wrap{ position:absolute; left:14px; right:14px; bottom:12px; display:none; }
+      .countdown-wrap.show{ display:block; }
+      .countdown-txt{ font-size:12px; color:var(--muted); text-align:center; margin-bottom:6px; font-weight:600; letter-spacing:.3px; }
+      .countdown-bar{ height:6px; border-radius:99px; background:#262633; overflow:hidden; }
+      .countdown-fill{ height:100%; width:100%; background:var(--red); border-radius:99px; }
+      .live-tag{
+        position:absolute; top:10px; left:12px; font-size:11px; font-weight:800; letter-spacing:1px;
+        color:#ffb3bc; display:none; align-items:center; gap:6px;
+      }
+      .live-tag.show{ display:flex; }
+      .live-tag i{ width:8px; height:8px; border-radius:50%; background:var(--red); display:block; animation:pulse 1s infinite; }
+      @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.25; } }
+
+      /* ---------- Bet panel ---------- */
+      .panel{ background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:14px; display:flex; flex-direction:column; gap:12px; }
+      .bet-row{ display:flex; gap:8px; align-items:stretch; }
+      .stepper{ display:flex; align-items:stretch; flex:1; background:var(--bg2); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+      .stepper button{ width:48px; background:var(--panel2); border:none; color:var(--text); font-size:22px; font-weight:700; flex:none; }
+      .stepper button:active{ background:#2a2a38; }
+      .stepper input{
+        flex:1; min-width:0; background:transparent; border:none; outline:none; color:var(--text);
+        font-size:19px; font-weight:800; text-align:center; font-variant-numeric:tabular-nums;
+      }
+      .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button{ -webkit-appearance:none; }
+      .stepper input{ -moz-appearance:textfield; appearance:textfield; }
+      .half-double{ display:flex; gap:8px; }
+      .half-double button{
+        width:52px; border-radius:12px; border:1px solid var(--line); background:var(--panel2);
+        color:var(--text); font-weight:700; font-size:15px;
+      }
+      .half-double button:active{ transform:scale(.96); }
+      .quick{ display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; }
+      .quick button{
+        border:1px solid var(--line); background:var(--bg2); color:#cfcfdd; border-radius:10px;
+        font-weight:700; font-size:13.5px; min-height:2.4rem; font-variant-numeric:tabular-nums;
+      }
+      .quick button:active{ background:#262633; transform:scale(.96); }
+      .auto-row{ display:flex; align-items:center; gap:10px; background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:8px 12px; }
+      .auto-row label{ font-size:13px; color:var(--muted); font-weight:600; flex:1; }
+      .auto-row input{
+        width:92px; background:var(--panel2); border:1px solid var(--line); border-radius:9px; color:var(--text);
+        font-size:15px; font-weight:700; text-align:center; outline:none; min-height:2.4rem; font-variant-numeric:tabular-nums;
+      }
+      .auto-row input::placeholder{ color:#5c5c70; font-weight:500; }
+      .auto-row .x{ color:var(--muted); font-weight:700; }
+
+      #mainBtn{
+        border:none; border-radius:14px; min-height:60px; width:100%;
+        font-size:19px; font-weight:900; letter-spacing:.6px; color:#fff;
+        background:linear-gradient(180deg, #f0324b, var(--red-dark));
+        box-shadow:0 8px 22px rgba(232,40,60,.35), inset 0 1px 0 rgba(255,255,255,.25);
+        transition:transform .06s ease, filter .15s ease;
+        display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; line-height:1.15;
+      }
+      #mainBtn small{ font-size:12.5px; font-weight:600; opacity:.9; letter-spacing:.2px; }
+      #mainBtn:active{ transform:scale(.985); }
+      #mainBtn.cashout{
+        background:linear-gradient(180deg, #2fe673, var(--green-dark));
+        box-shadow:0 8px 22px rgba(34,197,94,.35), inset 0 1px 0 rgba(255,255,255,.25);
+      }
+      #mainBtn.cancel{ background:var(--panel2); border:1px solid var(--line); box-shadow:none; color:#ffb3bc; }
+      #mainBtn:disabled{ filter:grayscale(.5) brightness(.75); box-shadow:none; }
+      .shake{ animation:shake .3s ease; }
+      @keyframes shake{ 0%,100%{ transform:translateX(0);} 25%{ transform:translateX(-5px);} 75%{ transform:translateX(5px);} }
+
+      /* ---------- My bets / stats ---------- */
+      .stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+      .stat{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:9px 10px; text-align:center; }
+      .stat .v{ font-size:16.5px; font-weight:800; font-variant-numeric:tabular-nums; }
+      .stat .k{ font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-top:1px; }
+      .stat .v.plus{ color:var(--green); } .stat .v.minus{ color:var(--red); }
+
+      .lastbet{ display:none; border-radius:var(--radius); padding:10px 12px; font-size:13.5px; font-weight:600; align-items:center; gap:8px; }
+      .lastbet.show{ display:flex; }
+      .lastbet.win{ background:#12291a; border:1px solid #1f5136; color:#b9f4cd; }
+      .lastbet.lose{ background:#2b1216; border:1px solid #5c1f28; color:#ffc4cb; }
+
+      .howto{ background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:14px 16px; }
+      .howto h2{ margin:0 0 8px; font-size:15px; font-weight:800; }
+      .howto ol{ margin:0; padding-left:19px; color:#c9c9d6; font-size:13.5px; line-height:1.65; }
+      .foot{ text-align:center; color:var(--muted); font-size:12px; line-height:1.6; padding:2px 8px 0; }
+      .foot strong{ color:var(--gold); }
+
+      @media (min-width:520px){
+        .app{ padding-top:18px; }
+        .stage{ aspect-ratio:16/10; }
+      }
+      @media (prefers-reduced-motion: reduce){
+        .hchip, .live-tag i{ animation:none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+
+      <!-- Header -->
+      <div class="topbar">
+        <div class="logo">
+          <span class="plane-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+          </span>
+          <span>SLIME <em>ROCKET</em></span>
+        </div>
+        <span class="demo-badge">Demo · Virtual Coins</span>
+      </div>
+
+      <div class="balance-row">
+        <div class="balance-card">
+          <span class="coin" aria-hidden="true">C</span>
+          <div>
+            <div class="lbl">Balance</div>
+            <div class="amt" id="balanceAmt">1,000</div>
+          </div>
+        </div>
+        <button class="icon-btn on" id="soundBtn" type="button" aria-label="Sound effects on or off" title="Sound effects" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4.5v-15L7 9H3zm13.5 3a3.5 3.5 0 0 0-2-3.15v6.3a3.5 3.5 0 0 0 2-3.15zm-2-7.6v2.1a5.5 5.5 0 0 1 0 11v2.1a7.5 7.5 0 0 0 0-15.2z"/><path class="slash" d="M4 4l16 16-1.4 1.4L2.6 5.4 4 4z"/></svg>
+        </button>
+        <button class="icon-btn on" id="musicBtn" type="button" aria-label="Background music on or off" title="Background music" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
+        </button>
+        <button class="icon-btn" id="resetBtn" type="button" aria-label="Reset demo balance to 1000 coins" title="Reset balance">↺</button>
+      </div>
+
+      <div class="sound-hint" id="soundHint">
+        <span class="dot" aria-hidden="true"></span>
+        <span><strong>Sound ON hai.</strong> Pehla button tap karte hi music + effects chalenge — phone silent mode par hai to awaaz nahi aayegi.</span>
+        <button type="button" id="testSoundBtn">Test Sound</button>
+      </div>
+
+      <div class="refill-banner" id="refillBanner">
+        <span>Coins khatam ho gaye! Demo hai — free me refill kar lo.</span>
+        <button type="button" id="refillBtn">+1,000 Free</button>
+      </div>
+
+      <!-- History -->
+      <div class="history" id="historyStrip" aria-label="Recent crash multipliers">
+        <span class="h-label">History</span>
+        <span class="empty" id="historyEmpty">Abhi tak koi round nahi hua</span>
+      </div>
+
+      <!-- Stage -->
+      <div class="stage" id="stage">
+        <div class="grid-dots"></div>
+        <canvas id="gameCanvas"></canvas>
+        <div class="live-tag" id="liveTag"><i></i>LIVE</div>
+        <div id="planeEl" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+        </div>
+        <div class="mult-wrap">
+          <div class="mult" id="multDisplay">1.00x</div>
+          <div class="stage-status" id="stageStatus">Bet lagao, plane udne wala hai<span class="sub">Crash se pehle Cash Out karo</span></div>
+        </div>
+        <div class="countdown-wrap" id="countdownWrap">
+          <div class="countdown-txt" id="countdownTxt">Next round in 5.0s</div>
+          <div class="countdown-bar"><div class="countdown-fill" id="countdownFill"></div></div>
+        </div>
+      </div>
+
+      <div class="lastbet" id="lastBet"></div>
+
+      <!-- Bet panel -->
+      <div class="panel">
+        <div class="bet-row">
+          <div class="stepper">
+            <button type="button" id="minusBtn" aria-label="Decrease bet">−</button>
+            <input id="betInput" type="number" inputmode="numeric" min="1" step="1" value="100" aria-label="Bet amount in virtual coins" />
+            <button type="button" id="plusBtn" aria-label="Increase bet">+</button>
+          </div>
+          <div class="half-double">
+            <button type="button" id="halfBtn" aria-label="Half bet">½</button>
+            <button type="button" id="doubleBtn" aria-label="Double bet">2×</button>
+          </div>
+        </div>
+
+        <div class="quick" role="group" aria-label="Quick bet amounts">
+          <button type="button" data-amt="10">10</button>
+          <button type="button" data-amt="25">25</button>
+          <button type="button" data-amt="50">50</button>
+          <button type="button" data-amt="100">100</button>
+          <button type="button" data-amt="250">250</button>
+          <button type="button" data-amt="500">500</button>
+        </div>
+
+        <div class="auto-row">
+          <label for="autoInput">Auto Cash Out (optional)</label>
+          <input id="autoInput" type="number" inputmode="decimal" min="1.01" step="0.1" placeholder="Off" />
+          <span class="x">x par</span>
+        </div>
+
+        <button type="button" id="mainBtn">BET</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat"><div class="v" id="statRounds">0</div><div class="k">Rounds</div></div>
+        <div class="stat"><div class="v" id="statBest">—</div><div class="k">Best Cash Out</div></div>
+        <div class="stat"><div class="v" id="statPL">0</div><div class="k">Profit / Loss</div></div>
+      </div>
+
+      <!-- How to play -->
+      <div class="howto">
+        <h2>Kaise khelein?</h2>
+        <ol>
+          <li>Round shuru hone se pehle apni bet lagao (virtual coins).</li>
+          <li>Plane udega aur multiplier 1.00x se badhta jayega.</li>
+          <li>Plane crash (fly away) hone se pehle <strong>Cash Out</strong> dabao — jeet = bet × multiplier.</li>
+          <li>Der ho gayi to bet gayi. Agla round kuch hi seconds me shuru hota hai.</li>
+          <li>Upar wale speaker aur music buttons se sound / background music on-off kar sakte ho.</li>
+        </ol>
+      </div>
+
+      <p class="foot"><strong>Demo game — sirf virtual coins.</strong><br />No real money · No deposits · No prizes · Sirf practice aur fun ke liye.</p>
+    </div>
+
+    <script>
+      // ---------- Telegram Mini App init (safe outside Telegram) ----------
+      var tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+      if (tg) {
+        try {
+          tg.ready();
+          tg.expand();
+          if (tg.setHeaderColor) tg.setHeaderColor('#0a0a0f');
+          if (tg.setBackgroundColor) tg.setBackgroundColor('#0a0a0f');
+        } catch (e) {}
+      }
+      function haptic(type) {
+        if (tg && tg.HapticFeedback) {
+          try {
+            if (type === 'success' || type === 'error') tg.HapticFeedback.notificationOccurred(type);
+            else tg.HapticFeedback.impactOccurred('medium');
+          } catch (e) {}
+        }
+      }
+
+      // ---------- Sound & Music (Web Audio — no files, sab browser me banta hai) ----------
+      var soundOn = true, musicOn = true;
+      var audioCtx = null, masterGain = null, sfxBus = null, musicBus = null;
+      var musicTimer = null, musicStep = 0, audioStarted = false;
+      var flightOsc = null, flightGain = null, flightFilter = null;
+      var lastTickStep = 0, lastBeepSec = -1;
+
+      function ensureAudio() {
+        if (!soundOn && !musicOn) return null;
+        try {
+          if (!audioCtx) {
+            var AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return null;
+            audioCtx = new AC();
+            masterGain = audioCtx.createGain(); masterGain.gain.value = 0.9; masterGain.connect(audioCtx.destination);
+            sfxBus = audioCtx.createGain(); sfxBus.gain.value = 0.9; sfxBus.connect(masterGain);
+            musicBus = audioCtx.createGain(); musicBus.gain.value = 0.5; musicBus.connect(masterGain);
+          }
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+          if (!audioStarted) {
+            audioStarted = true;
+            var hint = document.getElementById('soundHint');
+            if (hint) hint.classList.add('playing');
+            if (musicOn) startMusic();
+          }
+          return audioCtx;
+        } catch (e) { return null; }
+      }
+      function tone(freq, dur, opts) {
+        if (!soundOn && !(opts && opts.music)) return;
+        var ac = ensureAudio(); if (!ac) return;
+        opts = opts || {};
+        var t = ac.currentTime + (opts.delay || 0);
+        var osc = ac.createOscillator(), g = ac.createGain();
+        osc.type = opts.type || 'sine';
+        osc.frequency.setValueAtTime(freq, t);
+        if (opts.slideTo) osc.frequency.exponentialRampToValueAtTime(Math.max(20, opts.slideTo), t + dur);
+        var vol = opts.vol != null ? opts.vol : 0.18;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(g); g.connect(opts.music ? musicBus : sfxBus);
+        osc.start(t); osc.stop(t + dur + 0.05);
+      }
+      function noiseBurst(dur, vol, freqFrom, freqTo, delay) {
+        if (!soundOn) return;
+        var ac = ensureAudio(); if (!ac) return;
+        var t = ac.currentTime + (delay || 0);
+        var len = Math.max(1, Math.floor(ac.sampleRate * dur));
+        var buf = ac.createBuffer(1, len, ac.sampleRate);
+        var d = buf.getChannelData(0);
+        for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+        var src = ac.createBufferSource(); src.buffer = buf;
+        var f = ac.createBiquadFilter(); f.type = 'lowpass';
+        f.frequency.setValueAtTime(freqFrom, t);
+        f.frequency.exponentialRampToValueAtTime(Math.max(40, freqTo), t + dur);
+        var g = ac.createGain(); g.gain.value = vol;
+        src.connect(f); f.connect(g); g.connect(sfxBus);
+        src.start(t);
+      }
+      function sfxClick() { tone(620, 0.07, { type: 'triangle', vol: 0.10 }); }
+      function sfxCoin() { tone(880, 0.09, { type: 'square', vol: 0.08 }); tone(1318, 0.16, { type: 'square', vol: 0.08, delay: 0.07 }); }
+      function sfxCashOut() {
+        var notes = [523.25, 659.25, 783.99, 1046.5];
+        for (var i = 0; i < notes.length; i++) tone(notes[i], 0.22, { type: 'triangle', vol: 0.20, delay: i * 0.09 });
+        tone(1568, 0.35, { type: 'sine', vol: 0.12, delay: 0.38 });
+      }
+      function sfxCrash() {
+        noiseBurst(0.55, 0.35, 3000, 120, 0);
+        tone(220, 0.55, { type: 'sawtooth', vol: 0.16, slideTo: 45 });
+        tone(90, 0.5, { type: 'sine', vol: 0.28, slideTo: 32, delay: 0.03 });
+      }
+      function sfxTick() { tone(980, 0.045, { type: 'sine', vol: 0.045 }); }
+      function sfxBeep(final) { tone(final ? 880 : 520, final ? 0.22 : 0.11, { type: 'sine', vol: 0.14 }); }
+
+      // Background music — halki loop wali dhun, chords badalte rehte hain
+      var CHORDS = [
+        [220.00, 261.63, 329.63],  // Am
+        [174.61, 220.00, 261.63],  // F
+        [196.00, 261.63, 329.63],  // C
+        [196.00, 246.94, 293.66]   // G
+      ];
+      var BASS = [110, 87.31, 130.81, 98];
+      var MELODY = [329.63, 392.00, 440.00, 523.25, 440.00, 392.00];
+      function playMusicStep() {
+        if (!musicOn || !audioCtx) return;
+        var chord = CHORDS[musicStep % CHORDS.length];
+        for (var i = 0; i < chord.length; i++) tone(chord[i], 2.3, { type: 'sine', vol: 0.055, music: true });
+        tone(BASS[musicStep % BASS.length], 2.3, { type: 'triangle', vol: 0.07, music: true });
+        // halki melody — har dusre step par
+        if (musicStep % 2 === 0) {
+          var m = MELODY[(musicStep / 2) % MELODY.length];
+          tone(m, 0.9, { type: 'triangle', vol: 0.06, music: true, delay: 0.35 });
+          tone(m * 1.5, 0.7, { type: 'sine', vol: 0.035, music: true, delay: 1.15 });
+        }
+        musicStep++;
+      }
+      function startMusic() {
+        if (!musicOn || !audioCtx || musicTimer) return;
+        playMusicStep();
+        musicTimer = setInterval(playMusicStep, 2400);
+      }
+      function stopMusic() { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } }
+
+      // Flight engine sound — multiplier ke saath pitch badhti hai
+      function startFlightSound() {
+        if (!soundOn) return;
+        var ac = ensureAudio(); if (!ac || flightOsc) return;
+        try {
+          flightOsc = ac.createOscillator(); flightOsc.type = 'sawtooth'; flightOsc.frequency.value = 72;
+          flightFilter = ac.createBiquadFilter(); flightFilter.type = 'lowpass'; flightFilter.frequency.value = 420; flightFilter.Q.value = 2;
+          flightGain = ac.createGain(); flightGain.gain.setValueAtTime(0.0001, ac.currentTime);
+          flightGain.gain.exponentialRampToValueAtTime(0.045, ac.currentTime + 0.35);
+          flightOsc.connect(flightFilter); flightFilter.connect(flightGain); flightGain.connect(sfxBus);
+          flightOsc.start();
+          lastTickStep = 0;
+        } catch (e) {}
+      }
+      function updateFlightSound(mult) {
+        if (!flightOsc || !audioCtx) return;
+        try {
+          var f = Math.min(72 + (mult - 1) * 26, 320);
+          flightOsc.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.08);
+          flightFilter.frequency.setTargetAtTime(420 + (mult - 1) * 160, audioCtx.currentTime, 0.1);
+        } catch (e) {}
+      }
+      function stopFlightSound() {
+        if (!flightOsc || !audioCtx) { flightOsc = null; return; }
+        try {
+          var o = flightOsc, g = flightGain;
+          g.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.06);
+          setTimeout(function () { try { o.stop(); } catch (e) {} }, 220);
+        } catch (e) {}
+        flightOsc = null; flightGain = null; flightFilter = null;
+      }
+
+      // ---------- Elements ----------
+      var $ = function (id) { return document.getElementById(id); };
+      var balanceEl = $('balanceAmt'), betInput = $('betInput'), autoInput = $('autoInput'),
+          mainBtn = $('mainBtn'), multEl = $('multDisplay'), statusEl = $('stageStatus'),
+          historyStrip = $('historyStrip'), historyEmpty = $('historyEmpty'),
+          countdownWrap = $('countdownWrap'), countdownTxt = $('countdownTxt'), countdownFill = $('countdownFill'),
+          liveTag = $('liveTag'), planeEl = $('planeEl'), stage = $('stage'),
+          canvas = $('gameCanvas'), ctx = canvas.getContext('2d'),
+          lastBetEl = $('lastBet'), refillBanner = $('refillBanner'),
+          statRounds = $('statRounds'), statBest = $('statBest'), statPL = $('statPL');
+
+      // ---------- Balance (demo coins, this device only) ----------
+      var LS_KEY = 'slime_rocket_demo_balance_v1';
+      var balance = 1000;
+      try {
+        var saved = parseInt(localStorage.getItem(LS_KEY), 10);
+        if (!isNaN(saved) && saved >= 0) balance = saved;
+      } catch (e) {}
+      function saveBalance() { try { localStorage.setItem(LS_KEY, String(balance)); } catch (e) {} }
+      function fmt(n) { return Math.floor(n).toLocaleString('en-IN'); }
+      function renderBalance() {
+        balanceEl.textContent = fmt(balance);
+        refillBanner.classList.toggle('show', balance < 10 && !activeBet && !pendingBet);
+      }
+
+      // ---------- Game state ----------
+      var GROWTH = 0.16;            // multiplier = e^(GROWTH * seconds)
+      var WAIT_MS = 5000;           // countdown between rounds
+      var CRASH_SHOW_MS = 2400;     // pause after crash
+      var state = 'waiting';        // waiting | flying | crashed
+      var stateStart = performance.now();
+      var crashPoint = 1.00;
+      var currentMult = 1.00;
+      var pendingBet = null;        // bet placed for the upcoming round
+      var activeBet = null;         // bet riding the current flight
+      var cashedOut = false, cashOutMult = 0, cashOutWin = 0;
+      var roundHistory = [];
+      var stats = { rounds: 0, best: 0, pl: 0 };
+      var flightPoints = [];        // curve points for canvas
+      var planePos = { x: 0, y: 0, angle: -45 };
+      var planeGone = false;
+
+      function genCrashPoint() {
+        var r = Math.random();
+        if (r < 0.03) return 1.00;                       // ~3% instant crash
+        var c = 0.935 / (1 - r);
+        c = Math.floor(c * 100) / 100;
+        c = Math.min(Math.max(c, 1.00), 50);
+        // 1.5x rate ko 50% karne ke liye: 1.5+ wale kuch rounds ko
+        // 1.10–1.50 band me bhej do — isse 1.1x wala 15% rate nahi badalta
+        if (c >= 1.5 && Math.random() < 0.1974) {
+          c = Math.floor((1.10 + Math.random() * 0.40) * 100) / 100;
+        }
+        return c;
+      }
+
+      // ---------- Canvas ----------
+      var CW = 0, CH = 0;
+      function sizeCanvas() {
+        var rect = stage.getBoundingClientRect();
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        CW = rect.width; CH = rect.height;
+        canvas.width = Math.round(CW * dpr);
+        canvas.height = Math.round(CH * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      window.addEventListener('resize', sizeCanvas);
+
+      function curvePoint(elapsed, mult) {
+        var padX = 26, padTop = 34, padBot = 30;
+        var u = 1 - Math.exp(-elapsed * 0.16);                       // x eases toward right edge
+        var x = padX + u * (CW - padX - 64);
+        var v = Math.min(Math.log(Math.max(mult, 1)) / Math.log(30), 1); // y from log(multiplier)
+        var y = (CH - padBot) - v * (CH - padTop - padBot);
+        return { x: x, y: y };
+      }
+
+      function drawScene() {
+        ctx.clearRect(0, 0, CW, CH);
+        if (flightPoints.length > 1) {
+          // filled area under curve
+          ctx.beginPath();
+          ctx.moveTo(flightPoints[0].x, CH - 6);
+          for (var i = 0; i < flightPoints.length; i++) ctx.lineTo(flightPoints[i].x, flightPoints[i].y);
+          ctx.lineTo(flightPoints[flightPoints.length - 1].x, CH - 6);
+          ctx.closePath();
+          var grad = ctx.createLinearGradient(0, 0, 0, CH);
+          grad.addColorStop(0, 'rgba(232,40,60,0.30)');
+          grad.addColorStop(1, 'rgba(232,40,60,0.02)');
+          ctx.fillStyle = grad;
+          ctx.fill();
+          // curve line
+          ctx.beginPath();
+          ctx.moveTo(flightPoints[0].x, flightPoints[0].y);
+          for (var j = 1; j < flightPoints.length; j++) ctx.lineTo(flightPoints[j].x, flightPoints[j].y);
+          ctx.strokeStyle = state === 'crashed' ? '#7a1622' : '#ff3b52';
+          ctx.lineWidth = 3.5;
+          ctx.lineJoin = 'round';
+          ctx.lineCap = 'round';
+          ctx.stroke();
+        }
+        // plane
+        if (state === 'flying' || state === 'waiting') {
+          planeEl.style.opacity = '1';
+          planeEl.style.transform = 'translate(' + (planePos.x - 26) + 'px,' + (planePos.y - 26) + 'px) rotate(' + planePos.angle + 'deg)';
+        } else if (planeGone) {
+          planeEl.style.opacity = '0';
+        }
+      }
+
+      // ---------- UI helpers ----------
+      function setStatus(html) { statusEl.innerHTML = html; }
+      function showLastBet(kind, text) {
+        lastBetEl.className = 'lastbet show ' + kind;
+        lastBetEl.textContent = text;
+      }
+      function hideLastBet() { lastBetEl.className = 'lastbet'; }
+
+      function renderStats() {
+        statRounds.textContent = stats.rounds;
+        statBest.textContent = stats.best > 0 ? stats.best.toFixed(2) + 'x' : '—';
+        statPL.textContent = (stats.pl >= 0 ? '+' : '−') + fmt(Math.abs(stats.pl));
+        statPL.className = 'v ' + (stats.pl > 0 ? 'plus' : stats.pl < 0 ? 'minus' : '');
+      }
+
+      function addHistory(m) {
+        roundHistory.unshift(m);
+        if (roundHistory.length > 14) roundHistory.pop();
+        if (historyEmpty) historyEmpty.style.display = 'none';
+        var chip = document.createElement('span');
+        chip.className = 'hchip' + (m <= 1.00 ? ' instant' : m < 2 ? '' : m < 10 ? ' mid' : ' high');
+        chip.textContent = m.toFixed(2) + 'x';
+        var label = historyStrip.querySelector('.h-label');
+        historyStrip.insertBefore(chip, label.nextSibling);
+        while (historyStrip.querySelectorAll('.hchip').length > 14) {
+          historyStrip.removeChild(historyStrip.lastElementChild);
+        }
+      }
+
+      function readBetAmount() {
+        var v = Math.floor(Number(betInput.value));
+        if (isNaN(v) || v < 1) v = 0;
+        return v;
+      }
+      function readAuto() {
+        var v = parseFloat(autoInput.value);
+        if (isNaN(v) || v < 1.01) return null;
+        return Math.floor(v * 100) / 100;
+      }
+
+      function updateButton() {
+        mainBtn.className = '';
+        mainBtn.disabled = false;
+        if (state === 'waiting') {
+          if (pendingBet) {
+            mainBtn.classList.add('cancel');
+            mainBtn.innerHTML = 'CANCEL BET<small>' + fmt(pendingBet) + ' coins lage hain — tap to cancel</small>';
+          } else {
+            mainBtn.innerHTML = 'BET<small>Round shuru hone se pehle lagao</small>';
+          }
+        } else if (state === 'flying') {
+          if (activeBet && !cashedOut) {
+            var win = Math.floor(activeBet * currentMult);
+            mainBtn.classList.add('cashout');
+            mainBtn.innerHTML = 'CASH OUT<small>' + fmt(win) + ' coins @ ' + currentMult.toFixed(2) + 'x</small>';
+          } else if (activeBet && cashedOut) {
+            mainBtn.disabled = true;
+            mainBtn.innerHTML = 'CASHED OUT ✓<small>' + fmt(cashOutWin) + ' coins @ ' + cashOutMult.toFixed(2) + 'x</small>';
+          } else if (pendingBet) {
+            mainBtn.classList.add('cancel');
+            mainBtn.innerHTML = 'CANCEL BET<small>Next round ke liye ' + fmt(pendingBet) + ' coins</small>';
+          } else {
+            mainBtn.innerHTML = 'BET — NEXT ROUND<small>Ye round chal raha hai</small>';
+          }
+        } else { // crashed
+          mainBtn.disabled = true;
+          mainBtn.innerHTML = activeBet && !cashedOut ? 'FLEW AWAY!<small>Bet haar gaye</small>' : 'FLEW AWAY!';
+        }
+      }
+
+      // ---------- Actions ----------
+      function placeBet() {
+        var amt = readBetAmount();
+        if (amt < 1) { betInput.classList.add('shake'); setTimeout(function(){ betInput.classList.remove('shake'); }, 320); return; }
+        if (amt > balance) {
+          amt = balance;
+          if (amt < 1) { renderBalance(); return; }
+          betInput.value = amt;
+        }
+        balance -= amt;
+        pendingBet = amt;
+        saveBalance(); renderBalance(); updateButton(); haptic('tap'); sfxCoin();
+      }
+      function cancelBet() {
+        if (!pendingBet) return;
+        balance += pendingBet;
+        pendingBet = null;
+        saveBalance(); renderBalance(); updateButton(); haptic('tap'); sfxClick();
+      }
+      function doCashOut(autoMult) {
+        if (state !== 'flying' || !activeBet || cashedOut) return;
+        cashedOut = true;
+        // Auto cash out pays at the exact target multiplier, manual at the live one.
+        cashOutMult = autoMult ? autoMult : Math.floor(currentMult * 100) / 100;
+        cashOutWin = Math.floor(activeBet * cashOutMult);
+        balance += cashOutWin;
+        stats.pl += cashOutWin - activeBet;
+        if (cashOutMult > stats.best) stats.best = cashOutMult;
+        saveBalance(); renderBalance(); renderStats(); updateButton();
+        multEl.classList.add('won');
+        setStatus('🎉 Cash Out ho gaya!<span class="sub">' + fmt(activeBet) + ' × ' + cashOutMult.toFixed(2) + 'x = ' + fmt(cashOutWin) + ' coins mile</span>');
+        showLastBet('win', '✅ Jeet! ' + fmt(activeBet) + ' coins @ ' + cashOutMult.toFixed(2) + 'x → ' + fmt(cashOutWin) + ' coins' + (autoMult ? ' (auto)' : ''));
+        haptic('success'); sfxCashOut();
+      }
+
+      mainBtn.addEventListener('click', function () {
+        if (state === 'waiting') {
+          pendingBet ? cancelBet() : placeBet();
+        } else if (state === 'flying') {
+          if (activeBet && !cashedOut) doCashOut(null);
+          else if (pendingBet) cancelBet();
+          else if (!activeBet) placeBet();
+        }
+      });
+
+      // bet input controls
+      function setBet(v) {
+        v = Math.max(1, Math.floor(v) || 1);
+        betInput.value = v;
+      }
+      $('minusBtn').addEventListener('click', function () { setBet(readBetAmount() - 10); });
+      $('plusBtn').addEventListener('click', function () { setBet(readBetAmount() + 10); });
+      $('halfBtn').addEventListener('click', function () { setBet(readBetAmount() / 2); });
+      $('doubleBtn').addEventListener('click', function () { setBet(readBetAmount() * 2); });
+      document.querySelectorAll('.quick button').forEach(function (b) {
+        b.addEventListener('click', function () { setBet(Number(b.getAttribute('data-amt'))); haptic('tap'); sfxClick(); });
+      });
+      betInput.addEventListener('change', function () { setBet(readBetAmount()); });
+
+      $('resetBtn').addEventListener('click', function () {
+        balance = 1000; saveBalance(); renderBalance(); haptic('tap'); sfxCoin();
+        showLastBet('win', '↺ Demo balance reset — 1,000 coins mil gaye.');
+      });
+      $('refillBtn').addEventListener('click', function () {
+        balance += 1000; saveBalance(); renderBalance(); haptic('success'); sfxCoin();
+      });
+
+      // Sound / Music toggles
+      var soundBtn = $('soundBtn'), musicBtn = $('musicBtn');
+      function renderSoundBtns() {
+        soundBtn.className = 'icon-btn ' + (soundOn ? 'on' : 'off');
+        soundBtn.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
+        musicBtn.className = 'icon-btn ' + (musicOn ? 'on' : 'off');
+        musicBtn.setAttribute('aria-pressed', musicOn ? 'true' : 'false');
+        var hint = $('soundHint');
+        if (hint && !soundOn && !musicOn) hint.classList.remove('playing');
+        else if (hint && audioStarted) hint.classList.add('playing');
+      }
+      soundBtn.addEventListener('click', function () {
+        soundOn = !soundOn;
+        if (!soundOn) stopFlightSound(); else ensureAudio();
+        renderSoundBtns(); haptic('tap');
+        if (soundOn) sfxClick();
+      });
+      musicBtn.addEventListener('click', function () {
+        musicOn = !musicOn;
+        if (musicOn) { ensureAudio(); startMusic(); } else stopMusic();
+        renderSoundBtns(); haptic('tap');
+      });
+      $('testSoundBtn').addEventListener('click', function () {
+        if (!soundOn && !musicOn) { soundOn = true; musicOn = true; renderSoundBtns(); }
+        ensureAudio(); startMusic(); sfxCoin();
+        setTimeout(sfxCashOut, 220);
+      });
+      // Browser rule: audio pehle user tap ke baad hi chal sakta hai
+      document.addEventListener('pointerdown', function () { ensureAudio(); }, { passive: true });
+      document.addEventListener('click', function () { ensureAudio(); }, { passive: true });
+
+      // ---------- Round flow ----------
+      function startWaiting() {
+        state = 'waiting';
+        lastBeepSec = -1;
+        stateStart = performance.now();
+        activeBet = null; cashedOut = false; cashOutWin = 0; cashOutMult = 0;
+        currentMult = 1.00;
+        flightPoints = [];
+        planeGone = false;
+        var p0 = curvePoint(0, 1);
+        planePos = { x: p0.x, y: p0.y, angle: 0 };
+        multEl.textContent = '1.00x';
+        multEl.className = 'mult';
+        liveTag.classList.remove('show');
+        countdownWrap.classList.add('show');
+        setStatus(pendingBet
+          ? 'Bet lag gayi: ' + fmt(pendingBet) + ' coins<span class="sub">Plane udne wala hai…</span>'
+          : 'Bet lagao, plane udne wala hai<span class="sub">Crash se pehle Cash Out karo</span>');
+        updateButton();
+      }
+
+      function startFlight() {
+        state = 'flying';
+        stateStart = performance.now();
+        crashPoint = genCrashPoint();
+        currentMult = 1.00;
+        flightPoints = [];
+        planeGone = false;
+        activeBet = pendingBet; pendingBet = null;
+        cashedOut = false;
+        countdownWrap.classList.remove('show');
+        liveTag.classList.add('show');
+        multEl.className = 'mult';
+        if (activeBet) hideLastBet();
+        setStatus(activeBet
+          ? 'Plane ud gaya! Bet: ' + fmt(activeBet) + ' coins<span class="sub">Sahi time par Cash Out dabao</span>'
+          : 'Plane ud gaya!<span class="sub">Is round me bet nahi hai — next round ke liye bet laga sakte ho</span>');
+        updateButton();
+        startFlightSound();
+        tone(392, 0.18, { type: 'triangle', vol: 0.12 });
+        tone(587, 0.22, { type: 'triangle', vol: 0.10, delay: 0.08 });
+      }
+
+      function endFlight() {
+        stopFlightSound(); sfxCrash();
+        state = 'crashed';
+        stateStart = performance.now();
+        planeGone = true;
+        liveTag.classList.remove('show');
+        addHistory(crashPoint);
+        stats.rounds++;
+        multEl.textContent = crashPoint.toFixed(2) + 'x';
+        multEl.classList.add('crashed');
+        if (activeBet && !cashedOut) {
+          stats.pl -= activeBet;
+          setStatus('💥 Plane fly away ho gaya @ ' + crashPoint.toFixed(2) + 'x<span class="sub">' + fmt(activeBet) + ' coins haar gaye</span>');
+          showLastBet('lose', '❌ Haar gaye — ' + fmt(activeBet) + ' coins gaye. Plane ' + crashPoint.toFixed(2) + 'x par crash hua.');
+          haptic('error');
+        } else if (activeBet && cashedOut) {
+          setStatus('Plane fly away ho gaya @ ' + crashPoint.toFixed(2) + 'x<span class="sub">Tum pehle hi Cash Out kar chuke the — safe! 👍</span>');
+        } else {
+          setStatus('Plane fly away ho gaya @ ' + crashPoint.toFixed(2) + 'x<span class="sub">Next round ke liye bet lagao</span>');
+        }
+        renderStats(); renderBalance(); updateButton();
+      }
+
+      // ---------- Main loop ----------
+      function loop(now) {
+        var elapsed = (now - stateStart) / 1000;
+        if (state === 'waiting') {
+          var remain = Math.max(0, WAIT_MS / 1000 - elapsed);
+          countdownTxt.textContent = 'Next round in ' + remain.toFixed(1) + 's';
+          countdownFill.style.width = (remain / (WAIT_MS / 1000) * 100) + '%';
+          var beepSec = Math.ceil(remain);
+          if (beepSec <= 3 && beepSec >= 1 && beepSec !== lastBeepSec && audioStarted) { lastBeepSec = beepSec; sfxBeep(beepSec === 1); }
+          if (elapsed * 1000 >= WAIT_MS) startFlight();
+        } else if (state === 'flying') {
+          currentMult = Math.exp(GROWTH * elapsed);
+          updateFlightSound(currentMult);
+          var tickStep = Math.floor(currentMult * 2);
+          if (activeBet && !cashedOut && tickStep > lastTickStep && currentMult > 1.15) { lastTickStep = tickStep; sfxTick(); }
+          var pt = curvePoint(elapsed, currentMult);
+          var prev = flightPoints[flightPoints.length - 1];
+          if (prev) {
+            var ang = Math.atan2(pt.y - prev.y, pt.x - prev.x) * 180 / Math.PI;
+            planePos.angle = ang + 90; // plane icon points up by default
+          }
+          planePos.x = pt.x; planePos.y = pt.y;
+          flightPoints.push(pt);
+          multEl.textContent = currentMult.toFixed(2) + 'x';
+          var auto = readAuto();
+          if (auto && activeBet && !cashedOut && auto <= crashPoint && currentMult >= auto) doCashOut(auto);
+          if (activeBet && !cashedOut) updateButton();
+          if (currentMult >= crashPoint) { currentMult = crashPoint; endFlight(); }
+        } else if (state === 'crashed') {
+          if (elapsed * 1000 >= CRASH_SHOW_MS) startWaiting();
+        }
+        drawScene();
+        requestAnimationFrame(loop);
+      }
+
+      // ---------- Boot ----------
+      sizeCanvas();
+      setTimeout(sizeCanvas, 60);
+      renderBalance();
+      renderStats();
+      startWaiting();
+      requestAnimationFrame(loop);
+    </script>
+  </body>
+</html>
