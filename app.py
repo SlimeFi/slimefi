@@ -502,7 +502,6 @@ def state_payload(c, user):
             "ads_today": (user["ads_today"] or 0) if user["ads_date"] == today else 0,
             "ad_cooldown_left": max(0, int(AD_COOLDOWN_SEC - (time.time() - (user["last_ad_at"] or 0)))),
             "ads_live": bool(ADSGRAM_BLOCK_ID),
-            "adsgram_block_id": ADSGRAM_BLOCK_ID,
             "referral_reward_coins": REFERRAL_REWARD_COINS,
             "payouts_enabled": PAYOUTS_ENABLED,
         },
@@ -805,10 +804,6 @@ def ad_start():
             ymid = ""
         if ymid and c.execute("SELECT 1 FROM ad_sessions WHERE ymid=?", (ymid,)).fetchone():
             ymid = ""
-        if data.get("provider") == "adsgram":
-            # v57: AdsGram sessions carry a fixed marker instead of a
-            # Monetag ymid, so /api/ad/claim can tell the two apart.
-            ymid = "adsgram"
         c.execute("INSERT INTO ad_sessions(token,user_id,created_at,used,ymid) VALUES(?,?,?,0,?)",
                   (token, u["user_id"], time.time(), ymid))
         adlog(c, u["user_id"], "start", f"v={data.get('v')} ymid={ymid}")
@@ -855,27 +850,6 @@ def ad_claim():
             adlog(c, u["user_id"], "claim_reject", f"cooldown {int(left)}")
             return jsonify({"ok": False, "msg": f"Thoda ruko, agla ad {int(left)} sec me milega."})
         spin_mode = data.get("purpose") == "spin"
-        if not spin_mode and (row["ymid"] or "") == "adsgram":
-            # v57 (owner order, 2026-11-17: AdsGram replaces Monetag on
-            # the Watch Ad button): AdsGram has no server postback wired
-            # in this app, so the client claim IS the reward signal —
-            # the proven pre-v34 flow. Burn the token, credit once;
-            # token, age, cap and cooldown gates above all still apply.
-            cur = c.execute("UPDATE ad_sessions SET used=1 WHERE token=:tok AND used=0", {"tok": token})
-            if cur.rowcount != 1:
-                return jsonify({"ok": False, "msg": "Is ad ka reward pehle hi mil chuka hai"})
-            c.execute("""UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+?,
-                         ads_today=?, ads_date=?, last_ad_at=? WHERE user_id=?""",
-                      (AD_REWARD_COINS, AD_REWARD_COINS, watched + 1, today,
-                       time.time(), u["user_id"]))
-            log(c, u["user_id"], "ad_adsgram", {"coins": AD_REWARD_COINS},
-                f"AdsGram rewarded ad #{watched + 1} -> +{AD_REWARD_COINS} coins")
-            maybe_qualify_referral(c, u)
-            u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
-            adlog(c, u["user_id"], "claim_ok",
-                  f"done={1 if data.get('done') else 0} age={int(age)} adsgram=1")
-            return jsonify({"ok": True, "credited": True, "reward": AD_REWARD_COINS,
-                            "spin_credit": False, "state": state_payload(c, u)})
         if not spin_mode:
             # v34 (owner decision, 2026-11-13: "Sirf valued ad par coin
             # do"): a client claim NEVER credits coins for a watch-ad.
