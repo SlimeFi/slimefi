@@ -6,6 +6,7 @@ is retained in the database for safe migration but is no longer user-facing.
 """
 import os
 import json
+import math
 import hmac
 import hashlib
 import sqlite3
@@ -54,7 +55,7 @@ def verify_init_data(init_data):
 def telegram_auth():
     """Identity must be proven: verified Telegram initData or the owner's
     secret key. Bare X-User-Id is trusted only in local dev (ALLOW_DEV_AUTH)."""
-    if not request.path.startswith("/api/") or request.path in ("/api/health", "/api/payouts", "/api/monetag/postback"):
+    if not request.path.startswith("/api/") or request.path in ("/api/health", "/api/payouts", "/api/monetag/postback", "/api/rocket/state"):
         return None
     # Owner's personal panel link carries a secret key: it maps straight to
     # the owner's Telegram identity even when his Telegram client does not
@@ -261,6 +262,10 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL,
             game_id TEXT NOT NULL, game_date TEXT NOT NULL, xp INTEGER NOT NULL,
             created_at REAL NOT NULL, UNIQUE(user_id, game_id, game_date)
+        );
+        CREATE TABLE IF NOT EXISTS rocket_rounds(
+            round_id INTEGER PRIMARY KEY, start_ts REAL, fly_start REAL,
+            crash_point REAL, crash_ts REAL, end_ts REAL
         );
         """)
         # Earning columns added after the first release: add them to old DBs too.
@@ -676,6 +681,82 @@ def games_complete():
 @app.get("/api/health")
 def health():
     return jsonify({"ok": True, "game": "SlimeFi", "ts": time.time()})
+
+# ---------------- Slime Rocket LIVE rounds (v70) ----------------
+# Ek hi round pure server par chalta hai — sab phones par plane ek hi time
+# par, ek hi tarah udta hai aur ek hi point par crash hota hai. Crash point
+# owner ki table se (2026-11-18): 1.0x par crash nahi (min 1.01), 1.1–1.7
+# purane rate, aage nayi list, 50x tak kul 100%. Crash point round pehle se
+# HMAC-seeded hai — client ko crash se pehle kabhi nahi bheja jata.
+ROCKET_GROWTH = 0.16          # multiplier = e^(0.16 * seconds), client se match
+ROCKET_BET_SEC = 6.0          # flight se pehle betting / countdown samay
+ROCKET_RESULT_SEC = 4.0       # crash ke baad result pause
+ROCKET_TABLE = [
+    (1.10, 0.16), (1.20, 0.26), (1.30, 0.35), (1.40, 0.43), (1.50, 0.50),
+    (1.70, 0.56), (2.00, 0.61), (2.30, 0.66), (2.80, 0.71), (3.00, 0.76),
+    (4.00, 0.81), (4.50, 0.86), (5.00, 0.89), (6.00, 0.90), (7.00, 0.905),
+    (10.00, 0.91), (13.00, 0.92), (15.00, 0.93), (20.00, 0.94), (50.00, 1.00),
+]
+
+def _rocket_crash_point(round_id):
+    salt = MONETAG_POSTBACK_SECRET or OWNER_KEY or "slimefi-rocket-dev"
+    digest = hmac.new(salt.encode(), ("rocket:%d" % round_id).encode(), hashlib.sha256).digest()
+    u = int.from_bytes(digest[:8], "big") / float(1 << 64)
+    prev_x, prev_p = 1.00, 0.0
+    for x, p in ROCKET_TABLE:
+        if u < p:
+            c = prev_x + (u - prev_p) / (p - prev_p) * (x - prev_x)
+            return min(max(c, 1.01), 50.0)
+        prev_x, prev_p = x, p
+    return 50.0
+
+def _rocket_new_round(c, round_id, start_ts):
+    cp = _rocket_crash_point(round_id)
+    fly_start = start_ts + ROCKET_BET_SEC
+    crash_ts = fly_start + math.log(cp) / ROCKET_GROWTH
+    end_ts = crash_ts + ROCKET_RESULT_SEC
+    c.execute("INSERT INTO rocket_rounds(round_id, start_ts, fly_start, crash_point, crash_ts, end_ts) VALUES(?,?,?,?,?,?)",
+              (round_id, start_ts, fly_start, cp, crash_ts, end_ts))
+    return {"round_id": round_id, "start_ts": start_ts, "fly_start": fly_start,
+            "crash_point": cp, "crash_ts": crash_ts, "end_ts": end_ts}
+
+def _rocket_current(c, now):
+    row = c.execute("SELECT * FROM rocket_rounds ORDER BY round_id DESC LIMIT 1").fetchone()
+    if row is None:
+        return _rocket_new_round(c, 1, now)
+    cur = dict(row)
+    if now < cur["end_ts"]:
+        return cur
+    if now - cur["end_ts"] > 300:   # lambi khamoshi — chain abhi se phir shuru
+        return _rocket_new_round(c, cur["round_id"] + 1, now)
+    nxt_id, nxt_start = cur["round_id"], cur["end_ts"]
+    while True:
+        nxt = _rocket_new_round(c, nxt_id + 1, nxt_start)
+        if now < nxt["end_ts"]:
+            return nxt
+        nxt_id, nxt_start = nxt["round_id"], nxt["end_ts"]
+
+@app.get("/api/rocket/state")
+def rocket_state():
+    now = time.time()
+    with _lock, db() as c:
+        cur = _rocket_current(c, now)
+        hist = [round(r["crash_point"], 2) for r in c.execute(
+            "SELECT crash_point FROM rocket_rounds WHERE crash_ts<=? ORDER BY round_id DESC LIMIT 12",
+            (now,)).fetchall()]
+    if now < cur["fly_start"]:
+        phase = "betting"
+    elif now < cur["crash_ts"]:
+        phase = "flying"
+    else:
+        phase = "crashed"
+    out = {"ok": True, "server_now": now, "round_id": cur["round_id"], "phase": phase,
+           "round_start": cur["start_ts"], "fly_start": cur["fly_start"],
+           "growth": ROCKET_GROWTH, "bet_sec": ROCKET_BET_SEC, "history": hist}
+    if phase == "crashed":
+        out["crash_point"] = round(cur["crash_point"], 2)
+        out["round_end"] = cur["end_ts"]
+    return jsonify(out)
 
 @app.get("/api/state")
 def state():
