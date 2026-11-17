@@ -231,6 +231,35 @@
       @media (prefers-reduced-motion: reduce){
         .hchip, .live-tag i{ animation:none; }
       }
+
+      /* ---------- FIT v66: full-screen play layout — pura game ek screen par, scroll nahi ---------- */
+      html,body{ height:100%; }
+      body{ overflow:hidden; }
+      .app{ height:100dvh; padding:8px 10px calc(8px + env(safe-area-inset-bottom)); gap:7px; }
+      .logo{ font-size:17px; }
+      .logo .plane-badge{ width:29px; height:29px; border-radius:8px; }
+      .logo .plane-badge svg{ width:18px; height:18px; }
+      .demo-badge{ font-size:10px; padding:4px 8px; }
+      .balance-card{ padding:6px 10px; }
+      .balance-card .amt{ font-size:17px; }
+      .coin{ width:26px; height:26px; font-size:13px; }
+      .icon-btn{ width:42px; }
+      .sound-hint{ font-size:11.5px; padding:5px 10px; line-height:1.3; }
+      .sound-hint button{ min-height:1.9rem; }
+      .history{ min-height:26px; padding:0 0 2px; }
+      .stage{ aspect-ratio:auto; flex:1 1 auto; min-height:120px; }
+      .mult{ font-size:clamp(38px, 13vw, 56px); }
+      .panel{ padding:10px; gap:8px; }
+      .quick button{ min-height:2.1rem; }
+      .auto-row{ padding:6px 10px; }
+      .auto-row input{ min-height:2.1rem; }
+      #mainBtn{ min-height:52px; font-size:17px; }
+      .stats{ gap:6px; }
+      .stat{ padding:6px 8px; }
+      .stat .v{ font-size:15px; }
+      .lastbet{ padding:7px 10px; font-size:12.5px; }
+      .howto{ display:none; }
+      .foot{ font-size:11px; line-height:1.45; padding:0 6px; }
     </style>
   </head>
   <body>
