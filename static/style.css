@@ -488,3 +488,7 @@ body.in-game .bottom-nav{display:none}
 .ref-code-row>div{min-width:0}
 .ref-code-row b{white-space:nowrap;font-size:.92rem;letter-spacing:.5px}
 .stat-row{align-items:start}
+
+/* v65: refer code row — Copy button code ke upar na chadhe */
+.ref-code-row{flex-wrap:wrap;gap:8px}
+.ref-code-row button{flex:none}
