@@ -479,3 +479,12 @@ body{background:radial-gradient(ellipse at 88% 0%,rgba(72,91,153,.22),transparen
 .game-page-head b{font-size:1rem}
 #view-game .game-back{width:auto;padding:8px 13px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--text);font-weight:800;font-size:.75rem}
 #view-game .game-stage{margin-top:0}
+
+/* v64: small fixes — game page fit, one close control, spacing, ref code, wallet cards */
+body.in-game .bottom-nav{display:none}
+#view-game{padding-bottom:24px}
+#view-game .sr-frame{height:calc(100dvh - 168px);min-height:480px}
+.view{padding-bottom:110px}
+.ref-code-row>div{min-width:0}
+.ref-code-row b{white-space:nowrap;font-size:.92rem;letter-spacing:.5px}
+.stat-row{align-items:start}

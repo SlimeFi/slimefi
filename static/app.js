@@ -83,7 +83,7 @@ function render() {
     $("home-xp-bar").style.width = xpPct + "%";
     $("home-xp-caption").textContent = nextAt ? fmt(S.lifetime_coins) + " / " + fmt(nextAt) + " lifetime coins" : "Top Slime reached";
   }
-  $("home-referral-caption").textContent = (S.invites || 0) + " friends in your squad · Invite more";
+  $("home-referral-caption").textContent = (S.invites || 0) + ((S.invites || 0) === 1 ? " friend" : " friends") + " in your squad · Invite more";
   $("home-pending-rew").textContent = "₹" + (S.pending_rewards_coins / S.earn.coins_per_rupee).toFixed(2);
   $("payouts-total").textContent = S.payouts_paid_count ? (S.payouts_paid_count + " payouts · ₹" + fmt(S.payouts_paid_rupees)) : "";
   const medals = ["🥇", "🥈", "🥉"];
@@ -109,7 +109,7 @@ function render() {
     `<div class="wd-row"><span>#${w.id} · ₹${w.amount_rupees}</span><span class="st-${w.status}">${w.status === "rejected" ? "FAILED" : w.status.toUpperCase()}</span></div>${w.holder_name ? `<div class="card-sub">👤 ${esc(w.holder_name)}</div>` : ""}${w.txn_id ? `<div class="card-sub">🧾 Txn: ${esc(w.txn_id)}</div>` : ""}${w.utr ? `<div class="card-sub">🏦 UTR: ${esc(w.utr)}</div>` : ""}${w.payment_date ? `<div class="card-sub">📅 Payment Date: ${esc(w.payment_date)}</div>` : ""}`).join("");
   // referral
   $("ref-code2").textContent = S.referral_code;
-  $("squad-line2").textContent = S.invites + " friends joined · Har dost ki pehli activity par +1000 coins";
+  $("squad-line2").textContent = S.invites + (S.invites === 1 ? " friend" : " friends") + " joined · Har dost ki pehli activity par +1000 coins";
   $("ref-apply-card").style.display = S.has_referrer ? "none" : "block";
   $("ref-applied-note").style.display = S.has_referrer ? "block" : "none";
   $("ref-total").textContent = "Total Refer: " + (S.invites || 0);
@@ -626,10 +626,10 @@ function spinAdRun() {
 // runs isolated in an iframe inside the shared game stage.
 function startSlimeRocket(){
   go('game');
+  document.body.classList.add('in-game');
   const st=$('game-stage');
   st.hidden=false;
-  st.innerHTML=`<div class="game-stage-top"><div><small>SLIME ROCKET · JUST FOR FUN</small><h3>Slime Rocket 🛫</h3></div><button onclick="closeGameStage()">✕</button></div><iframe src="/static/slime-rocket.html" class="sr-frame" title="Slime Rocket game"></iframe><p class="rk-note">Sirf mazaa ke liye — ye demo coins wala game hai, isme koi inaam nahi milta.</p>`;
-  st.scrollIntoView({behavior:'smooth',block:'center'});
+  st.innerHTML=`<div class="game-stage-top"><div><small>SLIME ROCKET · JUST FOR FUN</small><h3>Slime Rocket 🛫</h3></div></div><iframe src="/static/slime-rocket.html" class="sr-frame" title="Slime Rocket game"></iframe>`;
 }
 
 // ---------- reward history + support ----------
@@ -689,7 +689,7 @@ function watchAdRun() {
     if (!started.ok) { toast(started.msg || "Reward nahi mila — fir try karo"); return; }
     if (btn) { btn.disabled = true; btn.textContent = "⏳ Reward confirm ho raha hai…"; }
     toast("Ad ho gaya — reward confirm ho raha hai…");
-    const deadline = Date.now() + 60000;
+    const deadline = Date.now() + (nonValued ? 8000 : 35000);
     while (Date.now() < deadline) {
       await new Promise(r => setTimeout(r, 4000));
       try {
