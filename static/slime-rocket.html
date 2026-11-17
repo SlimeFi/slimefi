@@ -592,18 +592,33 @@
       var planePos = { x: 0, y: 0, angle: -45 };
       var planeGone = false;
 
+      // ---------- LIVE mode: server rounds (sab phones par ek hi flight) ----------
+      var LIVE = false, liveSeen = 0;
+      var srvOffsetMs = 0, srvPhase = '', srvFlyStart = 0, srvCrash = 0,
+          srvRoundEnd = 0, srvNextFly = 0, srvBetSec = 6, liveRoundId = 0;
+      function srvNowSec() { return (Date.now() + srvOffsetMs) / 1000; }
+
+      // Owner ki nayi crash table (2026-11-18): har band tak kul crash %
+      // 1.0x par crash NAHI (min 1.01). 1.1–1.7 purane rate, aage nayi list.
+      // 50x tak kul 100% — bache hue 5% 20–50 band me shamil.
+      var CRASH_TABLE = [
+        [1.10, 0.16], [1.20, 0.26], [1.30, 0.35], [1.40, 0.43], [1.50, 0.50],
+        [1.70, 0.56], [2.00, 0.61], [2.30, 0.66], [2.80, 0.71], [3.00, 0.76],
+        [4.00, 0.81], [4.50, 0.86], [5.00, 0.89], [6.00, 0.90], [7.00, 0.905],
+        [10.00, 0.91], [13.00, 0.92], [15.00, 0.93], [20.00, 0.94], [50.00, 1.00]
+      ];
       function genCrashPoint() {
         var r = Math.random();
-        if (r < 0.03) return 1.00;                       // ~3% instant crash
-        var c = 0.935 / (1 - r);
-        c = Math.floor(c * 100) / 100;
-        c = Math.min(Math.max(c, 1.00), 50);
-        // 1.5x rate ko 50% karne ke liye: 1.5+ wale kuch rounds ko
-        // 1.10–1.50 band me bhej do — isse 1.1x wala 15% rate nahi badalta
-        if (c >= 1.5 && Math.random() < 0.1974) {
-          c = Math.floor((1.10 + Math.random() * 0.40) * 100) / 100;
+        var prevX = 1.00, prevP = 0;
+        for (var i = 0; i < CRASH_TABLE.length; i++) {
+          var x = CRASH_TABLE[i][0], p = CRASH_TABLE[i][1];
+          if (r < p) {
+            var c = prevX + (r - prevP) / (p - prevP) * (x - prevX);
+            return Math.min(Math.max(c, 1.01), 50);
+          }
+          prevX = x; prevP = p;
         }
-        return c;
+        return 50;
       }
 
       // ---------- Canvas ----------
@@ -877,7 +892,7 @@
         stateStart = performance.now();
         planeGone = true;
         liveTag.classList.remove('show');
-        addHistory(crashPoint);
+        if (!LIVE) addHistory(crashPoint);
         stats.rounds++;
         multEl.textContent = crashPoint.toFixed(2) + 'x';
         multEl.classList.add('crashed');
@@ -894,8 +909,160 @@
         renderStats(); renderBalance(); updateButton();
       }
 
+      // ---------- LIVE round flow (server se sync) ----------
+      function renderServerHistory(list) {
+        historyStrip.querySelectorAll('.hchip').forEach(function (ch) { ch.remove(); });
+        if (historyEmpty) historyEmpty.style.display = list.length ? 'none' : '';
+        var label = historyStrip.querySelector('.h-label');
+        for (var i = Math.min(list.length, 14) - 1; i >= 0; i--) {
+          var m = list[i];
+          var chip = document.createElement('span');
+          chip.className = 'hchip' + (m <= 1.00 ? ' instant' : m < 2 ? '' : m < 10 ? ' mid' : ' high');
+          chip.textContent = m.toFixed(2) + 'x';
+          historyStrip.insertBefore(chip, label.nextSibling);
+        }
+      }
+
+      function startWaitingLive() {
+        // Pichla round bina result ke chhoot gaya ho (tab so gaya tha) to
+        // bina cash out wala active bet haar me gino.
+        if (activeBet && !cashedOut) { stats.pl -= activeBet; renderStats(); }
+        state = 'waiting';
+        lastBeepSec = -1;
+        activeBet = null; cashedOut = false; cashOutWin = 0; cashOutMult = 0;
+        currentMult = 1.00;
+        flightPoints = [];
+        planeGone = false;
+        var p0 = curvePoint(0, 1);
+        planePos = { x: p0.x, y: p0.y, angle: 0 };
+        multEl.textContent = '1.00x';
+        multEl.className = 'mult';
+        liveTag.classList.remove('show');
+        countdownWrap.classList.add('show');
+        setStatus(pendingBet
+          ? 'Bet lag gayi: ' + fmt(pendingBet) + ' coins<span class="sub">Plane udne wala hai…</span>'
+          : 'Bet lagao, plane udne wala hai<span class="sub">Crash se pehle Cash Out karo</span>');
+        updateButton();
+      }
+
+      function startFlightLive() {
+        state = 'flying';
+        currentMult = 1.00;
+        flightPoints = [];
+        planeGone = false;
+        activeBet = pendingBet; pendingBet = null;
+        cashedOut = false;
+        countdownWrap.classList.remove('show');
+        liveTag.classList.add('show');
+        multEl.className = 'mult';
+        if (activeBet) hideLastBet();
+        setStatus(activeBet
+          ? 'Plane ud gaya! Bet: ' + fmt(activeBet) + ' coins<span class="sub">Sahi time par Cash Out dabao</span>'
+          : 'Plane ud gaya!<span class="sub">Is round me bet nahi hai — next round ke liye bet laga sakte ho</span>');
+        updateButton();
+        startFlightSound();
+        tone(392, 0.18, { type: 'triangle', vol: 0.12 });
+        tone(587, 0.22, { type: 'triangle', vol: 0.10, delay: 0.08 });
+      }
+
+      function endFlightLive() {
+        crashPoint = srvCrash;
+        var revoked = false;
+        if (cashedOut && cashOutMult > crashPoint + 1e-9) {
+          // Server par plane pehle crash ho chuka tha — late cash out cancel
+          balance -= cashOutWin;
+          stats.pl -= (cashOutWin - activeBet);
+          cashedOut = false; cashOutWin = 0; cashOutMult = 0;
+          revoked = true;
+          saveBalance(); renderBalance(); renderStats();
+        }
+        endFlight();
+        if (revoked) {
+          setStatus('💥 Plane fly away ho gaya @ ' + crashPoint.toFixed(2) + 'x<span class="sub">Cash Out late tha — plane pehle hi crash ho gaya tha, bet haar gaya</span>');
+          showLastBet('lose', '❌ Haar gaye — plane ' + crashPoint.toFixed(2) + 'x par crash hua (cash out usse pehle nahi ho paya).');
+        }
+      }
+
+      function pollLive() {
+        fetch('/api/rocket/state', { cache: 'no-store' })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (!d || !d.ok) return;
+            LIVE = true; liveSeen = Date.now();
+            srvOffsetMs = d.server_now * 1000 - Date.now();
+            srvPhase = d.phase; srvBetSec = d.bet_sec || 6;
+            if (d.history) renderServerHistory(d.history);
+            if (d.phase === 'betting') {
+              srvFlyStart = d.fly_start;
+              if (d.round_id !== liveRoundId) { liveRoundId = d.round_id; startWaitingLive(); }
+            } else if (d.phase === 'flying') {
+              srvFlyStart = d.fly_start;
+              if (state !== 'flying' || d.round_id !== liveRoundId) {
+                liveRoundId = d.round_id;
+                if (state !== 'flying') startFlightLive();
+              }
+            } else if (d.phase === 'crashed') {
+              srvCrash = d.crash_point || 0;
+              srvRoundEnd = d.round_end || 0;
+              srvNextFly = srvRoundEnd + srvBetSec;
+              if (state === 'waiting') {
+                liveRoundId = d.round_id;
+                crashPoint = srvCrash;
+                state = 'crashed'; planeGone = true;
+                liveTag.classList.remove('show');
+                countdownWrap.classList.add('show');
+                multEl.textContent = crashPoint.toFixed(2) + 'x';
+                multEl.classList.add('crashed');
+                setStatus('Plane fly away ho gaya @ ' + crashPoint.toFixed(2) + 'x<span class="sub">Next round ke liye bet lagao</span>');
+                updateButton();
+              }
+            }
+          })
+          .catch(function () {});
+      }
+
+      function liveTick() {
+        var nowS = srvNowSec();
+        if (Date.now() - liveSeen > 9000) { LIVE = false; startWaiting(); return; }
+        if (state === 'waiting') {
+          var remain = Math.max(0, srvFlyStart - nowS);
+          countdownTxt.textContent = 'Next round in ' + remain.toFixed(1) + 's';
+          countdownFill.style.width = (remain / srvBetSec * 100) + '%';
+          var beepSec = Math.ceil(remain);
+          if (beepSec <= 3 && beepSec >= 1 && beepSec !== lastBeepSec && audioStarted) { lastBeepSec = beepSec; sfxBeep(beepSec === 1); }
+          if (remain <= 0 && srvPhase === 'flying') startFlightLive();
+        } else if (state === 'flying') {
+          var elapsed = Math.max(0, nowS - srvFlyStart);
+          currentMult = Math.exp(GROWTH * elapsed);
+          updateFlightSound(currentMult);
+          var tickStep = Math.floor(currentMult * 2);
+          if (activeBet && !cashedOut && tickStep > lastTickStep && currentMult > 1.15) { lastTickStep = tickStep; sfxTick(); }
+          var pt = curvePoint(elapsed, currentMult);
+          var prev = flightPoints[flightPoints.length - 1];
+          if (prev) {
+            var ang = Math.atan2(pt.y - prev.y, pt.x - prev.x) * 180 / Math.PI;
+            planePos.angle = ang + 90;
+          }
+          planePos.x = pt.x; planePos.y = pt.y;
+          flightPoints.push(pt);
+          multEl.textContent = currentMult.toFixed(2) + 'x';
+          var auto = readAuto();
+          if (auto && activeBet && !cashedOut && currentMult >= auto) doCashOut(auto);
+          if (activeBet && !cashedOut) updateButton();
+          if (srvPhase === 'crashed' && srvCrash > 0) { currentMult = srvCrash; endFlightLive(); }
+        } else if (state === 'crashed') {
+          if (srvNextFly > 0) {
+            var remain2 = Math.max(0, srvNextFly - nowS);
+            countdownWrap.classList.add('show');
+            countdownTxt.textContent = 'Next round in ' + remain2.toFixed(1) + 's';
+            countdownFill.style.width = (remain2 / (srvBetSec + 4) * 100) + '%';
+          }
+        }
+      }
+
       // ---------- Main loop ----------
       function loop(now) {
+        if (LIVE) { liveTick(); drawScene(); requestAnimationFrame(loop); return; }
         var elapsed = (now - stateStart) / 1000;
         if (state === 'waiting') {
           var remain = Math.max(0, WAIT_MS / 1000 - elapsed);
@@ -935,6 +1102,8 @@
       renderBalance();
       renderStats();
       startWaiting();
+      pollLive();
+      setInterval(pollLive, 700);
       requestAnimationFrame(loop);
     </script>
   </body>
