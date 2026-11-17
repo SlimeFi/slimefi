@@ -8,7 +8,7 @@
 <script src='https://libtl.com/sdk.js' data-zone='12248440' data-sdk='show_12248440'></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=62">
+<link rel="stylesheet" href="/static/style.css?v=63">
 </head>
 <body>
 
@@ -50,7 +50,7 @@
     <div class="sr-only" id="home-coin-value">₹0.00</div><div class="sr-only" id="home-coins-small">0</div><div class="sr-only" id="home-value-small">₹0.00</div>
   </div>
 
-  <button class="sr-home-banner" onclick="go('games');startSlimeRocket()"><span class="sr-home-art">🛫</span><span class="sr-home-text"><small>NEW GAME · JUST FOR FUN</small><b>Slime Rocket</b><em>Plane udao, multiplier badhao — crash se pehle Cash Out karo!</em></span><strong>PLAY ↗</strong></button>
+  <button class="sr-home-banner" onclick="startSlimeRocket()"><span class="sr-home-art">🛫</span><span class="sr-home-text"><small>NEW GAME · JUST FOR FUN</small><b>Slime Rocket</b><em>Plane udao, multiplier badhao — crash se pehle Cash Out karo!</em></span><strong>PLAY ↗</strong></button>
 
   <div class="section-heading"><div><small>MAKE TODAY COUNT</small><h2>Quick missions</h2></div><span class="section-spark">✦</span></div>
   <div class="mission-grid">
@@ -59,8 +59,6 @@
     <button class="mission-tile mission-daily" onclick="go('daily')"><span class="mission-icon">🎁</span><span class="mission-name">Daily streak</span><small>Come back every day</small><b>CLAIM ↗</b></button>
     <button class="mission-tile mission-spin" onclick="go('spin')"><span class="mission-icon">✧</span><span class="mission-name">Lucky spin</span><small>Try your daily spin</small><b>SPIN ↗</b></button>
   </div>
-
-  <button class="games-home-banner" onclick="go('games')"><span class="games-home-icon">🎮</span><span><small>NEW DESTINATION</small><b>Enter Games Center</b><em>Puzzle • Quiz • Rocket • Slime Rocket</em></span><strong>PLAY ↗</strong></button>
 
   <div class="community-banner" onclick="go('referral')">
     <div class="community-icon">♧</div><div><small>GROW YOUR SQUAD</small><b>Invite friends. Earn together.</b><span id="home-referral-caption">Your invite link is ready inside</span></div><span class="community-arrow">→</span>
@@ -166,22 +164,11 @@
   </div>
 </section>
 
-<!-- ================= ADS ================= -->
-<section id="view-games" class="view">
-  <div class="games-hero">
-    <div><small>SLIMEFI ARCADE</small><h1>Games Center</h1><p>Play daily challenges, collect XP and climb your Slime level.</p></div>
-    <div class="games-mascot">🎮</div>
-  </div>
-  <div class="games-xp-card"><div><small>YOUR GAME XP</small><b id="games-xp">0 XP</b></div><div><small>GAME LEVEL</small><b id="games-level">LEVEL 1</b></div><div class="games-xp-track"><span id="games-xp-bar"></span></div><small id="games-xp-next">100 XP to next level</small></div>
+<!-- ================= SLIME ROCKET GAME PAGE ================= -->
+<section id="view-game" class="view">
+  <div class="game-page-head"><button class="game-back" onclick="closeGameStage()">← Back</button><b>Slime Rocket 🛫</b></div>
   <div id="game-stage" class="game-stage" hidden></div>
-  <div class="games-section-head"><div><small>PLAY & EARN XP</small><h2>Daily challenges</h2></div><span>↻ Resets daily</span></div>
-  <div class="game-card puzzle-card"><div class="game-card-art">🧩</div><div class="game-card-info"><span class="game-tag">BRAIN GAME</span><h3>Puzzle Challenge</h3><p>Find the matching symbol in the grid.</p><b>+20 XP</b></div><button onclick="startPuzzle()" id="play-puzzle">PLAY</button></div>
-  <div class="game-card quiz-card"><div class="game-card-art">🧠</div><div class="game-card-info"><span class="game-tag">5 QUESTIONS</span><h3>Daily Quiz</h3><p>Answer at least 3 correctly to complete.</p><b>+25 XP</b></div><button onclick="startQuiz()" id="play-quiz">PLAY</button></div>
-  <div class="game-card rocket-card"><div class="game-card-art">🚀</div><div class="game-card-info"><span class="game-tag">JUST FOR FUN</span><h3>Rocket Flight</h3><p>Rocket ko udao — khatm hone se pehle Collect karo.</p><b class="rk-free">NO REWARD · SIRF MAZAA</b></div><button onclick="startRocket()" id="play-rocket">PLAY</button></div>
-  <div class="game-card rocket-card"><div class="game-card-art">🛫</div><div class="game-card-info"><span class="game-tag">JUST FOR FUN</span><h3>Slime Rocket</h3><p>Plane udao, multiplier badhao — crash se pehle Cash Out karo. Sirf demo coins.</p><b class="rk-free">NO REWARD · SIRF MAZAA</b></div><button onclick="startSlimeRocket()" id="play-slimerocket">PLAY</button></div>
-  <div class="games-section-head"><div><small>PARTNER ZONE</small><h2>Sponsored Games</h2></div><span class="sponsor-label">SPONSORED</span></div>
-  <div class="sponsor-empty"><div>🤝</div><b>Partner games are coming soon</b><p>Sponsored games will appear here after a partner campaign is approved. Paid placements will always be labelled.</p></div>
-  <div class="games-footnote">XP is a game progression score, not cash or withdrawable coins. Game rewards are currently in Test Mode. Never pay to unlock a reward.</div>
+  <p class="games-footnote">Slime Rocket ek fun game hai — isme sirf demo coins hain, koi inaam ya asli paisa nahi hai.</p>
 </section>
 
 <section id="view-leaderboard" class="view">
@@ -457,6 +444,6 @@
 
 <script src="/static/three.min.js"></script>
 <script src="/static/slime3d.js?v=2"></script>
-<script src="/static/app.js?v=60"></script>
+<script src="/static/app.js?v=63"></script>
 </body>
 </html>

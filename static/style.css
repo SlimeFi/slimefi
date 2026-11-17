@@ -473,3 +473,9 @@ body{background:radial-gradient(ellipse at 88% 0%,rgba(72,91,153,.22),transparen
    game-stage close button and card buttons — beat it with ID specificity */
 #game-stage .game-stage-top>button{width:34px;height:34px;padding:0;display:grid;place-items:center;flex:none}
 #view-games .game-card>button{width:auto}
+
+/* v63: dedicated Slime Rocket game page */
+.game-page-head{display:flex;align-items:center;gap:12px;margin:6px 0 12px}
+.game-page-head b{font-size:1rem}
+#view-game .game-back{width:auto;padding:8px 13px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--text);font-weight:800;font-size:.75rem}
+#view-game .game-stage{margin-top:0}
