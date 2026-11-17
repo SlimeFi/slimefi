@@ -652,70 +652,49 @@ $("btn-withdraw").onclick = () => {
 };
 if ($("nav-ad")) $("nav-ad").onclick = () => { const b = $("btn-ad"); if (b) b.click(); };
 function watchAdRun() {
-  const monetagFn = window.show_12248440;
-  const useMonetag = typeof monetagFn === "function";
-  if (!useMonetag) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
-  // v34 (owner decision: "sirf valued ad par coin do"): this client NEVER
-  // claims coins. Coins are credited server-side only when Monetag's
-  // valued postback arrives — so after the ad settles we poll /api/state
-  // for the balance/ads_today jump instead of calling /api/ad/claim.
-  // Token fetch and ad start TOGETHER: the ad must open straight from the
-  // tap — if we wait for the network first, the webview blocks the ad.
-  // ymid is generated here (no await, tap gesture intact) and registered
-  // with /api/ad/start in parallel, so Monetag's server postback can be
-  // matched back to this exact session.
-  const ymid = "sf" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  const base = S ? { coins: S.coins || 0, ads: (S.earn && S.earn.ads_today) || 0 } : { coins: 0, ads: 0 };
-  const startP = api("/api/ad/start", { v: 39, ymid });
-  const btn = $("btn-ad");
-  let confirming = false;
-  const confirmReward = async nonValued => {
-    if (confirming) return; confirming = true;
-    const started = await startP;
-    if (!started.ok) { toast(started.msg || "Reward nahi mila — fir try karo"); return; }
-    if (btn) { btn.disabled = true; btn.textContent = "⏳ Reward confirm ho raha hai…"; }
-    toast("Ad ho gaya — reward confirm ho raha hai…");
-    const deadline = Date.now() + 60000;
-    while (Date.now() < deadline) {
-      await new Promise(r => setTimeout(r, 4000));
-      try {
-        const st = await api("/api/state");
-        if (st && st.ok !== false) {
-          S = st; render();
-          if ((S.coins || 0) > base.coins || ((S.earn && S.earn.ads_today) || 0) > base.ads) {
-            toast("🎉 +100 coins mil gaye!");
-            return;
-          }
-        }
-      } catch (e) {}
-    }
-    if (nonValued) toast("Is ad par payment nahi mili — isliye coin nahi mila. Ek aur ad try karo.");
-    else toast("Coin confirm nahi hua — is ad ka valued signal nahi aaya.");
+  // v57 (owner order, 2026-11-17): the Watch Ad button now runs AdsGram
+  // (block id comes from the server state), replacing Monetag on this
+  // button. Spin ads still use Monetag. AdsGram has no server postback
+  // wired here, so the client claim credits — the proven pre-v34 flow
+  // with the one-time token + age gates on the server.
+  const blockId = (S && S.earn && S.earn.adsgram_block_id) || window.SLIMEFI_ADS_BLOCK_ID || "";
+  if (!blockId || !window.Adsgram) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
+  const startP = api("/api/ad/start", { v: 57, provider: "adsgram" });
+  const t0 = Date.now();
+  let claimed = false;
+  const tryClaim = async done => {
+    if (claimed) return; claimed = true;
+    const st = await startP;
+    if (!st.ok) { toast(st.msg || "Reward nahi mila — fir try karo"); return; }
+    const need = (done ? 10000 : 17000) - (Date.now() - t0);
+    const send = async () => {
+      const r = await api("/api/ad/claim", { token: st.token, done: done ? 1 : 0 });
+      if (r.ok && r.credited) { toast("🎉 +100 coins mil gaye!"); if (r.state) { S = r.state; render(); } }
+      else if (r.ok) { toast("Is ad ka reward nahi bana — ek aur try karo"); if (r.state) { S = r.state; render(); } }
+      else toast(r.msg || "Reward nahi mila — fir try karo");
+    };
+    if (need > 0) setTimeout(send, need); else send();
   };
-  // Some Telegram clients play the ad but NEVER answer the SDK promise
-  // (their WebApp bridge drops the completion callback). If nothing
-  // settles within ~25s, start confirming anyway: a genuinely valued
-  // view still lands via the server postback and the poll catches it.
   let settled = false;
-  const settle = nonValued => { if (settled) return; settled = true; confirmReward(nonValued); };
-  setTimeout(() => settle(false), 25000);
-  if (useMonetag) {
-    // Monetag Rewarded Interstitial, zone 12248440. Its promise resolves
-    // after the ad closes: reward_event_type 'valued' means the view is
-    // paid; 'non_valued' means this ad earns nothing — no coin either way
-    // from the client; the postback alone decides.
-    monetagFn({ ymid, requestVar: "watch_ad" })
-      .then(res => settle(!!(res && res.reward_event_type === "non_valued")))
-      .catch(() => settle(false));
-  } else {
-    settle(false);
-  }
+  const onFail = () => {
+    settled = true;
+    if (Date.now() - t0 >= 15000) tryClaim(false);
+    else toast("Ad load nahi hua — fir try karo");
+  };
+  window.Adsgram.init({ blockId }).show()
+    .then(res => {
+      settled = true;
+      if (res && res.done) tryClaim(true);
+      else if (Date.now() - t0 >= 15000) tryClaim(false);
+      else toast("Ad pura dekho, tabhi coin milega");
+    })
+    .catch(onFail);
+  const iv = setInterval(() => {
+    if (claimed || settled) { clearInterval(iv); return; }
+    if (Date.now() - t0 >= 20000) { clearInterval(iv); tryClaim(false); }
+  }, 1000);
 }
-$("btn-ad").onclick = () => {
-  if (typeof window.show_12248440 === "function") { watchAdRun(); return; }
-  toast("Ad load ho raha hai…");
-  ensureMonetag().then(ok => { if (ok) watchAdRun(); else toast("Ad abhi available nahi hai — thodi der baad try karo"); });
-};
+$("btn-ad").onclick = () => { watchAdRun(); };
 window.openPayouts = () => {
   const url = "https://SlimeFi.pythonanywhere.com/payouts";
   try { if (tg && tg.openLink) { tg.openLink(url); return; } } catch (e) {}
