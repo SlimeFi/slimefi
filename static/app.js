@@ -629,7 +629,7 @@ function startSlimeRocket(){
   document.body.classList.add('in-game');
   const st=$('game-stage');
   st.hidden=false;
-  st.innerHTML=`<iframe src="/static/slime-rocket.html?v=68" class="sr-frame" title="Slime Rocket game"></iframe>`;
+  st.innerHTML=`<iframe src="/static/slime-rocket.html?v=69" class="sr-frame" title="Slime Rocket game"></iframe>`;
 }
 
 // ---------- reward history + support ----------
