@@ -501,3 +501,6 @@ body.in-game .game-page-head b{display:none}
 body.in-game #view-game .game-back{background:rgba(8,12,18,.72);backdrop-filter:blur(5px);box-shadow:0 4px 14px rgba(0,0,0,.35)}
 body.in-game #view-game .game-stage{margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none}
 body.in-game #view-game .sr-frame{height:100dvh;min-height:0;border-radius:0}
+
+/* v67: game page par body ki bottom padding (nav ke liye thi) bhi hata — page scroll khatam */
+body.in-game{padding-bottom:0}
