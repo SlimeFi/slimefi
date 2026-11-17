@@ -76,11 +76,14 @@ function render() {
   const nextAt = S.slime && S.slime.next_at;
   const prevAt = [0,1000,6000,21000,61000,161000,411000,1011000,2511000,6511000][Math.max(0, level - 1)] || 0;
   const xpPct = nextAt ? Math.max(0, Math.min(100, ((S.lifetime_coins - prevAt) / Math.max(1, nextAt - prevAt)) * 100)) : 100;
-  $("home-level-label").textContent = "SLIME LEVEL " + level;
-  $("home-level-number").textContent = String(level).padStart(2, "0");
-  $("home-xp-label").textContent = nextAt ? fmt(Math.max(0, nextAt - S.lifetime_coins)) + " XP to next" : "MAX LEVEL";
-  $("home-xp-bar").style.width = xpPct + "%";
-  $("home-xp-caption").textContent = nextAt ? fmt(S.lifetime_coins) + " / " + fmt(nextAt) + " lifetime coins" : "Top Slime reached";
+  const _hlp = $("home-level-label");
+  if (_hlp) {
+    _hlp.textContent = "SLIME LEVEL " + level;
+    $("home-level-number").textContent = String(level).padStart(2, "0");
+    $("home-xp-label").textContent = nextAt ? fmt(Math.max(0, nextAt - S.lifetime_coins)) + " XP to next" : "MAX LEVEL";
+    $("home-xp-bar").style.width = xpPct + "%";
+    $("home-xp-caption").textContent = nextAt ? fmt(S.lifetime_coins) + " / " + fmt(nextAt) + " lifetime coins" : "Top Slime reached";
+  }
   $("home-referral-caption").textContent = (S.invites || 0) + " friends in your squad · Invite more";
   $("home-pending-rew").textContent = "₹" + (S.pending_rewards_coins / S.earn.coins_per_rupee).toFixed(2);
   $("payouts-total").textContent = S.payouts_paid_count ? (S.payouts_paid_count + " payouts · ₹" + fmt(S.payouts_paid_rupees)) : "";
