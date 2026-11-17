@@ -468,3 +468,8 @@ body{background:radial-gradient(ellipse at 88% 0%,rgba(72,91,153,.22),transparen
 .game-stage-top>div{flex:1;min-width:0}
 .game-stage-top>button{width:34px;height:34px;padding:0;display:grid;place-items:center;flex:none;font-size:.8rem}
 @media(max-width:420px){.game-card{grid-template-columns:48px minmax(0,1fr) auto;padding:11px;gap:9px}.game-card-art{width:48px;height:48px;font-size:1.45rem}.game-card h3{font-size:.8rem}.game-card p{font-size:.58rem}}
+
+/* v62: the global button{width:100%} rule (specificity 0,3,1) was crushing the
+   game-stage close button and card buttons — beat it with ID specificity */
+#game-stage .game-stage-top>button{width:34px;height:34px;padding:0;display:grid;place-items:center;flex:none}
+#view-games .game-card>button{width:auto}
