@@ -595,7 +595,7 @@
       // ---------- LIVE mode: server rounds (sab phones par ek hi flight) ----------
       var LIVE = false, liveSeen = 0;
       var srvOffsetMs = 0, srvPhase = '', srvFlyStart = 0, srvCrash = 0,
-          srvRoundEnd = 0, srvNextFly = 0, srvBetSec = 6, liveRoundId = 0;
+          srvRoundEnd = 0, srvNextFly = 0, srvBetSec = 6, liveRoundId = 0, lastBtnKey = -1;
       function srvNowSec() { return (Date.now() + srvOffsetMs) / 1000; }
 
       // Owner ki nayi crash table (2026-11-18): har band tak kul crash %
@@ -910,7 +910,11 @@
       }
 
       // ---------- LIVE round flow (server se sync) ----------
+      var lastHistoryKey = '';
       function renderServerHistory(list) {
+        var key = list.join(',');
+        if (key === lastHistoryKey) return;   // same values — dobara render = blink, skip
+        lastHistoryKey = key;
         historyStrip.querySelectorAll('.hchip').forEach(function (ch) { ch.remove(); });
         if (historyEmpty) historyEmpty.style.display = list.length ? 'none' : '';
         var label = historyStrip.querySelector('.h-label');
@@ -983,13 +987,22 @@
         }
       }
 
+      var srvOffsetInit = false;
       function pollLive() {
+        var pollT0 = Date.now();
         fetch('/api/rocket/state', { cache: 'no-store' })
           .then(function (r) { return r.json(); })
           .then(function (d) {
             if (!d || !d.ok) return;
             LIVE = true; liveSeen = Date.now();
-            srvOffsetMs = d.server_now * 1000 - Date.now();
+            // Time sync: network ke aane-jaane ke beech wala time lo aur
+            // offset ko halke se badlo — warna har poll par values kudti/blink hoti hain.
+            var newOff = d.server_now * 1000 - (pollT0 + (Date.now() - pollT0) / 2);
+            if (!srvOffsetInit) { srvOffsetMs = newOff; srvOffsetInit = true; }
+            else {
+              var diff = newOff - srvOffsetMs;
+              srvOffsetMs += Math.abs(diff) > 400 ? diff : diff * 0.15;
+            }
             srvPhase = d.phase; srvBetSec = d.bet_sec || 6;
             if (d.history) renderServerHistory(d.history);
             if (d.phase === 'betting') {
@@ -1048,7 +1061,10 @@
           multEl.textContent = currentMult.toFixed(2) + 'x';
           var auto = readAuto();
           if (auto && activeBet && !cashedOut && currentMult >= auto) doCashOut(auto);
-          if (activeBet && !cashedOut) updateButton();
+          if (activeBet && !cashedOut) {
+            var bk = Math.floor(currentMult * 20);
+            if (bk !== lastBtnKey) { lastBtnKey = bk; updateButton(); }
+          }
           if (srvPhase === 'crashed' && srvCrash > 0) { currentMult = srvCrash; endFlightLive(); }
         } else if (state === 'crashed') {
           if (srvNextFly > 0) {
