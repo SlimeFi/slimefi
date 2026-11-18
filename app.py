@@ -285,7 +285,9 @@ def init_db():
                          ("suspicious_reason", "ALTER TABLE users ADD COLUMN suspicious_reason TEXT DEFAULT ''"),
                          ("spins_today", "ALTER TABLE users ADD COLUMN spins_today INTEGER DEFAULT 0"),
                          ("spins_date", "ALTER TABLE users ADD COLUMN spins_date TEXT DEFAULT ''"),
-                         ("spin_credits", "ALTER TABLE users ADD COLUMN spin_credits INTEGER DEFAULT 0")]:
+                         ("spin_credits", "ALTER TABLE users ADD COLUMN spin_credits INTEGER DEFAULT 0"),
+                         ("avail_coins", "ALTER TABLE users ADD COLUMN avail_coins INTEGER DEFAULT 0"),
+                         ("winning_paise", "ALTER TABLE users ADD COLUMN winning_paise INTEGER DEFAULT 0")]:
             if col not in cols:
                 c.execute(ddl)
         tcols = {r[1] for r in c.execute("PRAGMA table_info(tasks)")}
@@ -459,6 +461,9 @@ def state_payload(c, user):
         "warning": ({"id": warn["id"], "message": warn["message"], "ts": warn["ts"]} if warn else None),
         "welcome_bonus_coins": WELCOME_BONUS_COINS,
         "coins": user["coins"], "wood": user["wood"], "crystals": user["crystals"],
+        "avail_coins": int(user["avail_coins"] or 0),
+        "winning_paise": int(user["winning_paise"] or 0),
+        "winning_rupees": round((user["winning_paise"] or 0) / 100, 2),
         "pending": {"coins": int(user["pending_coins"]), "wood": int(user["pending_wood"]),
                     "crystals": int(user["pending_crystals"])},
         "lifetime_coins": user["lifetime_coins"],
@@ -1083,7 +1088,27 @@ def monetag_postback():
 
 @app.post("/api/convert")
 def convert():
-    return jsonify({"ok": False, "msg": "v30 me conversion ki zaroorat nahi — Coins ki ₹ value Wallet me automatically dikhti hai."}), 410
+    """v72: Coins -> Available Balance (two-balance wallet: coins convert karne
+    par Available Balance me jate hain; Winning Balance alag rehta hai)."""
+    data = request.get_json(silent=True) or {}
+    try:
+        amt = int(data.get("coins") or 0)
+    except (TypeError, ValueError):
+        amt = 0
+    if amt < 1:
+        return jsonify({"ok": False, "msg": "Sahi amount dalo — kam se kam 1 coin."})
+    with _lock, db() as c:
+        u = get_user(c, uid())
+        if amt > (u["coins"] or 0):
+            return jsonify({"ok": False, "msg": "Itne coins nahi hain tumhare paas."})
+        c.execute("UPDATE users SET coins=coins-?, avail_coins=avail_coins+? WHERE user_id=?",
+                  (amt, amt, u["user_id"]))
+        log(c, u["user_id"], "convert", {"coins": -amt},
+            f"{amt} coins Available Balance me convert hue")
+        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
+        return jsonify({"ok": True, "converted": amt,
+                        "msg": f"{amt} coins Available Balance me aa gaye ✅",
+                        "state": state_payload(c, u)})
 
 @app.post("/api/withdraw")
 def withdraw():
