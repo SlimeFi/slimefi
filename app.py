@@ -693,7 +693,7 @@ def health():
 # owner ki table se (2026-11-18): 1.0x par crash nahi (min 1.01), 1.1–1.7
 # purane rate, aage nayi list, 50x tak kul 100%. Crash point round pehle se
 # HMAC-seeded hai — client ko crash se pehle kabhi nahi bheja jata.
-ROCKET_GROWTH = 0.16          # multiplier = e^(0.16 * seconds), client se match
+ROCKET_GROWTH = 0.11          # multiplier = e^(0.11 * seconds), client se match (v74: slow — 1.5x ~4s, 2x ~6s)
 ROCKET_BET_SEC = 6.0          # flight se pehle betting / countdown samay
 ROCKET_RESULT_SEC = 4.0       # crash ke baad result pause
 ROCKET_TABLE = [
