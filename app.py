@@ -155,9 +155,10 @@ SPIN_WEIGHTS = [26, 4, 18, 10, 24, 12, 14, 20]           # relative chances (500
 MIN_WITHDRAW_RUPEES = 10      # minimum UPI withdrawal request
 PAYOUTS_ENABLED = os.environ.get("PAYOUTS_ENABLED", "0") == "1"  # UPI payout master switch (owner)
 ALLOW_DEV_AUTH = os.environ.get("ALLOW_DEV_AUTH", "0") == "1"    # local testing only: trust X-User-Id
-REFERRAL_REWARD_COINS = 1000   # paid to the inviter when the referred user completes
+REFERRAL_REWARD_COINS = 5000   # paid to the inviter when the referred user completes
                               # their first qualifying activity (ad / quest / daily /
                               # approved sponsored task) — never on join alone
+                              # (raised 1000 -> 5000 on owner order, 2026-11-18)
 WELCOME_BONUS_COINS = 5000    # one-time bonus credited to every NEW account at
                               # creation (owner order, 2026-11-14; raised 1000 -> 5000
                               # = Rs5 on owner order, 2026-11-15); ledger kind
