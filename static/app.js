@@ -103,7 +103,7 @@ function render() {
     `<div class="wd-row"><span>#${w.id} · ₹${w.amount_rupees}</span><span class="st-${w.status}">${w.status === "rejected" ? "FAILED" : w.status.toUpperCase()}</span></div>${w.holder_name ? `<div class="card-sub">👤 ${esc(w.holder_name)}</div>` : ""}${w.txn_id ? `<div class="card-sub">🧾 Txn: ${esc(w.txn_id)}</div>` : ""}${w.utr ? `<div class="card-sub">🏦 UTR: ${esc(w.utr)}</div>` : ""}${w.payment_date ? `<div class="card-sub">📅 Payment Date: ${esc(w.payment_date)}</div>` : ""}`).join("");
   // referral
   $("ref-code2").textContent = S.referral_code;
-  $("squad-line2").textContent = S.invites + (S.invites === 1 ? " friend" : " friends") + " joined · Har dost ki pehli activity par +1000 coins";
+  $("squad-line2").textContent = S.invites + (S.invites === 1 ? " friend" : " friends") + " joined · Har dost ki pehli activity par +" + fmt(S.earn.referral_reward_coins) + " coins";
   $("ref-apply-card").style.display = S.has_referrer ? "none" : "block";
   $("ref-applied-note").style.display = S.has_referrer ? "block" : "none";
   $("ref-total").textContent = "Total Refer: " + (S.invites || 0);
