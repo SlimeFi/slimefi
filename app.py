@@ -271,6 +271,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL,
             round_id INTEGER NOT NULL, amount_coins INTEGER NOT NULL,
             amount_paise INTEGER DEFAULT 0,
+            avail_used_coins INTEGER DEFAULT 0, win_used_paise INTEGER DEFAULT 0,
             cashed_out INTEGER DEFAULT 0, cashout_mult REAL,
             win_coins INTEGER DEFAULT 0, win_paise INTEGER DEFAULT 0,
             created_at REAL, cashed_at REAL,
@@ -322,6 +323,9 @@ def init_db():
             c.execute("ALTER TABLE rocket_bets ADD COLUMN amount_paise INTEGER DEFAULT 0")
             # purani coin-bets ko paise me badlo (10 coins = 1 paisa)
             c.execute("UPDATE rocket_bets SET amount_paise=amount_coins/10 WHERE amount_paise=0")
+        for col in ("avail_used_coins", "win_used_paise"):
+            if col not in rbcols:
+                c.execute(f"ALTER TABLE rocket_bets ADD COLUMN {col} INTEGER DEFAULT 0")
         # v30 migration: old cash wallet was created by manually converting coins.
         # Move that value back into coins once, preserving total user value.
         for row in c.execute("SELECT user_id, cash_paise FROM users WHERE COALESCE(cash_paise,0)>0").fetchall():
@@ -780,8 +784,11 @@ def rocket_state():
 @app.post("/api/rocket/bet")
 def rocket_bet():
     """Rocket bet — ₹ me (amount_paise me bhejo). Stake betting phase me hi
-    lagti hai aur turant Balance se kat-ti hai (10 coins = 1 paisa);
-    jeet (cash out par) Winning Balance (winning_paise) me jati hai."""
+    lagti hai. Paisa pehle Available Balance (avail_coins) se kat-ta hai;
+    Available khatam hone par baki Winning Balance (winning_paise) se.
+    Gaon wale coins se Rocket ka koi lena-dena nahi — coins sirf Convert se
+    ₹ (Available Balance) me badle jate hain. Jeet (cash out par) Winning
+    Balance (winning_paise) me jati hai."""
     data = request.get_json(silent=True) or {}
     try:
         amt_paise = int(data.get("amount_paise") or 0)
@@ -807,13 +814,20 @@ def rocket_bet():
                             "amount_paise": int(old["amount_paise"] or 0),
                             "amount_coins": old["amount_coins"],
                             "state": state_payload(c, u)})
-        if amt_coins > (u["coins"] or 0):
-            return jsonify({"ok": False, "msg": "Itne paise nahi hain tumhare Balance me."})
-        c.execute("UPDATE users SET coins=coins-? WHERE user_id=?", (amt_coins, u["user_id"]))
-        c.execute("INSERT INTO rocket_bets(user_id,round_id,amount_coins,amount_paise,created_at) VALUES(?,?,?,?,?)",
-                  (u["user_id"], round_id, amt_coins, amt_paise, now))
-        log(c, u["user_id"], "rocket_bet", {"coins": -amt_coins},
-            f"Rocket round #{round_id}: ₹{amt_paise/100:.2f} ki bet")
+        # Waterfall: pehle Available Balance, phir Winning Balance.
+        # avail_use ko 10 ke multiple par rakho taaki paise ka hisaab exact rahe.
+        avail = int(u["avail_coins"] or 0)
+        win_p = int(u["winning_paise"] or 0)
+        if amt_paise > avail // 10 + win_p:
+            return jsonify({"ok": False, "msg": "Available + Winning Balance me itne paise nahi hain. Pehle Convert Coins se coins ko ₹ me badlo."})
+        avail_use = min(avail // 10 * 10, amt_coins)
+        win_use = (amt_coins - avail_use) // 10
+        c.execute("UPDATE users SET avail_coins=avail_coins-?, winning_paise=winning_paise-? WHERE user_id=?",
+                  (avail_use, win_use, u["user_id"]))
+        c.execute("INSERT INTO rocket_bets(user_id,round_id,amount_coins,amount_paise,avail_used_coins,win_used_paise,created_at) VALUES(?,?,?,?,?,?,?)",
+                  (u["user_id"], round_id, amt_coins, amt_paise, avail_use, win_use, now))
+        log(c, u["user_id"], "rocket_bet", {"coins": 0},
+            f"Rocket round #{round_id}: ₹{amt_paise/100:.2f} ki bet (Available ₹{avail_use/1000:.2f} + Winning ₹{win_use/100:.2f})")
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
         return jsonify({"ok": True, "amount_paise": amt_paise, "amount_coins": amt_coins,
                         "state": state_payload(c, u)})
@@ -821,7 +835,7 @@ def rocket_bet():
 @app.post("/api/rocket/cancel")
 def rocket_cancel():
     """Bet wapas lo — sirf betting phase me, plane udne se pehle.
-    Stake coins me refund hota hai."""
+    Stake usi hisaab se wapas jata hai jis se kata tha (Available + Winning)."""
     data = request.get_json(silent=True) or {}
     try:
         round_id = int(data.get("round_id") or 0)
@@ -839,10 +853,16 @@ def rocket_cancel():
             return jsonify({"ok": True, "cancelled": False, "state": state_payload(c, u)})
         amt_paise = int(row["amount_paise"] or 0)
         amt_coins = int(row["amount_coins"] or amt_paise * 10)
-        c.execute("UPDATE users SET coins=coins+? WHERE user_id=?", (amt_coins, u["user_id"]))
+        avail_use = int(row["avail_used_coins"] or 0)
+        win_use = int(row["win_used_paise"] or 0)
+        # Purani rows (split nahi likha) — sab Available Balance me wapas.
+        if avail_use == 0 and win_use == 0 and amt_coins > 0:
+            avail_use = amt_coins
+        c.execute("UPDATE users SET avail_coins=avail_coins+?, winning_paise=winning_paise+? WHERE user_id=?",
+                  (avail_use, win_use, u["user_id"]))
         c.execute("DELETE FROM rocket_bets WHERE id=?", (row["id"],))
-        log(c, u["user_id"], "rocket_cancel", {"coins": amt_coins},
-            f"Rocket round #{round_id}: ₹{amt_paise/100:.2f} ki bet cancel — refund")
+        log(c, u["user_id"], "rocket_cancel", {"coins": 0},
+            f"Rocket round #{round_id}: ₹{amt_paise/100:.2f} ki bet cancel — refund (Available ₹{avail_use/1000:.2f} + Winning ₹{win_use/100:.2f})")
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
         return jsonify({"ok": True, "cancelled": True, "refunded_paise": amt_paise,
                         "refunded_coins": amt_coins, "state": state_payload(c, u)})
@@ -1283,22 +1303,23 @@ def withdraw():
         return jsonify({"ok": False, "msg": "Account holder ka poora naam dalo"})
     if amount_paise < MIN_WITHDRAW_RUPEES * 100:
         return jsonify({"ok": False, "msg": f"Minimum withdraw Rs {MIN_WITHDRAW_RUPEES} hai"})
-    coins_needed = amount_paise * (COINS_PER_RUPEE // 100)
     with _lock, db() as c:
         u = roll_day(c, get_user(c, uid()))
-        if int(u["coins"] or 0) < coins_needed:
-            return jsonify({"ok": False, "msg": "Coins balance is amount ke liye kam hai"})
-        # Reserve coins and create request in one locked DB transaction.
-        c.execute("UPDATE users SET coins=coins-? WHERE user_id=?", (coins_needed, u["user_id"]))
+        # Withdraw sirf Winning Balance se hota hai — Available Balance aur
+        # gaon wale coins se nahi.
+        if int(u["winning_paise"] or 0) < amount_paise:
+            return jsonify({"ok": False, "msg": "Winning Balance me itne paise nahi hain."})
+        # Reserve winning paise and create request in one locked DB transaction.
+        c.execute("UPDATE users SET winning_paise=winning_paise-? WHERE user_id=?", (amount_paise, u["user_id"]))
         cur = c.execute("INSERT INTO withdrawals(user_id,amount_paise,upi_id,created_at,holder_name) VALUES(?,?,?,?,?)",
                         (u["user_id"], amount_paise, upi, time.time(), holder))
-        log(c, u["user_id"], "withdraw_hold", {"coins": -coins_needed},
-            f"Withdraw #{cur.lastrowid} reserved {coins_needed} coins for Rs {amount}")
+        log(c, u["user_id"], "withdraw_hold", {"coins": 0},
+            f"Withdraw #{cur.lastrowid} reserved ₹{amount} from Winning Balance")
         c.execute("INSERT INTO cash_ledger(user_id,delta_paise,kind,note,ts) VALUES(?,?,?,?,?)",
                   (u["user_id"], 0, "withdraw_hold", f"Withdraw #{cur.lastrowid} reserved", time.time()))
         fresh = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
         return jsonify({"ok": True, "state": state_payload(c, fresh),
-                        "msg": f"₹{amount} ki request submit ho gayi. {coins_needed} Coins reserve kiye gaye hain."})
+                        "msg": f"₹{amount} ki request submit ho gayi. Winning Balance se ₹{amount} reserve kiye gaye hain."})
 
 
 def _require_owner():
@@ -1446,10 +1467,10 @@ def owner_decide():
         if not w or w["status"] != "pending":
             return jsonify({"ok": False, "msg": "Request pending nahi hai"})
         if action == "reject":
-            refund_coins = int(w["amount_paise"]) * (COINS_PER_RUPEE // 100)
-            c.execute("UPDATE users SET coins=coins+? WHERE user_id=?", (refund_coins, w["user_id"]))
-            log(c, w["user_id"], "withdraw_refund", {"coins": refund_coins},
-                f"Withdraw #{w['id']} rejected; {refund_coins} coins returned")
+            # Withdraw Winning Balance se reserve hua tha — wahi wapas jata hai.
+            c.execute("UPDATE users SET winning_paise=winning_paise+? WHERE user_id=?", (int(w["amount_paise"]), w["user_id"]))
+            log(c, w["user_id"], "withdraw_refund", {"coins": 0},
+                f"Withdraw #{w['id']} rejected; ₹{int(w['amount_paise'])/100:.2f} Winning Balance me wapas")
         else:
             txn = (data.get("txn_id") or "").strip()
             utr = (data.get("utr") or "").strip()
