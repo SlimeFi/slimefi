@@ -257,13 +257,13 @@
   <button class="back-btn" onclick="go('home')">← Home</button>
   <h2 class="v2-h">SlimeFi Wallet</h2>
   <div class="wallet-big">
-    <div class="stat-label">Available balance</div>
+    <div class="stat-label">Winning balance — withdraw kar sakte ho</div>
     <div class="wallet-amt" id="cash-amt">₹0.00</div>
     <div class="stat-label" id="pending-rew-line">Pending rewards: ₹0.00</div>
-    <div class="stat-label"><b id="wallet-coins">0</b> Coins = <b id="wallet-coin-value">₹0.00</b></div>
-    <div class="stat-label">Automatic rate: <span id="rate-line">1,000 Coins = ₹1</span></div>
+    <div class="stat-label"><b id="wallet-coins">0</b> Coins · Convert value <b id="wallet-coin-value">₹0.00</b> — sirf Available Balance (khelne) ke liye</div>
+    <div class="stat-label">Convert rate: <span id="rate-line">1,000 Coins = ₹1</span></div>
   </div>
-  <div class="card" style="margin-top:10px"><div class="card-sub">Ab alag se Convert karne ki zaroorat nahi. Withdrawal request par Coins aur unki ₹ value ek saath reserve ho jayegi.</div></div>
+  <div class="card" style="margin-top:10px"><div class="card-sub">Withdraw sirf Winning Balance se hota hai. Coins ko pehle Convert se Available Balance me badlo aur game khelo — jeet Winning Balance me jayegi, wahi withdraw hogi.</div></div>
 
   <h2 class="v2-h">↓ Withdrawal request</h2>
   <div class="stat-row">
@@ -382,7 +382,7 @@
 
     <h3>7. Terms of Use (short version)</h3>
     <ul>
-      <li>Coins are in-app points. They have no cash value outside SlimeFi except redemption to UPI at the rate shown in the app (today: 1,000 coins = ₹1, minimum withdrawal ₹10).</li>
+      <li>Coins are in-app points. Coins seedhe withdraw nahi hote — woh Convert se Available Balance (₹) me badalte hain, sirf game khelne ke liye (today: 1,000 coins = ₹1). Sirf Winning Balance UPI par withdraw hota hai, minimum withdrawal ₹10.</li>
       <li><b>No earnings are guaranteed.</b> Rewards depend on your activity and on ad availability. Any rate shown in the app can change; the rate in the app at the time applies.</li>
       <li>Referral coins (today: 1,000) are paid only when the invited friend completes their first qualifying activity.</li>
       <li>Withdrawals are reviewed by the app owner and can be rejected if the activity looks fake or abusive; a rejected payout is refunded to your coin balance.</li>
@@ -445,6 +445,6 @@
 
 <script src="/static/three.min.js"></script>
 <script src="/static/slime3d.js?v=2"></script>
-<script src="/static/app.js?v=78"></script>
+<script src="/static/app.js?v=79"></script>
 </body>
 </html>

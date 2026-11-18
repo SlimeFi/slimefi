@@ -92,8 +92,8 @@ function render() {
   $("payouts-list").innerHTML = (S.recent_payouts || []).map(p =>
     `<div class="wd-row"><span>✅ ₹${p.amount_rupees} → ${esc(p.upi)}${p.txn_id ? " · 🧾 " + esc(p.txn_id) : ""}${p.utr ? " · UTR " + esc(p.utr) : ""}</span><span>${p.ts ? new Date(p.ts * 1000).toLocaleDateString("en-IN") : ""}</span></div>`).join("")
     || `<div class="card-sub">Abhi tak koi payout nahi hua — pehla payout yahin dikhega.</div>`;
-  // wallet
-  $("cash-amt").textContent = "₹" + coinValue.toFixed(2);
+  // wallet — withdrawable cash SIRF Winning Balance hai (coins nahi)
+  $("cash-amt").textContent = "₹" + Number(S.winning_rupees || 0).toFixed(2);
   $("wallet-coins").textContent = fmt(S.coins);
   $("wallet-coin-value").textContent = "₹" + coinValue.toFixed(2);
   $("pending-rew-line").textContent = "Pending approval: " + fmt(S.pending_rewards_coins) + " Coins = ₹" +
@@ -680,7 +680,10 @@ $("btn-withdraw").onclick = () => {
   const amt = Number($("wd-input").value);
   const holder_name = $("wd-name").value.trim();
   if (!holder_name) { toast("Account holder ka naam dalo"); return; }
-  if (upi && Number.isFinite(amt) && amt > 0) act("/api/withdraw", { upi_id: upi, amount_rupees: amt.toFixed(2), holder_name });
+  if (upi && Number.isFinite(amt) && amt > 0) {
+    if (S && amt > (S.winning_paise || 0) / 100) { toast("Winning Balance me itne paise nahi hain"); return; }
+    act("/api/withdraw", { upi_id: upi, amount_rupees: amt.toFixed(2), holder_name });
+  }
   else toast("UPI ID aur amount dono dalo");
 };
 if ($("nav-ad")) $("nav-ad").onclick = () => { const b = $("btn-ad"); if (b) b.click(); };
