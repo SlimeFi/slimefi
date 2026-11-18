@@ -1107,7 +1107,7 @@ def convert():
             f"{amt} coins Available Balance me convert hue")
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
         return jsonify({"ok": True, "converted": amt,
-                        "msg": f"{amt} coins Available Balance me aa gaye ✅",
+                        "msg": f"{amt} coins = ₹{amt / COINS_PER_RUPEE:.2f} Available Balance me aa gaye ✅",
                         "state": state_payload(c, u)})
 
 @app.post("/api/withdraw")
