@@ -64,13 +64,10 @@ function render() {
   if (!S) return;
   // home
   const coinValue = Number(S.coins || 0) / Number(S.earn.coins_per_rupee || 1000);
-  $("home-cash").textContent = coinValue.toFixed(2);
-  $("home-coin-value").textContent = "₹" + coinValue.toFixed(2);
-  $("home-coins-small").textContent = fmt(S.coins);
-  $("home-value-small").textContent = "₹" + coinValue.toFixed(2);
   $("home-users").textContent = fmt(S.players);
-  $("home-coins").textContent = fmt(S.coins);
-  $("home-lifetime").textContent = fmt(S.lifetime_coins);
+  const _cb = $("coins-big"); if (_cb) _cb.textContent = fmt(S.coins);
+  const _av = $("avail-coins"); if (_av) _av.textContent = fmt(S.avail_coins || 0);
+  const _wn = $("winning-cash"); if (_wn) _wn.textContent = "₹" + Number(S.winning_rupees || 0).toFixed(2);
   const level = (S.slime && S.slime.level) || 1;
   const nextAt = S.slime && S.slime.next_at;
   const prevAt = [0,1000,6000,21000,61000,161000,411000,1011000,2511000,6511000][Math.max(0, level - 1)] || 0;
@@ -150,6 +147,28 @@ function showBan(notice) {
 function closeWelcome() {
   const wp = document.getElementById("welcome-popup");
   if (wp) wp.style.display = "none";
+}
+// v72: Coins -> Available Balance convert popup
+function openConvert() {
+  if (!S) return;
+  $("conv-have").textContent = fmt(S.coins);
+  $("conv-amt").value = "";
+  document.getElementById("convert-popup").style.display = "flex";
+}
+function closeConvert() {
+  document.getElementById("convert-popup").style.display = "none";
+}
+async function doConvert() {
+  const amt = parseInt(($("conv-amt").value || "").trim(), 10);
+  if (!amt || amt < 1) { toast("Sahi amount dalo"); return; }
+  const r = await api("/api/convert", { coins: amt });
+  if (r && r.ok) {
+    if (r.state) { S = r.state; render(); }
+    closeConvert();
+    toast(r.msg || "Convert ho gaya ✅");
+  } else {
+    toast((r && r.msg) || "Convert nahi hua");
+  }
 }
 let WARN_ID = 0;
 function ackWarning() {

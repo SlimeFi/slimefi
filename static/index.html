@@ -8,7 +8,7 @@
 <script src='https://libtl.com/sdk.js' data-zone='12248440' data-sdk='show_12248440'></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=68">
+<link rel="stylesheet" href="/static/style.css?v=72">
 </head>
 <body>
 
@@ -17,37 +17,28 @@
   <div class="app-brand">SLIME<span>FI</span></div>
   <div class="app-head-right">
     <span class="pill-green">Earning Platform</span>
-    <button class="wd-top" onclick="go('wallet')">Withdraw</button>
   </div>
 </header>
 
 <!-- ================= HOME ================= -->
 <section id="view-home" class="view active">
-  <div class="universe-hero">
-    <div class="hero-copy">
-      <div class="hero-kicker"><span class="pulse-dot"></span> YOUR REWARD UNIVERSE</div>
-      <h1>Small moves.<br><em>Real rewards.</em></h1>
-      <p>Complete quests, collect coins and level up your Slime.</p>
-      <button class="hero-cta" onclick="go('tasks')">Explore quests <span>↗</span></button>
-    </div>
-    <div class="hero-mascot-wrap">
-      <div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div>
-      <div class="hero-star star-a">✦</div><div class="hero-star star-b">✧</div>
-      <div id="slime3d"><img class="hero-mascot slime3d-fallback" src="/static/img/slime-pet.png" alt="SlimeFi mascot"></div>
-    </div>
-    <div class="hero-glow"></div>
+  <div class="coins-card">
+    <div class="coins-card-label">YOUR COINS</div>
+    <div class="coins-card-main"><b id="coins-big">0</b><span class="coins-coin">🪙</span></div>
+    <button class="convert-btn" onclick="openConvert()">Convert Coins</button>
   </div>
 
-  <div class="home-balance-card">
-    <div class="balance-heading"><span>YOUR TOTAL BALANCE</span><span class="secure-chip">● SECURE WALLET</span></div>
-    <div class="balance-main-row">
-      <div><small>COIN VALUE</small><div class="rupee-total">₹<b id="home-cash">0.00</b></div></div>
-      <div class="coin-total-wrap"><small>AVAILABLE COINS</small><div class="coin-total">🪙 <b id="home-coins">0</b></div></div>
+  <div class="bal-boxes">
+    <div class="bal-box">
+      <small>AVAILABLE BALANCE</small>
+      <div class="bal-value"><b id="avail-coins">0</b> <span>Coins</span></div>
+      <button class="bal-play" onclick="startSlimeRocket()">PLAY</button>
     </div>
-    <div class="balance-divider"></div>
-    <div class="balance-bottom-row"><span>1,000 Coins = ₹1</span><span>Lifetime: <b id="home-lifetime">0</b></span></div>
-    <div class="balance-actions"><button onclick="go('wallet')">Wallet details <span>↗</span></button><button class="balance-withdraw" onclick="go('wallet')">Withdraw</button></div>
-    <div class="sr-only" id="home-coin-value">₹0.00</div><div class="sr-only" id="home-coins-small">0</div><div class="sr-only" id="home-value-small">₹0.00</div>
+    <div class="bal-box">
+      <small>WINNING BALANCE</small>
+      <div class="bal-value"><b id="winning-cash">₹0.00</b> <span>Cash</span></div>
+      <button class="bal-withdraw" onclick="go('wallet')">WITHDRAW</button>
+    </div>
   </div>
 
   <button class="sr-home-banner" onclick="startSlimeRocket()"><span class="sr-home-art">🛫</span><span class="sr-home-text"><small>NEW GAME · JUST FOR FUN</small><b>Slime Rocket</b><em>Plane udao, multiplier badhao — crash se pehle Cash Out karo!</em></span><strong>PLAY ↗</strong></button>
@@ -432,6 +423,17 @@
   </div>
 </div>
 
+<div id="convert-popup" class="wp-overlay" style="display:none">
+  <div class="wp-card">
+    <div class="wp-gift">🪙</div>
+    <div class="wp-title">Convert Coins</div>
+    <div class="wp-rule" style="text-transform:none">Coins <b>Available Balance</b> me jayenge.<br>Tumhare Coins: <b id="conv-have">0</b></div>
+    <input id="conv-amt" type="number" min="1" inputmode="numeric" placeholder="Kitne coins convert karne hain?" class="conv-input">
+    <button class="wp-btn" onclick="doConvert()">Convert Karo</button>
+    <button class="wp-btn conv-cancel" onclick="closeConvert()">Cancel</button>
+  </div>
+</div>
+
 <div id="warn-popup" class="wp-overlay" style="display:none">
   <div class="wp-card">
     <div class="wp-gift">⚠️</div>
@@ -443,6 +445,6 @@
 
 <script src="/static/three.min.js"></script>
 <script src="/static/slime3d.js?v=2"></script>
-<script src="/static/app.js?v=71"></script>
+<script src="/static/app.js?v=72"></script>
 </body>
 </html>
