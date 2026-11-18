@@ -63,7 +63,6 @@ window.go = go;
 function render() {
   if (!S) return;
   // home
-  const coinValue = Number(S.coins || 0) / Number(S.earn.coins_per_rupee || 1000);
   $("home-users").textContent = fmt(S.players);
   const _cb = $("coins-big"); if (_cb) _cb.textContent = fmt(S.coins);
   const _av = $("avail-cash"); if (_av) _av.textContent = "₹" + (Number(S.avail_coins || 0) / Number(S.earn.coins_per_rupee || 1000)).toFixed(2);
@@ -95,10 +94,8 @@ function render() {
   // wallet — withdrawable cash SIRF Winning Balance hai (coins nahi)
   $("cash-amt").textContent = "₹" + Number(S.winning_rupees || 0).toFixed(2);
   $("wallet-coins").textContent = fmt(S.coins);
-  $("wallet-coin-value").textContent = "₹" + coinValue.toFixed(2);
   $("pending-rew-line").textContent = "Pending approval: " + fmt(S.pending_rewards_coins) + " Coins = ₹" +
     (S.pending_rewards_coins / S.earn.coins_per_rupee).toFixed(2);
-  $("rate-line").textContent = fmt(S.earn.coins_per_rupee) + " Coins = ₹1";
   $("min-wd").textContent = "₹" + S.earn.min_withdraw_rupees;
   if (!S.earn.payouts_enabled) { $("btn-withdraw").disabled = true; $("btn-withdraw").textContent = "Withdraw abhi band hai"; }
   else { $("btn-withdraw").disabled = false; $("btn-withdraw").textContent = "Withdraw Request bhejo"; }
