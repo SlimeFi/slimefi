@@ -368,7 +368,7 @@
       <div class="howto">
         <h2>Kaise khelein?</h2>
         <ol>
-          <li>Round shuru hone se pehle apni bet lagao (tumhare Balance ₹ se).</li>
+          <li>Round shuru hone se pehle apni bet lagao — pehle Available Balance (₹) se, khatam hone par Winning Balance (₹) se.</li>
           <li>Plane udega aur multiplier 1.00x se badhta jayega.</li>
           <li>Plane crash (fly away) hone se pehle <strong>Cash Out</strong> dabao — jeet = bet × multiplier, aur jeet Winning Balance (₹) me jati hai.</li>
           <li>Der ho gayi to bet gayi. Agla round kuch hi seconds me shuru hota hai.</li>
@@ -376,7 +376,7 @@
         </ol>
       </div>
 
-      <p class="foot"><strong>Bets tumhare app Balance (₹) se lagti hain.</strong><br />Jeet Winning Balance (₹) me jati hai.</p>
+      <p class="foot"><strong>Bets pehle Available Balance (₹) se lagti hain — khatam hone par Winning Balance (₹) se.</strong><br />Jeet Winning Balance (₹) me jati hai. Withdraw sirf Winning Balance se hota hai.</p>
     </div>
 
     <script>
@@ -549,10 +549,14 @@
           statRounds = $('statRounds'), statBest = $('statBest'), statPL = $('statPL');
 
       // ---------- Balance (asli app balance — server se, ₹ me) ----------
-      // Bet tumhare main Balance (₹) se lagti hai; jeet Winning Balance (₹) me jati hai.
+      // Bet pehle Available Balance (₹) se lagti hai; Available khatam hone
+      // par baki Winning Balance (₹) se. Isliye Balance card me dono ka
+      // total dikhta hai — yehi woh paisa hai jisse khela ja sakta hai.
+      // Gaon wale coins se Rocket ka koi lena-dena nahi — coins sirf Convert
+      // se ₹ (Available Balance) me badle jate hain.
       // Demo localStorage balance hata diya gaya — sab kuch server par hota hai.
-      // 1000 coins = ₹1, isliye Balance paise me rakhte hain (10 coins = 1 paisa).
-      var balancePaise = 0;       // main Balance, paise (coins/10)
+      // 1000 avail coins = ₹1, isliye Balance paise me rakhte hain (10 avail coins = 1 paisa).
+      var balancePaise = 0;       // khelne layak total, paise (avail/10 + winning)
       var winningPaise = 0;       // Winning Balance, paise
       // Auth headers — main app (app.js) jaisi hi: Telegram initData ya owner key.
       var USER = 'owner', OKEY = '';
@@ -581,7 +585,8 @@
       function fmtRs(paise) { return '₹' + (Number(paise || 0) / 100).toFixed(2); }
       function applyState(st) {
         if (!st) return;
-        if (typeof st.coins === 'number') balancePaise = Math.floor(st.coins / 10);
+        if (typeof st.avail_coins === 'number' || typeof st.winning_paise === 'number')
+          balancePaise = Math.floor((st.avail_coins || 0) / 10) + (st.winning_paise || 0);
         if (typeof st.winning_paise === 'number') winningPaise = st.winning_paise;
         renderBalance();
       }
@@ -776,7 +781,7 @@
         if (!LIVE || !liveRoundId) { setStatus('⏳ Server se connect ho raha hai…<span class="sub">Bet lagane ke liye ek second wait karo</span>'); return; }
         if (amt > balancePaise) {
           amt = balancePaise;
-          if (amt < 1) { renderBalance(); setStatus('😕 Balance me paise nahi hain.<span class="sub">Pehle gaon se coins kamao, phir bet lagao</span>'); return; }
+          if (amt < 1) { renderBalance(); setStatus('😕 Balance me paise nahi hain.<span class="sub">Available + Winning dono khatam hain — pehle Convert Coins se coins ko ₹ me badlo, phir bet lagao</span>'); return; }
           betInput.value = (amt / 100).toFixed(2);
         }
         if (pendingBet) return; // pehle wali bet pending hai
