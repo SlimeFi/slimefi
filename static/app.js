@@ -66,7 +66,7 @@ function render() {
   const coinValue = Number(S.coins || 0) / Number(S.earn.coins_per_rupee || 1000);
   $("home-users").textContent = fmt(S.players);
   const _cb = $("coins-big"); if (_cb) _cb.textContent = fmt(S.coins);
-  const _av = $("avail-coins"); if (_av) _av.textContent = fmt(S.avail_coins || 0);
+  const _av = $("avail-cash"); if (_av) _av.textContent = "₹" + (Number(S.avail_coins || 0) / Number(S.earn.coins_per_rupee || 1000)).toFixed(2);
   const _wn = $("winning-cash"); if (_wn) _wn.textContent = "₹" + Number(S.winning_rupees || 0).toFixed(2);
   const level = (S.slime && S.slime.level) || 1;
   const nextAt = S.slime && S.slime.next_at;
