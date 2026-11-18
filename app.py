@@ -267,6 +267,15 @@ def init_db():
             round_id INTEGER PRIMARY KEY, start_ts REAL, fly_start REAL,
             crash_point REAL, crash_ts REAL, end_ts REAL
         );
+        CREATE TABLE IF NOT EXISTS rocket_bets(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL,
+            round_id INTEGER NOT NULL, amount_coins INTEGER NOT NULL,
+            amount_paise INTEGER DEFAULT 0,
+            cashed_out INTEGER DEFAULT 0, cashout_mult REAL,
+            win_coins INTEGER DEFAULT 0, win_paise INTEGER DEFAULT 0,
+            created_at REAL, cashed_at REAL,
+            UNIQUE(user_id, round_id)
+        );
         """)
         # Earning columns added after the first release: add them to old DBs too.
         cols = {r[1] for r in c.execute("PRAGMA table_info(users)")}
@@ -308,6 +317,11 @@ def init_db():
         scols = {r[1] for r in c.execute("PRAGMA table_info(ad_sessions)")}
         if "ymid" not in scols:
             c.execute("ALTER TABLE ad_sessions ADD COLUMN ymid TEXT DEFAULT ''")
+        rbcols = {r[1] for r in c.execute("PRAGMA table_info(rocket_bets)")}
+        if "amount_paise" not in rbcols:
+            c.execute("ALTER TABLE rocket_bets ADD COLUMN amount_paise INTEGER DEFAULT 0")
+            # purani coin-bets ko paise me badlo (10 coins = 1 paisa)
+            c.execute("UPDATE rocket_bets SET amount_paise=amount_coins/10 WHERE amount_paise=0")
         # v30 migration: old cash wallet was created by manually converting coins.
         # Move that value back into coins once, preserving total user value.
         for row in c.execute("SELECT user_id, cash_paise FROM users WHERE COALESCE(cash_paise,0)>0").fetchall():
@@ -762,6 +776,147 @@ def rocket_state():
         out["crash_point"] = round(cur["crash_point"], 2)
         out["round_end"] = cur["end_ts"]
     return jsonify(out)
+
+@app.post("/api/rocket/bet")
+def rocket_bet():
+    """Rocket bet — ₹ me (amount_paise me bhejo). Stake betting phase me hi
+    lagti hai aur turant Balance se kat-ti hai (10 coins = 1 paisa);
+    jeet (cash out par) Winning Balance (winning_paise) me jati hai."""
+    data = request.get_json(silent=True) or {}
+    try:
+        amt_paise = int(data.get("amount_paise") or 0)
+    except (TypeError, ValueError):
+        amt_paise = 0
+    try:
+        round_id = int(data.get("round_id") or 0)
+    except (TypeError, ValueError):
+        round_id = 0
+    if amt_paise < 1:
+        return jsonify({"ok": False, "msg": "Bet kam se kam ₹0.01 ki hoti hai."})
+    amt_coins = amt_paise * 10  # 10 coins = 1 paisa (1000 coins = Rs 1)
+    now = time.time()
+    with _lock, db() as c:
+        u = roll_day(c, get_user(c, uid()))
+        cur = _rocket_current(c, now)
+        if round_id != cur["round_id"] or now >= cur["fly_start"]:
+            return jsonify({"ok": False, "msg": "Is round me bet band ho gayi — agle round ka wait karo."})
+        old = c.execute("SELECT * FROM rocket_bets WHERE user_id=? AND round_id=?",
+                        (u["user_id"], round_id)).fetchone()
+        if old:
+            return jsonify({"ok": True, "already": True,
+                            "amount_paise": int(old["amount_paise"] or 0),
+                            "amount_coins": old["amount_coins"],
+                            "state": state_payload(c, u)})
+        if amt_coins > (u["coins"] or 0):
+            return jsonify({"ok": False, "msg": "Itne paise nahi hain tumhare Balance me."})
+        c.execute("UPDATE users SET coins=coins-? WHERE user_id=?", (amt_coins, u["user_id"]))
+        c.execute("INSERT INTO rocket_bets(user_id,round_id,amount_coins,amount_paise,created_at) VALUES(?,?,?,?,?)",
+                  (u["user_id"], round_id, amt_coins, amt_paise, now))
+        log(c, u["user_id"], "rocket_bet", {"coins": -amt_coins},
+            f"Rocket round #{round_id}: ₹{amt_paise/100:.2f} ki bet")
+        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
+        return jsonify({"ok": True, "amount_paise": amt_paise, "amount_coins": amt_coins,
+                        "state": state_payload(c, u)})
+
+@app.post("/api/rocket/cancel")
+def rocket_cancel():
+    """Bet wapas lo — sirf betting phase me, plane udne se pehle.
+    Stake coins me refund hota hai."""
+    data = request.get_json(silent=True) or {}
+    try:
+        round_id = int(data.get("round_id") or 0)
+    except (TypeError, ValueError):
+        round_id = 0
+    now = time.time()
+    with _lock, db() as c:
+        u = roll_day(c, get_user(c, uid()))
+        cur = _rocket_current(c, now)
+        if round_id != cur["round_id"] or now >= cur["fly_start"]:
+            return jsonify({"ok": False, "msg": "Ab cancel nahi ho sakta — plane ud chuka hai."})
+        row = c.execute("SELECT * FROM rocket_bets WHERE user_id=? AND round_id=?",
+                        (u["user_id"], round_id)).fetchone()
+        if not row:
+            return jsonify({"ok": True, "cancelled": False, "state": state_payload(c, u)})
+        amt_paise = int(row["amount_paise"] or 0)
+        amt_coins = int(row["amount_coins"] or amt_paise * 10)
+        c.execute("UPDATE users SET coins=coins+? WHERE user_id=?", (amt_coins, u["user_id"]))
+        c.execute("DELETE FROM rocket_bets WHERE id=?", (row["id"],))
+        log(c, u["user_id"], "rocket_cancel", {"coins": amt_coins},
+            f"Rocket round #{round_id}: ₹{amt_paise/100:.2f} ki bet cancel — refund")
+        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
+        return jsonify({"ok": True, "cancelled": True, "refunded_paise": amt_paise,
+                        "refunded_coins": amt_coins, "state": state_payload(c, u)})
+
+@app.post("/api/rocket/cashout")
+def rocket_cashout():
+    """Rocket cash out: jeet Winning Balance (winning_paise) me jati hai.
+    Bet ₹ me lagi thi — jeet = bet × multiplier (paise me, 10 coins = 1 paisa).
+    Server crash point se pehle hi cash out maanta hai — late request reject hoti hai."""
+    data = request.get_json(silent=True) or {}
+    try:
+        round_id = int(data.get("round_id") or 0)
+    except (TypeError, ValueError):
+        round_id = 0
+    now = time.time()
+    with _lock, db() as c:
+        u = roll_day(c, get_user(c, uid()))
+        row = c.execute("SELECT * FROM rocket_bets WHERE user_id=? AND round_id=?",
+                        (u["user_id"], round_id)).fetchone()
+        if not row:
+            return jsonify({"ok": False, "msg": "Is round me tumhari koi bet nahi hai."})
+        if row["cashed_out"]:
+            return jsonify({"ok": True, "already": True,
+                            "mult": row["cashout_mult"], "win_coins": row["win_coins"],
+                            "win_paise": row["win_paise"],
+                            "win_rupees": round((row["win_paise"] or 0) / 100, 2),
+                            "state": state_payload(c, u)})
+        cur = _rocket_current(c, now)
+        if round_id != cur["round_id"]:
+            return jsonify({"ok": False, "late": True, "msg": "Round khatam ho gaya — bet haar gayi."})
+        if now < cur["fly_start"]:
+            return jsonify({"ok": False, "msg": "Plane abhi uda nahi — thoda wait karo."})
+        if now >= cur["crash_ts"]:
+            return jsonify({"ok": False, "late": True, "msg": "Der ho gayi — plane crash ho chuka hai."})
+        mult = math.exp(ROCKET_GROWTH * (now - cur["fly_start"]))
+        mult = min(mult, cur["crash_point"])
+        mult = round(mult, 2)  # dikhaya gaya multiplier hi payout wala — 2 decimal par fix
+        bet_paise = int(row["amount_paise"] or 0)
+        win_paise = int(bet_paise * mult)
+        win_coins = win_paise * 10
+        c.execute("UPDATE users SET winning_paise=winning_paise+? WHERE user_id=?",
+                  (win_paise, u["user_id"]))
+        c.execute("UPDATE rocket_bets SET cashed_out=1, cashout_mult=?, win_coins=?, win_paise=?, cashed_at=? WHERE id=?",
+                  (round(mult, 2), win_coins, win_paise, now, row["id"]))
+        log(c, u["user_id"], "rocket_win", {"coins": 0},
+            f"Rocket round #{round_id}: ₹{bet_paise/100:.2f} @ {mult:.2f}x = ₹{win_paise/100:.2f} Winning Balance me")
+        c.execute("INSERT INTO cash_ledger(user_id,delta_paise,kind,note,ts) VALUES(?,?,?,?,?)",
+                  (u["user_id"], win_paise, "rocket_win",
+                   f"Rocket round #{round_id} cash out @ {mult:.2f}x", now))
+        u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
+        return jsonify({"ok": True, "mult": round(mult, 2), "win_coins": win_coins,
+                        "win_paise": win_paise, "win_rupees": round(win_paise / 100, 2),
+                        "state": state_payload(c, u)})
+
+@app.get("/api/rocket/mybet")
+def rocket_mybet():
+    """Is round me meri bet kya hai (page reload ke baad wapas lane ke liye)."""
+    try:
+        round_id = int(request.args.get("round_id") or 0)
+    except (TypeError, ValueError):
+        round_id = 0
+    with _lock, db() as c:
+        u = roll_day(c, get_user(c, uid()))
+        row = c.execute("SELECT * FROM rocket_bets WHERE user_id=? AND round_id=?",
+                        (u["user_id"], round_id)).fetchone()
+        if not row:
+            return jsonify({"ok": True, "bet": None, "state": state_payload(c, u)})
+        return jsonify({"ok": True, "bet": {
+            "round_id": row["round_id"],
+            "amount_paise": int(row["amount_paise"] or 0),
+            "amount_coins": row["amount_coins"],
+            "cashed_out": bool(row["cashed_out"]), "cashout_mult": row["cashout_mult"],
+            "win_coins": row["win_coins"], "win_paise": row["win_paise"]},
+            "state": state_payload(c, u)})
 
 @app.get("/api/state")
 def state():
