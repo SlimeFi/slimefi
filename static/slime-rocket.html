@@ -56,11 +56,6 @@
       }
       .logo .plane-badge svg{ width:21px; height:21px; fill:#fff; transform:rotate(45deg); }
       .logo span em{ font-style:normal; color:var(--red); }
-      .demo-badge{
-        margin-left:auto; background:#3a2b05; color:var(--gold);
-        border:1px solid #6b5310; font-size:11px; font-weight:700;
-        padding:5px 9px; border-radius:999px; letter-spacing:.4px; text-transform:uppercase; white-space:nowrap;
-      }
 
       .balance-row{ display:flex; gap:8px; align-items:stretch; }
       .balance-card{
@@ -68,6 +63,7 @@
         padding:9px 12px; display:flex; align-items:center; gap:10px;
       }
       .coin{ width:30px; height:30px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #ffe08a, var(--gold) 60%, #c78f0a); display:grid; place-items:center; font-weight:900; color:#5c4303; font-size:15px; flex:none; }
+      .coin.win{ background:radial-gradient(circle at 35% 30%, #b8f5c8, #22a355 60%, #14703a); color:#063; }
       .balance-card .lbl{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; line-height:1.1; }
       .balance-card .amt{ font-size:19px; font-weight:800; line-height:1.15; font-variant-numeric:tabular-nums; }
       .icon-btn{
@@ -88,16 +84,6 @@
       .sound-hint .dot{ width:8px; height:8px; border-radius:50%; background:#5c5c70; flex:none; }
       .sound-hint.playing .dot{ background:var(--green); box-shadow:0 0 0 4px rgba(34,197,94,.18); animation:pulse 1.2s infinite; }
       .sound-hint button{ margin-left:auto; flex:none; background:var(--panel2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:0 10px; font-size:12.5px; font-weight:700; min-height:2.2rem; }
-
-      .refill-banner{
-        display:none; background:#12291a; border:1px solid #1f5136; color:#b9f4cd;
-        border-radius:var(--radius); padding:10px 12px; font-size:13.5px; align-items:center; gap:10px;
-      }
-      .refill-banner.show{ display:flex; }
-      .refill-banner button{
-        margin-left:auto; background:var(--green); color:#04160a; border:none; font-weight:800;
-        border-radius:9px; padding:0 14px; font-size:13.5px; white-space:nowrap;
-      }
 
       /* ---------- History ---------- */
       .history{ display:flex; gap:6px; overflow-x:auto; padding:2px 0 4px; scrollbar-width:none; min-height:30px; align-items:center; }
@@ -239,7 +225,6 @@
       .logo{ font-size:17px; }
       .logo .plane-badge{ width:29px; height:29px; border-radius:8px; }
       .logo .plane-badge svg{ width:18px; height:18px; }
-      .demo-badge{ font-size:10px; padding:4px 8px; }
       .balance-card{ padding:6px 10px; }
       .balance-card .amt{ font-size:17px; }
       .coin{ width:26px; height:26px; font-size:13px; }
@@ -283,15 +268,21 @@
           </span>
           <span>SLIME <em>ROCKET</em></span>
         </div>
-        <span class="demo-badge">Demo · Virtual Coins</span>
       </div>
 
       <div class="balance-row">
         <div class="balance-card">
-          <span class="coin" aria-hidden="true">C</span>
+          <span class="coin" aria-hidden="true">₹</span>
           <div>
             <div class="lbl">Balance</div>
-            <div class="amt" id="balanceAmt">1,000</div>
+            <div class="amt" id="balanceAmt">—</div>
+          </div>
+        </div>
+        <div class="balance-card">
+          <span class="coin win" aria-hidden="true">₹</span>
+          <div>
+            <div class="lbl">Winning Balance</div>
+            <div class="amt" id="winningAmt">₹0.00</div>
           </div>
         </div>
         <button class="icon-btn on" id="soundBtn" type="button" aria-label="Sound effects on or off" title="Sound effects" aria-pressed="true">
@@ -300,18 +291,12 @@
         <button class="icon-btn on" id="musicBtn" type="button" aria-label="Background music on or off" title="Background music" aria-pressed="true">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
         </button>
-        <button class="icon-btn" id="resetBtn" type="button" aria-label="Reset demo balance to 1000 coins" title="Reset balance">↺</button>
       </div>
 
       <div class="sound-hint" id="soundHint">
         <span class="dot" aria-hidden="true"></span>
         <span><strong>Sound ON hai.</strong> Pehla button tap karte hi music + effects chalenge — phone silent mode par hai to awaaz nahi aayegi.</span>
         <button type="button" id="testSoundBtn">Test Sound</button>
-      </div>
-
-      <div class="refill-banner" id="refillBanner">
-        <span>Coins khatam ho gaye! Demo hai — free me refill kar lo.</span>
-        <button type="button" id="refillBtn">+1,000 Free</button>
       </div>
 
       <!-- History -->
@@ -345,7 +330,7 @@
         <div class="bet-row">
           <div class="stepper">
             <button type="button" id="minusBtn" aria-label="Decrease bet">−</button>
-            <input id="betInput" type="number" inputmode="numeric" min="1" step="1" value="100" aria-label="Bet amount in virtual coins" />
+            <input id="betInput" type="number" inputmode="decimal" min="0.01" step="0.01" value="1.00" aria-label="Bet amount in rupees" />
             <button type="button" id="plusBtn" aria-label="Increase bet">+</button>
           </div>
           <div class="half-double">
@@ -355,12 +340,12 @@
         </div>
 
         <div class="quick" role="group" aria-label="Quick bet amounts">
-          <button type="button" data-amt="10">10</button>
-          <button type="button" data-amt="25">25</button>
-          <button type="button" data-amt="50">50</button>
-          <button type="button" data-amt="100">100</button>
-          <button type="button" data-amt="250">250</button>
-          <button type="button" data-amt="500">500</button>
+          <button type="button" data-amt="0.10">₹0.10</button>
+          <button type="button" data-amt="0.25">₹0.25</button>
+          <button type="button" data-amt="0.50">₹0.50</button>
+          <button type="button" data-amt="1">₹1</button>
+          <button type="button" data-amt="2">₹2</button>
+          <button type="button" data-amt="5">₹5</button>
         </div>
 
         <div class="auto-row">
@@ -383,20 +368,22 @@
       <div class="howto">
         <h2>Kaise khelein?</h2>
         <ol>
-          <li>Round shuru hone se pehle apni bet lagao (virtual coins).</li>
+          <li>Round shuru hone se pehle apni bet lagao (tumhare Balance ₹ se).</li>
           <li>Plane udega aur multiplier 1.00x se badhta jayega.</li>
-          <li>Plane crash (fly away) hone se pehle <strong>Cash Out</strong> dabao — jeet = bet × multiplier.</li>
+          <li>Plane crash (fly away) hone se pehle <strong>Cash Out</strong> dabao — jeet = bet × multiplier, aur jeet Winning Balance (₹) me jati hai.</li>
           <li>Der ho gayi to bet gayi. Agla round kuch hi seconds me shuru hota hai.</li>
           <li>Upar wale speaker aur music buttons se sound / background music on-off kar sakte ho.</li>
         </ol>
       </div>
 
-      <p class="foot"><strong>Demo game — sirf virtual coins.</strong><br />No real money · No deposits · No prizes · Sirf practice aur fun ke liye.</p>
+      <p class="foot"><strong>Bets tumhare app Balance (₹) se lagti hain.</strong><br />Jeet Winning Balance (₹) me jati hai.</p>
     </div>
 
     <script>
       // ---------- Telegram Mini App init (safe outside Telegram) ----------
       var tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+      // Rocket iframe ke andar Telegram inject nahi hota — parent (main app) se lo (same origin).
+      if (!tg) { try { var _ptg = window.parent && window.parent.Telegram && window.parent.Telegram.WebApp; if (_ptg) tg = _ptg; } catch (e) {} }
       if (tg) {
         try {
           tg.ready();
@@ -552,27 +539,61 @@
 
       // ---------- Elements ----------
       var $ = function (id) { return document.getElementById(id); };
-      var balanceEl = $('balanceAmt'), betInput = $('betInput'), autoInput = $('autoInput'),
+      var balanceEl = $('balanceAmt'), winningEl = $('winningAmt'), betInput = $('betInput'), autoInput = $('autoInput'),
           mainBtn = $('mainBtn'), multEl = $('multDisplay'), statusEl = $('stageStatus'),
           historyStrip = $('historyStrip'), historyEmpty = $('historyEmpty'),
           countdownWrap = $('countdownWrap'), countdownTxt = $('countdownTxt'), countdownFill = $('countdownFill'),
           liveTag = $('liveTag'), planeEl = $('planeEl'), stage = $('stage'),
           canvas = $('gameCanvas'), ctx = canvas.getContext('2d'),
-          lastBetEl = $('lastBet'), refillBanner = $('refillBanner'),
+          lastBetEl = $('lastBet'),
           statRounds = $('statRounds'), statBest = $('statBest'), statPL = $('statPL');
 
-      // ---------- Balance (demo coins, this device only) ----------
-      var LS_KEY = 'slime_rocket_demo_balance_v1';
-      var balance = 1000;
+      // ---------- Balance (asli app balance — server se, ₹ me) ----------
+      // Bet tumhare main Balance (₹) se lagti hai; jeet Winning Balance (₹) me jati hai.
+      // Demo localStorage balance hata diya gaya — sab kuch server par hota hai.
+      // 1000 coins = ₹1, isliye Balance paise me rakhte hain (10 coins = 1 paisa).
+      var balancePaise = 0;       // main Balance, paise (coins/10)
+      var winningPaise = 0;       // Winning Balance, paise
+      // Auth headers — main app (app.js) jaisi hi: Telegram initData ya owner key.
+      var USER = 'owner', OKEY = '';
       try {
-        var saved = parseInt(localStorage.getItem(LS_KEY), 10);
-        if (!isNaN(saved) && saved >= 0) balance = saved;
+        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) USER = 'tg' + tg.initDataUnsafe.user.id;
+        else USER = localStorage.getItem('slimefi_user') || 'owner';
       } catch (e) {}
-      function saveBalance() { try { localStorage.setItem(LS_KEY, String(balance)); } catch (e) {} }
+      try {
+        var _sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param)
+          || new URLSearchParams(location.search).get('startapp')
+          || new URLSearchParams(location.search).get('k') || '';
+        if (_sp) localStorage.setItem('slimefi_k', _sp);
+        OKEY = localStorage.getItem('slimefi_k') || '';
+      } catch (e) {}
+      function apiHeaders() {
+        var h = { 'Content-Type': 'application/json', 'X-User-Id': USER, 'X-Init-Data': tg ? (tg.initData || '') : '' };
+        if (OKEY) h['X-Owner-Key'] = OKEY;
+        return h;
+      }
+      function apiPost(path, body) {
+        return fetch(path, { method: 'POST', headers: apiHeaders(), body: JSON.stringify(body || {}) })
+          .then(function (r) { return r.json(); });
+      }
+      function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
       function fmt(n) { return Math.floor(n).toLocaleString('en-IN'); }
+      function fmtRs(paise) { return '₹' + (Number(paise || 0) / 100).toFixed(2); }
+      function applyState(st) {
+        if (!st) return;
+        if (typeof st.coins === 'number') balancePaise = Math.floor(st.coins / 10);
+        if (typeof st.winning_paise === 'number') winningPaise = st.winning_paise;
+        renderBalance();
+      }
+      function refreshBalances() {
+        return fetch('/api/state', { headers: apiHeaders(), cache: 'no-store' })
+          .then(function (r) { return r.json(); })
+          .then(function (d) { if (d && typeof d.coins === 'number') applyState(d); })
+          .catch(function () {});
+      }
       function renderBalance() {
-        balanceEl.textContent = fmt(balance);
-        refillBanner.classList.toggle('show', balance < 10 && !activeBet && !pendingBet);
+        balanceEl.textContent = fmtRs(balancePaise);
+        if (winningEl) winningEl.textContent = fmtRs(winningPaise);
       }
 
       // ---------- Game state ----------
@@ -584,6 +605,8 @@
       var crashPoint = 1.00;
       var currentMult = 1.00;
       var pendingBet = null;        // bet placed for the upcoming round
+      var pendingBetServer = false; // server ne stake kaat liya (asli bet) ya sirf queue me hai
+      var cashOutPending = false;  // cash out request server par ja rahi hai
       var activeBet = null;         // bet riding the current flight
       var cashedOut = false, cashOutMult = 0, cashOutWin = 0;
       var roundHistory = [];
@@ -686,7 +709,7 @@
       function renderStats() {
         statRounds.textContent = stats.rounds;
         statBest.textContent = stats.best > 0 ? stats.best.toFixed(2) + 'x' : '—';
-        statPL.textContent = (stats.pl >= 0 ? '+' : '−') + fmt(Math.abs(stats.pl));
+        statPL.textContent = (stats.pl >= 0 ? '+' : '−') + fmtRs(Math.abs(stats.pl));
         statPL.className = 'v ' + (stats.pl > 0 ? 'plus' : stats.pl < 0 ? 'minus' : '');
       }
 
@@ -704,10 +727,11 @@
         }
       }
 
-      function readBetAmount() {
-        var v = Math.floor(Number(betInput.value));
-        if (isNaN(v) || v < 1) v = 0;
-        return v;
+      function readBetPaise() {
+        // Bet input ₹ me hai — paise me badlo (₹1 = 100 paise), kam se kam 1 paisa
+        var v = parseFloat(betInput.value);
+        if (isNaN(v) || v <= 0) return 0;
+        return Math.round(v * 100);
       }
       function readAuto() {
         var v = parseFloat(autoInput.value);
@@ -721,7 +745,7 @@
         if (state === 'waiting') {
           if (pendingBet) {
             mainBtn.classList.add('cancel');
-            mainBtn.innerHTML = 'CANCEL BET<small>' + fmt(pendingBet) + ' coins lage hain — tap to cancel</small>';
+            mainBtn.innerHTML = 'CANCEL BET<small>' + fmtRs(pendingBet) + ' lage hain — tap to cancel</small>';
           } else {
             mainBtn.innerHTML = 'BET<small>Round shuru hone se pehle lagao</small>';
           }
@@ -729,13 +753,13 @@
           if (activeBet && !cashedOut) {
             var win = Math.floor(activeBet * currentMult);
             mainBtn.classList.add('cashout');
-            mainBtn.innerHTML = 'CASH OUT<small>' + fmt(win) + ' coins @ ' + currentMult.toFixed(2) + 'x</small>';
+            mainBtn.innerHTML = 'CASH OUT<small>' + fmtRs(win) + ' @ ' + currentMult.toFixed(2) + 'x</small>';
           } else if (activeBet && cashedOut) {
             mainBtn.disabled = true;
-            mainBtn.innerHTML = 'CASHED OUT ✓<small>' + fmt(cashOutWin) + ' coins @ ' + cashOutMult.toFixed(2) + 'x</small>';
+            mainBtn.innerHTML = 'CASHED OUT ✓<small>' + fmtRs(cashOutWin) + ' @ ' + cashOutMult.toFixed(2) + 'x</small>';
           } else if (pendingBet) {
             mainBtn.classList.add('cancel');
-            mainBtn.innerHTML = 'CANCEL BET<small>Next round ke liye ' + fmt(pendingBet) + ' coins</small>';
+            mainBtn.innerHTML = 'CANCEL BET<small>Next round ke liye ' + fmtRs(pendingBet) + '</small>';
           } else {
             mainBtn.innerHTML = 'BET — NEXT ROUND<small>Ye round chal raha hai</small>';
           }
@@ -745,39 +769,101 @@
         }
       }
 
-      // ---------- Actions ----------
+      // ---------- Actions (server balance, ₹ me) ----------
       function placeBet() {
-        var amt = readBetAmount();
+        var amt = readBetPaise();
         if (amt < 1) { betInput.classList.add('shake'); setTimeout(function(){ betInput.classList.remove('shake'); }, 320); return; }
-        if (amt > balance) {
-          amt = balance;
-          if (amt < 1) { renderBalance(); return; }
-          betInput.value = amt;
+        if (!LIVE || !liveRoundId) { setStatus('⏳ Server se connect ho raha hai…<span class="sub">Bet lagane ke liye ek second wait karo</span>'); return; }
+        if (amt > balancePaise) {
+          amt = balancePaise;
+          if (amt < 1) { renderBalance(); setStatus('😕 Balance me paise nahi hain.<span class="sub">Pehle gaon se coins kamao, phir bet lagao</span>'); return; }
+          betInput.value = (amt / 100).toFixed(2);
         }
-        balance -= amt;
-        pendingBet = amt;
-        saveBalance(); renderBalance(); updateButton(); haptic('tap'); sfxCoin();
+        if (pendingBet) return; // pehle wali bet pending hai
+        if (state === 'flying') {
+          // Is round me bet nahi — agle round ke liye queue karo (paise tab katenge jab bet lagegi)
+          pendingBet = amt; pendingBetServer = false;
+          updateButton(); haptic('tap'); sfxCoin();
+          setStatus('Bet queue me hai: ' + fmtRs(amt) + '<span class="sub">Agle round shuru hote hi lag jayegi</span>');
+          return;
+        }
+        pendingBet = amt; pendingBetServer = false;
+        updateButton();
+        apiPost('/api/rocket/bet', { round_id: liveRoundId, amount_paise: amt })
+          .then(function (d) {
+            if (d && d.ok) {
+              if (pendingBet === amt) { pendingBetServer = true; applyState(d.state); updateButton(); haptic('tap'); sfxCoin(); }
+              else { apiPost('/api/rocket/cancel', { round_id: liveRoundId }).then(function (r) { if (r && r.ok) applyState(r.state); }); }
+            } else {
+              if (pendingBet === amt) { pendingBet = null; pendingBetServer = false; }
+              updateButton();
+              setStatus('❌ Bet nahi lagi<span class="sub">' + esc(d && d.msg ? d.msg : 'Phir se try karo') + '</span>');
+            }
+          })
+          .catch(function () {
+            if (pendingBet === amt) { pendingBet = null; pendingBetServer = false; }
+            updateButton();
+            setStatus('❌ Bet nahi lagi<span class="sub">Server se connect nahi ho paya</span>');
+          });
+      }
+      // Agle round ke liye queue ki hui bet ab server par lagao
+      function submitQueuedBet() {
+        if (!pendingBet || pendingBetServer || !liveRoundId) return;
+        var amt = pendingBet, rid = liveRoundId;
+        apiPost('/api/rocket/bet', { round_id: rid, amount_paise: amt })
+          .then(function (d) {
+            if (d && d.ok) { if (pendingBet === amt) pendingBetServer = true; applyState(d.state); updateButton(); }
+            else { if (pendingBet === amt) { pendingBet = null; pendingBetServer = false; } updateButton(); setStatus('❌ Bet nahi lagi<span class="sub">' + esc(d && d.msg ? d.msg : 'Phir se try karo') + '</span>'); }
+          })
+          .catch(function () { if (pendingBet === amt) { pendingBet = null; pendingBetServer = false; } updateButton(); });
       }
       function cancelBet() {
         if (!pendingBet) return;
-        balance += pendingBet;
-        pendingBet = null;
-        saveBalance(); renderBalance(); updateButton(); haptic('tap'); sfxClick();
+        if (!pendingBetServer) { pendingBet = null; updateButton(); haptic('tap'); sfxClick(); return; }
+        apiPost('/api/rocket/cancel', { round_id: liveRoundId })
+          .then(function (d) {
+            if (d && d.ok) { pendingBet = null; pendingBetServer = false; applyState(d.state); }
+            else { setStatus('❌ Cancel nahi ho paya<span class="sub">' + esc(d && d.msg ? d.msg : 'Phir se try karo') + '</span>'); }
+            updateButton();
+          })
+          .catch(function () { updateButton(); });
+        haptic('tap'); sfxClick();
       }
       function doCashOut(autoMult) {
-        if (state !== 'flying' || !activeBet || cashedOut) return;
-        cashedOut = true;
-        // Auto cash out pays at the exact target multiplier, manual at the live one.
-        cashOutMult = autoMult ? autoMult : Math.floor(currentMult * 100) / 100;
-        cashOutWin = Math.floor(activeBet * cashOutMult);
-        balance += cashOutWin;
-        stats.pl += cashOutWin - activeBet;
-        if (cashOutMult > stats.best) stats.best = cashOutMult;
-        saveBalance(); renderBalance(); renderStats(); updateButton();
-        multEl.classList.add('won');
-        setStatus('🎉 Cash Out ho gaya!<span class="sub">' + fmt(activeBet) + ' × ' + cashOutMult.toFixed(2) + 'x = ' + fmt(cashOutWin) + ' coins mile</span>');
-        showLastBet('win', '✅ Jeet! ' + fmt(activeBet) + ' coins @ ' + cashOutMult.toFixed(2) + 'x → ' + fmt(cashOutWin) + ' coins' + (autoMult ? ' (auto)' : ''));
-        haptic('success'); sfxCashOut();
+        if (state !== 'flying' || !activeBet || cashedOut || cashOutPending) return;
+        if (!LIVE) { setStatus('❌ Cash Out nahi ho paya<span class="sub">Server se connect nahi hai</span>'); return; }
+        cashOutPending = true;
+        apiPost('/api/rocket/cashout', { round_id: liveRoundId })
+          .then(function (d) {
+            cashOutPending = false;
+            if (d && d.ok && !cashedOut) {
+              cashedOut = true;
+              cashOutMult = d.mult;
+              cashOutWin = d.win_paise;
+              stats.pl += cashOutWin - activeBet;
+              if (cashOutMult > stats.best) stats.best = cashOutMult;
+              applyState(d.state);
+              renderStats(); updateButton();
+              multEl.classList.add('won');
+              setStatus('🎉 Cash Out ho gaya!<span class="sub">' + fmtRs(activeBet) + ' × ' + cashOutMult.toFixed(2) + 'x = ' + fmtRs(cashOutWin) + ' Winning Balance me</span>');
+              showLastBet('win', '✅ Jeet! ' + fmtRs(activeBet) + ' @ ' + cashOutMult.toFixed(2) + 'x → ' + fmtRs(cashOutWin) + ' (Winning Balance)' + (autoMult ? ' (auto)' : ''));
+              haptic('success'); sfxCashOut();
+            } else if (d && d.ok && cashedOut) {
+              applyState(d.state); // duplicate response — sirf balance sync
+            } else {
+              if (d && d.late) {
+                setStatus('💥 Der ho gayi!<span class="sub">Plane crash ho chuka tha — bet haar gayi</span>');
+              } else {
+                setStatus('❌ Cash Out nahi ho paya<span class="sub">' + esc(d && d.msg ? d.msg : 'Phir se try karo') + '</span>');
+              }
+              updateButton();
+            }
+          })
+          .catch(function () {
+            cashOutPending = false;
+            setStatus('❌ Cash Out nahi ho paya<span class="sub">Server se connect nahi ho paya — dobara dabao</span>');
+            updateButton();
+          });
       }
 
       mainBtn.addEventListener('click', function () {
@@ -790,27 +876,19 @@
         }
       });
 
-      // bet input controls
-      function setBet(v) {
-        v = Math.max(1, Math.floor(v) || 1);
-        betInput.value = v;
+      // bet input controls (₹ me)
+      function setBet(paise) {
+        paise = Math.max(1, Math.round(paise) || 1);
+        betInput.value = (paise / 100).toFixed(2);
       }
-      $('minusBtn').addEventListener('click', function () { setBet(readBetAmount() - 10); });
-      $('plusBtn').addEventListener('click', function () { setBet(readBetAmount() + 10); });
-      $('halfBtn').addEventListener('click', function () { setBet(readBetAmount() / 2); });
-      $('doubleBtn').addEventListener('click', function () { setBet(readBetAmount() * 2); });
+      $('minusBtn').addEventListener('click', function () { setBet(readBetPaise() - 10); });
+      $('plusBtn').addEventListener('click', function () { setBet(readBetPaise() + 10); });
+      $('halfBtn').addEventListener('click', function () { setBet(readBetPaise() / 2); });
+      $('doubleBtn').addEventListener('click', function () { setBet(readBetPaise() * 2); });
       document.querySelectorAll('.quick button').forEach(function (b) {
-        b.addEventListener('click', function () { setBet(Number(b.getAttribute('data-amt'))); haptic('tap'); sfxClick(); });
+        b.addEventListener('click', function () { setBet(Math.round(parseFloat(b.getAttribute('data-amt')) * 100)); haptic('tap'); sfxClick(); });
       });
-      betInput.addEventListener('change', function () { setBet(readBetAmount()); });
-
-      $('resetBtn').addEventListener('click', function () {
-        balance = 1000; saveBalance(); renderBalance(); haptic('tap'); sfxCoin();
-        showLastBet('win', '↺ Demo balance reset — 1,000 coins mil gaye.');
-      });
-      $('refillBtn').addEventListener('click', function () {
-        balance += 1000; saveBalance(); renderBalance(); haptic('success'); sfxCoin();
-      });
+      betInput.addEventListener('change', function () { setBet(readBetPaise()); });
 
       // Sound / Music toggles
       var soundBtn = $('soundBtn'), musicBtn = $('musicBtn');
@@ -849,6 +927,7 @@
         lastBeepSec = -1;
         stateStart = performance.now();
         activeBet = null; cashedOut = false; cashOutWin = 0; cashOutMult = 0;
+        pendingBet = null; pendingBetServer = false; // local mode: server bet nahi chalti
         currentMult = 1.00;
         flightPoints = [];
         planeGone = false;
@@ -859,7 +938,7 @@
         liveTag.classList.remove('show');
         countdownWrap.classList.add('show');
         setStatus(pendingBet
-          ? 'Bet lag gayi: ' + fmt(pendingBet) + ' coins<span class="sub">Plane udne wala hai…</span>'
+          ? 'Bet lag gayi: ' + fmtRs(pendingBet) + '<span class="sub">Plane udne wala hai…</span>'
           : 'Bet lagao, plane udne wala hai<span class="sub">Crash se pehle Cash Out karo</span>');
         updateButton();
       }
@@ -871,14 +950,15 @@
         currentMult = 1.00;
         flightPoints = [];
         planeGone = false;
-        activeBet = pendingBet; pendingBet = null;
+        // Local (offline) flight — sirf visual hai, isme koi asli bet nahi chalti
+        activeBet = null; pendingBet = null; pendingBetServer = false;
         cashedOut = false;
         countdownWrap.classList.remove('show');
         liveTag.classList.add('show');
         multEl.className = 'mult';
         if (activeBet) hideLastBet();
         setStatus(activeBet
-          ? 'Plane ud gaya! Bet: ' + fmt(activeBet) + ' coins<span class="sub">Sahi time par Cash Out dabao</span>'
+          ? 'Plane ud gaya! Bet: ' + fmtRs(activeBet) + '<span class="sub">Sahi time par Cash Out dabao</span>'
           : 'Plane ud gaya!<span class="sub">Is round me bet nahi hai — next round ke liye bet laga sakte ho</span>');
         updateButton();
         startFlightSound();
@@ -898,8 +978,8 @@
         multEl.classList.add('crashed');
         if (activeBet && !cashedOut) {
           stats.pl -= activeBet;
-          setStatus('💥 Plane fly away ho gaya @ ' + crashPoint.toFixed(2) + 'x<span class="sub">' + fmt(activeBet) + ' coins haar gaye</span>');
-          showLastBet('lose', '❌ Haar gaye — ' + fmt(activeBet) + ' coins gaye. Plane ' + crashPoint.toFixed(2) + 'x par crash hua.');
+          setStatus('💥 Plane fly away ho gaya @ ' + crashPoint.toFixed(2) + 'x<span class="sub">' + fmtRs(activeBet) + ' haar gaye</span>');
+          showLastBet('lose', '❌ Haar gaye — ' + fmtRs(activeBet) + ' gaye. Plane ' + crashPoint.toFixed(2) + 'x par crash hua.');
           haptic('error');
         } else if (activeBet && cashedOut) {
           setStatus('Plane fly away ho gaya @ ' + crashPoint.toFixed(2) + 'x<span class="sub">Tum pehle hi Cash Out kar chuke the — safe! 👍</span>');
@@ -927,6 +1007,25 @@
         }
       }
 
+      // Reload ke baad: is round ki bet server se wapas lao (nahi to cash out nahi ho payega)
+      function restoreMyBet() {
+        if (!LIVE || !liveRoundId) return;
+        fetch('/api/rocket/mybet?round_id=' + liveRoundId, { headers: apiHeaders(), cache: 'no-store' })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (!d || !d.ok || !d.bet) return;
+            applyState(d.state);
+            if (state === 'waiting' && !pendingBet) {
+              pendingBet = d.bet.amount_paise; pendingBetServer = true; updateButton();
+            } else if (state === 'flying' && !activeBet) {
+              activeBet = d.bet.amount_paise;
+              if (d.bet.cashed_out) { cashedOut = true; cashOutMult = d.bet.cashout_mult || 0; cashOutWin = d.bet.win_paise || 0; }
+              updateButton();
+            }
+          })
+          .catch(function () {});
+      }
+
       function startWaitingLive() {
         // Pichla round bina result ke chhoot gaya ho (tab so gaya tha) to
         // bina cash out wala active bet haar me gino.
@@ -944,9 +1043,14 @@
         liveTag.classList.remove('show');
         countdownWrap.classList.add('show');
         setStatus(pendingBet
-          ? 'Bet lag gayi: ' + fmt(pendingBet) + ' coins<span class="sub">Plane udne wala hai…</span>'
+          ? 'Bet lag gayi: ' + fmtRs(pendingBet) + '<span class="sub">Plane udne wala hai…</span>'
           : 'Bet lagao, plane udne wala hai<span class="sub">Crash se pehle Cash Out karo</span>');
         updateButton();
+        // Pichle round ki server bet (jo udaan me nahi gayi) ab khatam — saaf karo;
+        // agle round ke liye queue ki hui bet ab lagao; reload ke baad bet wapas lao
+        if (pendingBet && pendingBetServer) { pendingBet = null; pendingBetServer = false; }
+        if (pendingBet && !pendingBetServer) submitQueuedBet();
+        restoreMyBet();
       }
 
       function startFlightLive() {
@@ -954,16 +1058,18 @@
         currentMult = 1.00;
         flightPoints = [];
         planeGone = false;
-        activeBet = pendingBet; pendingBet = null;
+        // Sirf server par lagi hui bet hi ride karti hai (queue wali bet ab nahi lag sakti)
+        activeBet = pendingBetServer ? pendingBet : null; pendingBet = null; pendingBetServer = false;
         cashedOut = false;
         countdownWrap.classList.remove('show');
         liveTag.classList.add('show');
         multEl.className = 'mult';
         if (activeBet) hideLastBet();
         setStatus(activeBet
-          ? 'Plane ud gaya! Bet: ' + fmt(activeBet) + ' coins<span class="sub">Sahi time par Cash Out dabao</span>'
+          ? 'Plane ud gaya! Bet: ' + fmtRs(activeBet) + '<span class="sub">Sahi time par Cash Out dabao</span>'
           : 'Plane ud gaya!<span class="sub">Is round me bet nahi hai — next round ke liye bet laga sakte ho</span>');
         updateButton();
+        if (!activeBet) restoreMyBet(); // reload ke baad: is round ki bet wapas lao
         startFlightSound();
         tone(392, 0.18, { type: 'triangle', vol: 0.12 });
         tone(587, 0.22, { type: 'triangle', vol: 0.10, delay: 0.08 });
@@ -971,20 +1077,8 @@
 
       function endFlightLive() {
         crashPoint = srvCrash;
-        var revoked = false;
-        if (cashedOut && cashOutMult > crashPoint + 1e-9) {
-          // Server par plane pehle crash ho chuka tha — late cash out cancel
-          balance -= cashOutWin;
-          stats.pl -= (cashOutWin - activeBet);
-          cashedOut = false; cashOutWin = 0; cashOutMult = 0;
-          revoked = true;
-          saveBalance(); renderBalance(); renderStats();
-        }
         endFlight();
-        if (revoked) {
-          setStatus('💥 Plane fly away ho gaya @ ' + crashPoint.toFixed(2) + 'x<span class="sub">Cash Out late tha — plane pehle hi crash ho gaya tha, bet haar gaya</span>');
-          showLastBet('lose', '❌ Haar gaye — plane ' + crashPoint.toFixed(2) + 'x par crash hua (cash out usse pehle nahi ho paya).');
-        }
+        refreshBalances(); // server se balance sync (jeet/haar ke baad)
       }
 
       var srvOffsetInit = false;
@@ -1116,6 +1210,7 @@
       sizeCanvas();
       setTimeout(sizeCanvas, 60);
       renderBalance();
+      refreshBalances(); // server se asli Balance + Winning Balance lao
       renderStats();
       startWaiting();
       pollLive();
