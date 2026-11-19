@@ -438,13 +438,6 @@ async function loadOwner() {
   try {
     const sb = await api("/api/owner/submissions");
     if (sb.ok) {
-      $("owner-subs").innerHTML = (sb.submissions || []).map(s => `
-        <div class="owner-row">
-          <div class="wd-row"><span>#${s.id} · ${esc(s.task_title)} · ${s.dname ? esc(s.dname) + " · " : ""}${esc(s.user_id)}</span><span class="st-${s.status}">${s.status.toUpperCase()}</span></div>
-          <div class="card-sub">Proof: ${esc(s.proof)} · Reward: ${fmt(s.reward_coins)} coins</div>
-          ${s.status === "pending" ? `<div class="ref-row"><button onclick="decideSub(${s.id},'approve')">Approve</button><button onclick="decideSub(${s.id},'reject')">Reject</button></div>` : ""}
-        </div>`).join("") || `<div class="card-sub">Koi submission nahi</div>`;
-      $("adm-c-subs").textContent = (sb.submissions || []).filter(s => s.status === "pending").length;
       const rf = await api("/api/owner/referrals");
       if (rf.ok) {
         $("owner-referrals").innerHTML = (rf.reviews || []).map(r => `
@@ -512,12 +505,6 @@ window.decideWd = async (id, action) => {
   toast(rr.msg || "Ho gaya");
   S = await api("/api/state"); render();
 };
-window.decideSub = async (id, action) => {
-  const rr = await api("/api/owner/submissions/decide", { id, action });
-  toast(rr.msg || "Ho gaya");
-  S = await api("/api/state"); render();
-};
-
 // ---------- Spin Wheel ----------
 let SPIN_ROT = 0, SPINNING = false, WHEEL_KEY = "";
 const WHEEL_COLORS = ["#7c4dff", "#ffb300", "#00897b", "#c2185b", "#3949ab", "#ef6c00", "#2e7d32", "#5e35b1"];
