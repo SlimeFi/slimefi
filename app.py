@@ -15,6 +15,7 @@ import threading
 import secrets
 import urllib.parse
 import urllib.request
+import urllib.error
 import re
 from decimal import Decimal, InvalidOperation
 from datetime import date, timedelta
@@ -1970,6 +1971,75 @@ def owner_warn():
         c.execute("INSERT INTO warnings(user_id,message,ts,seen) VALUES(?,?,?,0)",
                   (target, message, time.time()))
         return jsonify({"ok": True, "msg": "Warning bhej di — user ko app me dikhegi"})
+
+
+def _tg_send_message(tg_num, text):
+    """Send one DM via the bot API. Returns 'ok', 'blocked' (403 — the user
+    blocked the bot or never started it) or 'fail'."""
+    if not BOT_TOKEN:
+        return "fail"
+    try:
+        data = urllib.parse.urlencode({"chat_id": tg_num, "text": text}).encode()
+        req = urllib.request.Request(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", data=data)
+        with urllib.request.urlopen(req, timeout=10) as r:
+            resp = json.loads(r.read())
+        return "ok" if resp.get("ok") else "fail"
+    except urllib.error.HTTPError as e:
+        return "blocked" if e.code == 403 else "fail"
+    except Exception:
+        return "fail"
+
+
+@app.post("/api/owner/broadcast")
+def owner_broadcast():
+    """v78: owner broadcasts one message to everyone who ever started the
+    bot (seen_starts). test=1 sends only to the owner. Sends are throttled
+    (~50ms apart) and the reply counts ok/blocked/fail per recipient."""
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()[:1000]
+    test = bool(data.get("test"))
+    if not text:
+        return jsonify({"ok": False, "msg": "Pehle message likho"})
+    if not BOT_TOKEN:
+        return jsonify({"ok": False, "msg": "Bot token set nahi hai — broadcast nahi ho sakta"})
+    if test:
+        num = OWNER_ID[2:] if (OWNER_ID or "").startswith("tg") else (OWNER_ID or "")
+        recipients = [num] if num else []
+    else:
+        with db() as c:
+            rows = c.execute("SELECT tg_id FROM seen_starts ORDER BY ts").fetchall()
+        recipients = []
+        for r in rows:
+            t = r["tg_id"] or ""
+            n = t[2:] if t.startswith("tg") else t
+            if n:
+                recipients.append(n)
+    sent = blocked = failed = 0
+    for i, num in enumerate(recipients):
+        if i:
+            time.sleep(0.05)
+        res = _tg_send_message(num, text)
+        if res == "ok":
+            sent += 1
+        elif res == "blocked":
+            blocked += 1
+        else:
+            failed += 1
+    total = len(recipients)
+    if test:
+        msg = ("Test message tumhe bhej diya gaya" if sent
+               else "Test message nahi gaya — bot ke saath apni chat check karo")
+    else:
+        msg = f"Broadcast ho gaya: {sent}/{total} ko gaya"
+        if blocked:
+            msg += f", {blocked} ne bot band/block kiya hai"
+        if failed:
+            msg += f", {failed} fail"
+    return jsonify({"ok": True, "test": test, "total": total, "sent": sent,
+                    "blocked": blocked, "failed": failed, "msg": msg})
 
 
 @app.post("/api/warning/seen")
