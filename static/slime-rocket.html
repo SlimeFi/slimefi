@@ -12,18 +12,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Rubik+Mono+One&display=swap" rel="stylesheet" />
     <style>
       :root{
-        --bg:#0a0a0f;
-        --bg2:#12121a;
-        --panel:#17171f;
-        --panel2:#1e1e28;
-        --line:#2a2a38;
-        --text:#f2f2f5;
-        --muted:#9a9aad;
+        --bg:#0b1026;
+        --bg2:#10163a;
+        --panel:#151b3d;
+        --panel2:#1a2148;
+        --line:#262d5e;
+        --text:#eef1ff;
+        --muted:#8b93b8;
         --red:#e8283c;
         --red-dark:#b3122a;
         --green:#22c55e;
         --green-dark:#15803d;
-        --gold:#f5b921;
+        --gold:#f5b301;
+        --purple:#7c5cff;
         --chip-low:#3b4a63;
         --chip-mid:#166e4f;
         --chip-high:#8a6410;
@@ -33,7 +34,7 @@
       html,body{ margin:0; padding:0; }
       body{
         background:
-          radial-gradient(120% 60% at 50% -10%, #1c1c2b 0%, var(--bg) 55%),
+          radial-gradient(120% 60% at 50% -10%, #1c2450 0%, var(--bg) 55%),
           var(--bg);
         color:var(--text);
         font-family:"Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -50,12 +51,12 @@
       .topbar{ display:flex; align-items:center; gap:8px; }
       .logo{ display:flex; align-items:center; gap:8px; font-weight:900; font-size:20px; letter-spacing:.4px; }
       .logo .plane-badge{
-        width:34px; height:34px; border-radius:9px; background:var(--red);
+        width:34px; height:34px; border-radius:9px; background:var(--purple);
         display:grid; place-items:center; flex:none;
-        box-shadow:0 4px 14px rgba(232,40,60,.45);
+        box-shadow:0 4px 14px rgba(124,92,255,.45);
       }
       .logo .plane-badge svg{ width:21px; height:21px; fill:#fff; transform:rotate(45deg); }
-      .logo span em{ font-style:normal; color:var(--red); }
+      .logo span em{ font-style:normal; color:var(--gold); }
 
       .balance-row{ display:flex; gap:8px; align-items:stretch; }
       .balance-card{
@@ -65,7 +66,9 @@
       .coin{ width:30px; height:30px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #ffe08a, var(--gold) 60%, #c78f0a); display:grid; place-items:center; font-weight:900; color:#5c4303; font-size:15px; flex:none; }
       .coin.win{ background:radial-gradient(circle at 35% 30%, #b8f5c8, #22a355 60%, #14703a); color:#063; }
       .balance-card .lbl{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; line-height:1.1; }
-      .balance-card .amt{ font-size:19px; font-weight:800; line-height:1.15; font-variant-numeric:tabular-nums; }
+      .balance-card .amt{ font-size:19px; font-weight:800; line-height:1.15; font-variant-numeric:tabular-nums; color:var(--gold); }
+      .balance-card .split{ font-size:11px; color:var(--muted); text-align:right; line-height:1.6; margin-left:auto; }
+      .balance-card .split b{ color:var(--text); }
       .icon-btn{
         width:46px; border-radius:var(--radius); border:1px solid var(--line); background:var(--panel);
         color:var(--muted); font-size:19px; display:grid; place-items:center; flex:none;
@@ -96,6 +99,7 @@
       }
       .hchip.mid{ background:var(--chip-mid); color:#c9f5df; }
       .hchip.high{ background:var(--chip-high); color:#ffedb5; }
+      .hchip.now{ background:var(--purple); color:#fff; border:1px solid var(--purple); }
       .hchip.instant{ background:#5c1a22; color:#ffc4cb; }
       @keyframes chipIn{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
       .history .empty{ font-size:12.5px; color:var(--muted); }
@@ -104,8 +108,8 @@
       .stage{
         position:relative; border-radius:18px; overflow:hidden;
         background:
-          radial-gradient(90% 90% at 50% 110%, #26203a 0%, transparent 60%),
-          linear-gradient(180deg, #14141f 0%, #0d0d14 100%);
+          radial-gradient(90% 90% at 50% 110%, #1c2450 0%, transparent 60%),
+          linear-gradient(180deg, #141a3d 0%, #0d1230 100%);
         border:1px solid var(--line);
         aspect-ratio: 4 / 3.1;
         min-height:250px;
@@ -122,6 +126,7 @@
         font-family:"Rubik Mono One", "Rubik", monospace;
         font-size:clamp(44px, 15vw, 64px); line-height:1; letter-spacing:.5px;
         text-shadow:0 6px 30px rgba(0,0,0,.6); font-variant-numeric:tabular-nums;
+        color:var(--green);
       }
       .mult.crashed{ color:var(--red); }
       .mult.won{ color:var(--green); }
@@ -131,13 +136,14 @@
       .countdown-wrap.show{ display:block; }
       .countdown-txt{ font-size:12px; color:var(--muted); text-align:center; margin-bottom:6px; font-weight:600; letter-spacing:.3px; }
       .countdown-bar{ height:6px; border-radius:99px; background:#262633; overflow:hidden; }
-      .countdown-fill{ height:100%; width:100%; background:var(--red); border-radius:99px; }
+      .countdown-fill{ height:100%; width:100%; background:var(--purple); border-radius:99px; }
       .live-tag{
-        position:absolute; top:10px; left:12px; font-size:11px; font-weight:800; letter-spacing:1px;
-        color:#ffb3bc; display:none; align-items:center; gap:6px;
+        position:absolute; top:10px; right:12px; left:auto; font-size:11px; font-weight:800; letter-spacing:1px;
+        color:#062b12; background:var(--green); border-radius:20px; padding:4px 10px;
+        display:none; align-items:center; gap:6px;
       }
       .live-tag.show{ display:flex; }
-      .live-tag i{ width:8px; height:8px; border-radius:50%; background:var(--red); display:block; animation:pulse 1s infinite; }
+      .live-tag i{ width:8px; height:8px; border-radius:50%; background:#062b12; display:block; animation:pulse 1s infinite; }
       @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.25; } }
 
       /* ---------- Bet panel ---------- */
@@ -164,20 +170,44 @@
         font-weight:700; font-size:13.5px; min-height:2.4rem; font-variant-numeric:tabular-nums;
       }
       .quick button:active{ background:#262633; transform:scale(.96); }
+      .quick button.on{ background:var(--purple); border-color:var(--purple); color:#fff; }
+      .amt-box{
+        display:flex; align-items:center; gap:8px; background:var(--bg2); border:1px solid var(--purple);
+        border-radius:12px; padding:10px 14px;
+      }
+      .amt-box .rs{ font-size:19px; font-weight:800; color:var(--text); }
+      .amt-box input{
+        flex:1; min-width:0; background:transparent; border:none; outline:none; color:var(--text);
+        font-size:19px; font-weight:800; text-align:center; font-variant-numeric:tabular-nums;
+      }
+      .amt-box input::-webkit-outer-spin-button, .amt-box input::-webkit-inner-spin-button{ -webkit-appearance:none; }
+      .amt-box input{ -moz-appearance:textfield; appearance:textfield; }
+      .amt-box .per{ font-size:13px; color:var(--muted); font-weight:600; }
       .auto-row{ display:flex; align-items:center; gap:10px; background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:8px 12px; }
       .auto-row label{ font-size:13px; color:var(--muted); font-weight:600; flex:1; }
       .auto-row input{
-        width:92px; background:var(--panel2); border:1px solid var(--line); border-radius:9px; color:var(--text);
+        width:76px; background:var(--panel2); border:1px solid var(--line); border-radius:9px; color:var(--text);
         font-size:15px; font-weight:700; text-align:center; outline:none; min-height:2.4rem; font-variant-numeric:tabular-nums;
       }
       .auto-row input::placeholder{ color:#5c5c70; font-weight:500; }
-      .auto-row .x{ color:var(--muted); font-weight:700; }
+      .auto-row input:disabled{ opacity:.45; }
+      .auto-row .x{ color:var(--gold); font-weight:800; }
+      .toggle{
+        width:44px; height:24px; border-radius:20px; background:#3a4166; position:relative; flex:none;
+        cursor:pointer; transition:background .15s ease;
+      }
+      .toggle::after{
+        content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%;
+        background:#fff; transition:left .15s ease;
+      }
+      .toggle.on{ background:var(--green); }
+      .toggle.on::after{ left:23px; }
 
       #mainBtn{
         border:none; border-radius:14px; min-height:60px; width:100%;
         font-size:19px; font-weight:900; letter-spacing:.6px; color:#fff;
-        background:linear-gradient(180deg, #f0324b, var(--red-dark));
-        box-shadow:0 8px 22px rgba(232,40,60,.35), inset 0 1px 0 rgba(255,255,255,.25);
+        background:linear-gradient(180deg, #8f6bff, #5b3df0);
+        box-shadow:0 8px 22px rgba(124,92,255,.35), inset 0 1px 0 rgba(255,255,255,.25);
         transition:transform .06s ease, filter .15s ease;
         display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; line-height:1.15;
       }
@@ -218,7 +248,22 @@
         .hchip, .live-tag i{ animation:none; }
       }
 
-      /* ---------- FIT v66: full-screen play layout — pura game ek screen par, scroll nahi ---------- */
+      .feed{ display:flex; flex-direction:column; gap:6px; }
+      .feed .flabel{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; }
+      .frow{
+        display:flex; justify-content:space-between; align-items:center;
+        background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:9px 12px; font-size:13px;
+      }
+      .frow .who{ font-weight:700; }
+      .frow .bet{ color:var(--muted); font-size:12px; }
+      .frow .win{ font-weight:800; color:#4ade80; }
+      .frow .lose{ font-weight:800; color:#f87171; }
+      .frow .fly{ font-weight:700; color:var(--gold); }
+      .feed .empty{ font-size:12.5px; color:var(--muted); padding:4px 2px; }
+      .fair{ text-align:center; color:#5b6390; font-size:11px; line-height:1.45; padding:0 6px; }
+
+      /* ---------- FIT v66 ---------- */
+      .stats{ display:none; }
       html,body{ height:100%; }
       body{ overflow:hidden; }
       .app{ height:100dvh; padding:8px 10px calc(8px + env(safe-area-inset-bottom)); gap:7px; }
@@ -277,13 +322,7 @@
             <div class="lbl">Balance</div>
             <div class="amt" id="balanceAmt">—</div>
           </div>
-        </div>
-        <div class="balance-card">
-          <span class="coin win" aria-hidden="true">₹</span>
-          <div>
-            <div class="lbl">Winning Balance</div>
-            <div class="amt" id="winningAmt">₹0.00</div>
-          </div>
+          <div class="split">Available <b id="availAmt">₹0.00</b><br />Winning <b id="winningAmt">₹0.00</b></div>
         </div>
         <button class="icon-btn on" id="soundBtn" type="button" aria-label="Sound effects on or off" title="Sound effects" aria-pressed="true">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4.5v-15L7 9H3zm13.5 3a3.5 3.5 0 0 0-2-3.15v6.3a3.5 3.5 0 0 0 2-3.15zm-2-7.6v2.1a5.5 5.5 0 0 1 0 11v2.1a7.5 7.5 0 0 0 0-15.2z"/><path class="slash" d="M4 4l16 16-1.4 1.4L2.6 5.4 4 4z"/></svg>
@@ -301,7 +340,7 @@
 
       <!-- History -->
       <div class="history" id="historyStrip" aria-label="Recent crash multipliers">
-        <span class="h-label">History</span>
+        <span class="hchip now" id="nowChip" style="display:none">1.00x ▶</span>
         <span class="empty" id="historyEmpty">Abhi tak koi round nahi hua</span>
       </div>
 
@@ -309,7 +348,7 @@
       <div class="stage" id="stage">
         <div class="grid-dots"></div>
         <canvas id="gameCanvas"></canvas>
-        <div class="live-tag" id="liveTag"><i></i>LIVE</div>
+        <div class="live-tag" id="liveTag"><i></i>✈ FLYING</div>
         <div id="planeEl" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
         </div>
@@ -327,35 +366,38 @@
 
       <!-- Bet panel -->
       <div class="panel">
-        <div class="bet-row">
-          <div class="stepper">
-            <button type="button" id="minusBtn" aria-label="Decrease bet">−</button>
-            <input id="betInput" type="number" inputmode="decimal" min="0.01" step="0.01" value="1.00" aria-label="Bet amount in rupees" />
-            <button type="button" id="plusBtn" aria-label="Increase bet">+</button>
-          </div>
-          <div class="half-double">
-            <button type="button" id="halfBtn" aria-label="Half bet">½</button>
-            <button type="button" id="doubleBtn" aria-label="Double bet">2×</button>
-          </div>
+        <div class="amt-box">
+          <span class="rs">₹</span>
+          <input id="betInput" type="number" inputmode="decimal" min="0.01" step="0.01" value="1.00" aria-label="Bet amount in rupees" />
+          <span class="per">/ bet</span>
         </div>
 
         <div class="quick" role="group" aria-label="Quick bet amounts">
           <button type="button" data-amt="0.10">₹0.10</button>
           <button type="button" data-amt="0.25">₹0.25</button>
           <button type="button" data-amt="0.50">₹0.50</button>
-          <button type="button" data-amt="1">₹1</button>
+          <button type="button" data-amt="1" class="on">₹1</button>
           <button type="button" data-amt="2">₹2</button>
           <button type="button" data-amt="5">₹5</button>
         </div>
 
         <div class="auto-row">
-          <label for="autoInput">Auto Cash Out (optional)</label>
-          <input id="autoInput" type="number" inputmode="decimal" min="1.01" step="0.1" placeholder="Off" />
+          <label for="autoInput">⚡ Auto-cashout</label>
+          <span class="toggle on" id="autoToggle" role="switch" aria-checked="true" aria-label="Auto cash out on or off"></span>
+          <input id="autoInput" type="number" inputmode="decimal" min="1.01" step="0.1" value="2.00" />
           <span class="x">x par</span>
         </div>
 
         <button type="button" id="mainBtn">BET</button>
       </div>
+
+      <!-- Live bets -->
+      <div class="feed">
+        <div class="flabel">🔴 Live bets</div>
+        <div id="liveFeed"><div class="empty">Abhi koi bet nahi — pehli bet lagao!</div></div>
+      </div>
+
+      <div class="fair">Har round ka result server se aata hai • Provably fair • Min bet ₹0.01</div>
 
       <!-- Stats -->
       <div class="stats">
@@ -539,7 +581,8 @@
 
       // ---------- Elements ----------
       var $ = function (id) { return document.getElementById(id); };
-      var balanceEl = $('balanceAmt'), winningEl = $('winningAmt'), betInput = $('betInput'), autoInput = $('autoInput'),
+      var balanceEl = $('balanceAmt'), winningEl = $('winningAmt'), availEl = $('availAmt'), betInput = $('betInput'), autoInput = $('autoInput'),
+          autoToggle = $('autoToggle'), nowChip = $('nowChip'), liveFeedEl = $('liveFeed'),
           mainBtn = $('mainBtn'), multEl = $('multDisplay'), statusEl = $('stageStatus'),
           historyStrip = $('historyStrip'), historyEmpty = $('historyEmpty'),
           countdownWrap = $('countdownWrap'), countdownTxt = $('countdownTxt'), countdownFill = $('countdownFill'),
@@ -557,7 +600,9 @@
       // Demo localStorage balance hata diya gaya — sab kuch server par hota hai.
       // 1000 avail coins = ₹1, isliye Balance paise me rakhte hain (10 avail coins = 1 paisa).
       var balancePaise = 0;       // khelne layak total, paise (avail/10 + winning)
+      var availPaise = 0;         // Available Balance, paise (avail_coins/10)
       var winningPaise = 0;       // Winning Balance, paise
+      var autoOn = true;          // auto-cashout toggle — default ON, 2.00x
       // Auth headers — main app (app.js) jaisi hi: Telegram initData ya owner key.
       var USER = 'owner', OKEY = '';
       try {
@@ -587,6 +632,7 @@
         if (!st) return;
         if (typeof st.avail_coins === 'number' || typeof st.winning_paise === 'number')
           balancePaise = Math.floor((st.avail_coins || 0) / 10) + (st.winning_paise || 0);
+        if (typeof st.avail_coins === 'number') availPaise = Math.floor(st.avail_coins / 10);
         if (typeof st.winning_paise === 'number') winningPaise = st.winning_paise;
         renderBalance();
       }
@@ -598,6 +644,7 @@
       }
       function renderBalance() {
         balanceEl.textContent = fmtRs(balancePaise);
+        if (availEl) availEl.textContent = fmtRs(availPaise);
         if (winningEl) winningEl.textContent = fmtRs(winningPaise);
       }
 
@@ -680,15 +727,15 @@
           ctx.lineTo(flightPoints[flightPoints.length - 1].x, CH - 6);
           ctx.closePath();
           var grad = ctx.createLinearGradient(0, 0, 0, CH);
-          grad.addColorStop(0, 'rgba(232,40,60,0.30)');
-          grad.addColorStop(1, 'rgba(232,40,60,0.02)');
+          grad.addColorStop(0, 'rgba(34,197,94,0.30)');
+          grad.addColorStop(1, 'rgba(34,197,94,0.02)');
           ctx.fillStyle = grad;
           ctx.fill();
           // curve line
           ctx.beginPath();
           ctx.moveTo(flightPoints[0].x, flightPoints[0].y);
           for (var j = 1; j < flightPoints.length; j++) ctx.lineTo(flightPoints[j].x, flightPoints[j].y);
-          ctx.strokeStyle = state === 'crashed' ? '#7a1622' : '#ff3b52';
+          ctx.strokeStyle = state === 'crashed' ? '#7a1622' : '#22c55e';
           ctx.lineWidth = 3.5;
           ctx.lineJoin = 'round';
           ctx.lineCap = 'round';
@@ -725,12 +772,44 @@
         var chip = document.createElement('span');
         chip.className = 'hchip' + (m <= 1.00 ? ' instant' : m < 2 ? '' : m < 10 ? ' mid' : ' high');
         chip.textContent = m.toFixed(2) + 'x';
-        var label = historyStrip.querySelector('.h-label');
-        historyStrip.insertBefore(chip, label.nextSibling);
-        while (historyStrip.querySelectorAll('.hchip').length > 14) {
+        historyStrip.insertBefore(chip, nowChip.nextSibling);
+        while (historyStrip.querySelectorAll('.hchip:not(#nowChip)').length > 14) {
           historyStrip.removeChild(historyStrip.lastElementChild);
         }
       }
+
+      // ---------- Live bets feed (is round ki asli bets — server se) ----------
+      var lastFeedKey = '';
+      function renderLiveFeed(list, phase) {
+        var key = phase + '|' + JSON.stringify(list);
+        if (key === lastFeedKey) return;
+        lastFeedKey = key;
+        liveFeedEl.innerHTML = '';
+        if (!list || !list.length) {
+          liveFeedEl.innerHTML = '<div class="empty">Abhi koi bet nahi — pehli bet lagao!</div>';
+          return;
+        }
+        list.forEach(function (b) {
+          var row = document.createElement('div');
+          row.className = 'frow';
+          var right;
+          if (b.cashed_out) {
+            right = '<span class="win">+ ' + fmtRs(b.win_paise) + ' @ ' + Number(b.cashout_mult).toFixed(2) + 'x</span>';
+          } else if (phase === 'crashed') {
+            right = '<span class="lose">Crashed 💥</span>';
+          } else if (phase === 'flying') {
+            right = '<span class="fly">✈ Flying…</span>';
+          } else {
+            right = '<span class="fly">Bet lagi ✓</span>';
+          }
+          row.innerHTML = '<span><span class="who">' + esc(b.name) + '</span> <span class="bet">· ' + fmtRs(b.amount_paise) + '</span></span>' + right;
+          liveFeedEl.appendChild(row);
+        });
+      }
+      function showNowChip(m) {
+        if (nowChip) { nowChip.style.display = ''; nowChip.textContent = m.toFixed(2) + 'x ▶'; }
+      }
+      function hideNowChip() { if (nowChip) nowChip.style.display = 'none'; }
 
       function readBetPaise() {
         // Bet input ₹ me hai — paise me badlo (₹1 = 100 paise), kam se kam 1 paisa
@@ -739,9 +818,16 @@
         return Math.round(v * 100);
       }
       function readAuto() {
+        if (!autoOn) return null;
         var v = parseFloat(autoInput.value);
         if (isNaN(v) || v < 1.01) return null;
         return Math.floor(v * 100) / 100;
+      }
+      function renderAutoToggle() {
+        if (!autoToggle) return;
+        autoToggle.className = 'toggle' + (autoOn ? ' on' : '');
+        autoToggle.setAttribute('aria-checked', autoOn ? 'true' : 'false');
+        if (autoInput) autoInput.disabled = !autoOn;
       }
 
       function updateButton() {
@@ -885,15 +971,20 @@
       function setBet(paise) {
         paise = Math.max(1, Math.round(paise) || 1);
         betInput.value = (paise / 100).toFixed(2);
+        document.querySelectorAll('.quick button').forEach(function (b) {
+          b.classList.toggle('on', Math.round(parseFloat(b.getAttribute('data-amt')) * 100) === paise);
+        });
       }
-      $('minusBtn').addEventListener('click', function () { setBet(readBetPaise() - 10); });
-      $('plusBtn').addEventListener('click', function () { setBet(readBetPaise() + 10); });
-      $('halfBtn').addEventListener('click', function () { setBet(readBetPaise() / 2); });
-      $('doubleBtn').addEventListener('click', function () { setBet(readBetPaise() * 2); });
       document.querySelectorAll('.quick button').forEach(function (b) {
         b.addEventListener('click', function () { setBet(Math.round(parseFloat(b.getAttribute('data-amt')) * 100)); haptic('tap'); sfxClick(); });
       });
       betInput.addEventListener('change', function () { setBet(readBetPaise()); });
+      if (autoToggle) autoToggle.addEventListener('click', function () {
+        autoOn = !autoOn;
+        if (autoOn && (!autoInput.value || parseFloat(autoInput.value) < 1.01)) autoInput.value = '2.00';
+        renderAutoToggle(); haptic('tap'); sfxClick();
+      });
+      renderAutoToggle();
 
       // Sound / Music toggles
       var soundBtn = $('soundBtn'), musicBtn = $('musicBtn');
@@ -940,6 +1031,7 @@
         planePos = { x: p0.x, y: p0.y, angle: 0 };
         multEl.textContent = '1.00x';
         multEl.className = 'mult';
+        hideNowChip();
         liveTag.classList.remove('show');
         countdownWrap.classList.add('show');
         setStatus(pendingBet
@@ -976,6 +1068,7 @@
         state = 'crashed';
         stateStart = performance.now();
         planeGone = true;
+        hideNowChip();
         liveTag.classList.remove('show');
         if (!LIVE) addHistory(crashPoint);
         stats.rounds++;
@@ -1000,15 +1093,14 @@
         var key = list.join(',');
         if (key === lastHistoryKey) return;   // same values — dobara render = blink, skip
         lastHistoryKey = key;
-        historyStrip.querySelectorAll('.hchip').forEach(function (ch) { ch.remove(); });
+        historyStrip.querySelectorAll('.hchip:not(#nowChip)').forEach(function (ch) { ch.remove(); });
         if (historyEmpty) historyEmpty.style.display = list.length ? 'none' : '';
-        var label = historyStrip.querySelector('.h-label');
         for (var i = Math.min(list.length, 14) - 1; i >= 0; i--) {
           var m = list[i];
           var chip = document.createElement('span');
           chip.className = 'hchip' + (m <= 1.00 ? ' instant' : m < 2 ? '' : m < 10 ? ' mid' : ' high');
           chip.textContent = m.toFixed(2) + 'x';
-          historyStrip.insertBefore(chip, label.nextSibling);
+          historyStrip.insertBefore(chip, nowChip.nextSibling);
         }
       }
 
@@ -1045,6 +1137,7 @@
         planePos = { x: p0.x, y: p0.y, angle: 0 };
         multEl.textContent = '1.00x';
         multEl.className = 'mult';
+        hideNowChip();
         liveTag.classList.remove('show');
         countdownWrap.classList.add('show');
         setStatus(pendingBet
@@ -1104,6 +1197,7 @@
             }
             srvPhase = d.phase; srvBetSec = d.bet_sec || 6;
             if (d.history) renderServerHistory(d.history);
+            if (d.live_bets) renderLiveFeed(d.live_bets, d.phase);
             if (d.phase === 'betting') {
               srvFlyStart = d.fly_start;
               if (d.round_id !== liveRoundId) { liveRoundId = d.round_id; startWaitingLive(); }
@@ -1158,6 +1252,7 @@
           planePos.x = pt.x; planePos.y = pt.y;
           flightPoints.push(pt);
           multEl.textContent = currentMult.toFixed(2) + 'x';
+          showNowChip(currentMult);
           var auto = readAuto();
           if (auto && activeBet && !cashedOut && currentMult >= auto) doCashOut(auto);
           if (activeBet && !cashedOut) {
@@ -1200,6 +1295,7 @@
           planePos.x = pt.x; planePos.y = pt.y;
           flightPoints.push(pt);
           multEl.textContent = currentMult.toFixed(2) + 'x';
+          showNowChip(currentMult);
           var auto = readAuto();
           if (auto && activeBet && !cashedOut && auto <= crashPoint && currentMult >= auto) doCashOut(auto);
           if (activeBet && !cashedOut) updateButton();
