@@ -143,7 +143,7 @@ RECIPES = {
 COINS_PER_RUPEE = 1000        # 10,000 coins = Rs 10
 CONVERT_MIN_COINS = 1000      # convert at least Rs 1 worth at a time
 DAILY_REWARDS = [50, 75, 100, 150, 200, 300, 500]  # 7-day streak bonus table
-AD_REWARD_COINS = 100         # coins per rewarded ad watched
+AD_REWARD_COINS = 500         # coins per rewarded ad watched
 AD_DAILY_LIMIT = 20           # max rewarded ads per user per day
 AD_COOLDOWN_SEC = 45          # gap between two ad claims
 AD_MIN_WATCH_SEC = 8          # a real ad cannot finish faster than this
@@ -151,7 +151,7 @@ AD_MIN_OPEN_SEC = 15          # middle path: no 'done' signal -> token must be t
 AD_TOKEN_TTL_SEC = 300        # an ad-start token dies after 5 minutes
 SPIN_FREE_PER_DAY = 1         # Spin Wheel: one free spin daily (owner, 2026-11-13)
 SPIN_DAILY_LIMIT = 5          # v56: total spins per day = 1 free + 4 via ads (owner, 2026-11-15)
-SPIN_SEGMENTS = [50, 500, 150, 300, 100, 250, 200, 100]  # wheel prizes in coins
+SPIN_SEGMENTS = [50, 500, 150, 300, 100, 250, 200, 100]  # wheel prizes in PAISE (₹0.50–₹5.00), credited to Available Balance
 SPIN_WEIGHTS = [26, 4, 18, 10, 24, 12, 14, 20]           # relative chances (500 is rare)
 MIN_WITHDRAW_RUPEES = 10      # minimum UPI withdrawal request
 PAYOUTS_ENABLED = os.environ.get("PAYOUTS_ENABLED", "0") == "1"  # UPI payout master switch (owner)
@@ -1184,10 +1184,12 @@ def spin():
             if pick < acc:
                 idx = i
                 break
-        prize = SPIN_SEGMENTS[idx]
-        c.execute("UPDATE users SET coins=coins+?, lifetime_coins=lifetime_coins+? WHERE user_id=?",
-                  (prize, prize, u["user_id"]))
-        log(c, u["user_id"], "spin", {"coins": prize}, f"Spin Wheel prize {prize} coins")
+        prize = SPIN_SEGMENTS[idx]  # paise
+        avail_units = prize * 10  # avail_coins is coin-units (1000 = ₹1), so 1 paisa = 10 units
+        c.execute("UPDATE users SET avail_coins=avail_coins+? WHERE user_id=?",
+                  (avail_units, u["user_id"]))
+        log(c, u["user_id"], "spin", {"avail_coins": avail_units},
+            f"Spin Wheel prize ₹{prize / 100:.2f} → Available Balance")
         maybe_qualify_referral(c, u)
         u = c.execute("SELECT * FROM users WHERE user_id=?", (u["user_id"],)).fetchone()
         return jsonify({"ok": True, "prize": prize, "index": idx,
