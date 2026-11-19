@@ -143,7 +143,7 @@ RECIPES = {
 COINS_PER_RUPEE = 1000        # 10,000 coins = Rs 10
 CONVERT_MIN_COINS = 1000      # convert at least Rs 1 worth at a time
 DAILY_REWARDS = [50, 75, 100, 150, 200, 300, 500]  # 7-day streak bonus table
-AD_REWARD_COINS = 500         # coins per rewarded ad watched
+AD_REWARD_COINS = 250         # coins per rewarded ad watched (v83: 500 -> 250, owner 2026-11-19)
 AD_DAILY_LIMIT = 20           # max rewarded ads per user per day
 AD_COOLDOWN_SEC = 45          # gap between two ad claims
 AD_MIN_WATCH_SEC = 8          # a real ad cannot finish faster than this
@@ -718,7 +718,7 @@ ROCKET_GROWTH = 0.11          # multiplier = e^(0.11 * seconds), client se match
 ROCKET_BET_SEC = 6.0          # flight se pehle betting / countdown samay
 ROCKET_RESULT_SEC = 4.0       # crash ke baad result pause
 ROCKET_TABLE = [
-    (1.10, 0.20), (1.20, 0.32), (1.30, 0.50), (1.40, 0.55), (1.50, 0.62),
+    (1.10, 0.20), (1.20, 0.35), (1.30, 0.50), (1.40, 0.55), (1.50, 0.62),
     (1.70, 0.70), (2.00, 0.78), (2.30, 0.79), (2.80, 0.83), (3.00, 0.85),
     (4.00, 0.88), (4.50, 0.90), (5.00, 0.92), (6.00, 0.93), (7.00, 0.94),
     (10.00, 0.95), (13.00, 0.96), (15.00, 0.97), (20.00, 0.98), (50.00, 1.00),
