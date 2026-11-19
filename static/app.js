@@ -522,7 +522,7 @@ function renderSpin() {
   segs.forEach((v, i) => {
     const s = document.createElement("span");
     s.className = "wheel-label";
-    s.textContent = v;
+    s.textContent = "₹" + (v / 100).toFixed(v % 100 ? 2 : 0);
     s.style.transform = "rotate(" + (i * step) + "deg) translateY(-104px)";
     $("wheel").appendChild(s);
   });
@@ -543,8 +543,8 @@ async function spinNow() {
   setTimeout(() => {
     SPINNING = false;
     $("btn-spin").disabled = false;
-    $("spin-result").textContent = "🎉 " + r.prize + " Coins jeete!";
-    toast("🎡 Spin: +" + r.prize + " coins!");
+    $("spin-result").textContent = "🎉 ₹" + (r.prize / 100).toFixed(2) + " jeete — Available Balance me gaye!";
+    toast("🎡 Spin: +₹" + (r.prize / 100).toFixed(2) + " Available Balance me!");
     if (r.state) { S = r.state; render(); }
   }, 4900);
 }
@@ -592,7 +592,7 @@ function spinAd() {
 function spinAdRun() {
   // Same ad flow as Watch Ads (Monetag only, one-time token + age
   // gates) — but the claim carries purpose "spin", so the server pays
-  // +1 spin credit instead of the +100 coins.
+  // +1 spin credit instead of the +500 coins.
   const monetagFn = window.show_12248440;
   const useMonetag = typeof monetagFn === "function";
   if (!useMonetag) { toast("Ad abhi available nahi hai — thodi der baad try karo"); return; }
@@ -714,7 +714,7 @@ function watchAdRun() {
         if (st && st.ok !== false) {
           S = st; render();
           if ((S.coins || 0) > base.coins || ((S.earn && S.earn.ads_today) || 0) > base.ads) {
-            toast("🎉 +100 coins mil gaye!");
+            toast("🎉 +" + fmt((S.earn && S.earn.ad_reward_coins) || 500) + " coins mil gaye!");
             return;
           }
         }
