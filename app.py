@@ -776,7 +776,18 @@ def rocket_state():
         phase = "crashed"
     out = {"ok": True, "server_now": now, "round_id": cur["round_id"], "phase": phase,
            "round_start": cur["start_ts"], "fly_start": cur["fly_start"],
-           "growth": ROCKET_GROWTH, "bet_sec": ROCKET_BET_SEC, "history": hist}
+           "growth": ROCKET_GROWTH, "bet_sec": ROCKET_BET_SEC, "history": hist,
+           "live_bets": [
+               {"name": (("@" + r["username"]) if r["username"] else ("Player " + (r["user_id"] or "")[-4:])),
+                "amount_paise": int(r["amount_paise"] or 0),
+                "cashed_out": int(r["cashed_out"] or 0),
+                "cashout_mult": round(r["cashout_mult"], 2) if r["cashout_mult"] else None,
+                "win_paise": int(r["win_paise"] or 0)}
+               for r in c.execute(
+                   "SELECT b.amount_paise, b.cashed_out, b.cashout_mult, b.win_paise, "
+                   "b.user_id, u.username FROM rocket_bets b LEFT JOIN users u "
+                   "ON u.user_id=b.user_id WHERE b.round_id=? ORDER BY b.created_at DESC LIMIT 8",
+                   (cur["round_id"],)).fetchall()]}
     if phase == "crashed":
         out["crash_point"] = round(cur["crash_point"], 2)
         out["round_end"] = cur["end_ts"]
