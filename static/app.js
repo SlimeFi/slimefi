@@ -366,6 +366,17 @@ window.warnUser = async () => {
   toast(r.msg || "Ho gaya");
   if (r.ok) { $("warn-text").value = ""; loadActivity(); }
 };
+async function _doBroadcast(testMode) {
+  const text = ($("bcast-text").value || "").trim();
+  if (!text) { toast("Pehle message likho"); return; }
+  $("bcast-result").textContent = testMode ? "Test bhej raha hu..." : "Bhej raha hu... kuch seconds lagenge";
+  const r = await api("/api/owner/broadcast", { text, test: testMode });
+  toast(r.msg || "Ho gaya");
+  $("bcast-result").textContent = r.msg || "Broadcast fail ho gaya";
+  if (r.ok && !testMode) $("adm-c-bcast").textContent = r.sent + "/" + r.total;
+}
+window.sendBroadcast = () => _doBroadcast(false);
+window.sendBroadcastTest = () => _doBroadcast(true);
 window.banToggle = async () => {
   if (!ACT_PLAYER) { toast("Pehle player ki activity dekho"); return; }
   if (ACT_PLAYER.banned) {
