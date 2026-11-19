@@ -153,7 +153,8 @@ SPIN_FREE_PER_DAY = 1         # Spin Wheel: one free spin daily (owner, 2026-11-
 SPIN_DAILY_LIMIT = 5          # v56: total spins per day = 1 free + 4 via ads (owner, 2026-11-15)
 SPIN_SEGMENTS = [50, 500, 150, 300, 100, 250, 200, 100]  # wheel prizes in PAISE (₹0.50–₹5.00), credited to Available Balance
 SPIN_WEIGHTS = [26, 4, 18, 10, 24, 12, 14, 20]           # relative chances (500 is rare)
-MIN_WITHDRAW_RUPEES = 10      # minimum UPI withdrawal request
+MIN_WITHDRAW_RUPEES = 10      # minimum UPI withdrawal request (first withdrawal)
+REPEAT_WITHDRAW_MIN_RUPEES = 50  # after any PAID withdrawal, later withdrawals need this minimum (owner, 2026-11-19)
 PAYOUTS_ENABLED = os.environ.get("PAYOUTS_ENABLED", "0") == "1"  # UPI payout master switch (owner)
 ALLOW_DEV_AUTH = os.environ.get("ALLOW_DEV_AUTH", "0") == "1"    # local testing only: trust X-User-Id
 REFERRAL_REWARD_COINS = 5000   # paid to the inviter when the referred user completes
@@ -526,7 +527,7 @@ def state_payload(c, user):
         "earn": {
             "coins_per_rupee": COINS_PER_RUPEE,
             "convert_min_coins": CONVERT_MIN_COINS,
-            "min_withdraw_rupees": MIN_WITHDRAW_RUPEES,
+            "min_withdraw_rupees": _min_withdraw_for(c, user["user_id"]),
             "ad_reward_coins": AD_REWARD_COINS,
             "ad_daily_limit": AD_DAILY_LIMIT,
             "ads_today": (user["ads_today"] or 0) if user["ads_date"] == today else 0,
@@ -1300,6 +1301,14 @@ def convert():
                         "msg": f"{amt} coins = ₹{amt / COINS_PER_RUPEE:.2f} Available Balance me aa gaye ✅",
                         "state": state_payload(c, u)})
 
+def _min_withdraw_for(c, user_id):
+    """Per-user withdraw minimum: Rs 10 for the first withdrawal; once the
+    user has any PAID withdrawal, Rs 50 for every later one (owner, 2026-11-19)."""
+    row = c.execute("SELECT COUNT(*) n FROM withdrawals WHERE user_id=? AND status='paid'",
+                    (user_id,)).fetchone()
+    return REPEAT_WITHDRAW_MIN_RUPEES if (row and row["n"] > 0) else MIN_WITHDRAW_RUPEES
+
+
 @app.post("/api/withdraw")
 def withdraw():
     data = request.get_json(silent=True) or {}
@@ -1316,10 +1325,11 @@ def withdraw():
         return jsonify({"ok": False, "msg": "Sahi UPI ID dalo, jaise naam@okhdfcbank"})
     if len(holder) < 3:
         return jsonify({"ok": False, "msg": "Account holder ka poora naam dalo"})
-    if amount_paise < MIN_WITHDRAW_RUPEES * 100:
-        return jsonify({"ok": False, "msg": f"Minimum withdraw Rs {MIN_WITHDRAW_RUPEES} hai"})
     with _lock, db() as c:
         u = roll_day(c, get_user(c, uid()))
+        min_wd = _min_withdraw_for(c, u["user_id"])
+        if amount_paise < min_wd * 100:
+            return jsonify({"ok": False, "msg": f"Minimum withdraw Rs {min_wd} hai"})
         # Withdraw sirf Winning Balance se hota hai — Available Balance aur
         # gaon wale coins se nahi.
         if int(u["winning_paise"] or 0) < amount_paise:
