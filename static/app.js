@@ -476,7 +476,8 @@ async function loadOwner() {
     $("owner-support-tickets").innerHTML = (support.tickets || []).map(t => `
       <div class="owner-row"><div class="wd-row"><span>#${t.id} · ${t.dname ? esc(t.dname) + " · " : ""}${esc(t.user_id)} · ${esc(t.category)}</span><b>${esc(t.status)}</b></div>
       <div class="card-sub">${esc(t.message)}</div>
-      ${t.status === "open" ? `<button onclick="closeSupportTicket(${t.id})">Close Ticket</button>` : ""}</div>`).join("") || '<div class="card-sub">No support tickets.</div>';
+      ${t.reply ? `<div class="card-sub">↩️ <b>Tumhara jawab:</b> ${esc(t.reply)}</div>` : ""}
+      ${t.status === "open" ? `<textarea id="sreply-${t.id}" rows="2" maxlength="1200" placeholder="User ko jawab likho..." style="text-transform:none"></textarea><div class="ref-row"><button onclick="replySupportTicket(${t.id})">Reply Bhejo</button><button onclick="closeSupportTicket(${t.id})">Close Ticket</button></div>` : ""}</div>`).join("") || '<div class="card-sub">No support tickets.</div>';
   }
   $("owner-list").innerHTML = r.withdrawals.map(w => `
     <div class="owner-row">
@@ -493,6 +494,14 @@ window.closeSupportTicket = async (id) => {
   const r = await api("/api/owner/support/tickets/close", {id});
   toast(r.msg || "Ho gaya");
   loadOwner();
+};
+window.replySupportTicket = async (id) => {
+  const el = $("sreply-" + id);
+  const reply = el ? el.value.trim() : "";
+  if (!reply) { toast("Pehle jawab likho"); return; }
+  const r = await api("/api/owner/support/tickets/reply", {id, reply});
+  toast(r.msg || "Ho gaya");
+  if (r.ok) loadOwner();
 };
 window.decideWd = async (id, action) => {
   let txn_id = "", utr = "", payment_date = "";
@@ -657,7 +666,7 @@ async function loadHistory() {
 async function loadSupportTickets() {
   const box = $("support-ticket-list"); if (!box) return;
   const r = await api("/api/support/tickets");
-  box.innerHTML = '<h3>My Support Tickets</h3>' + ((r.tickets || []).map(t => `<div class="wd-row"><span>#${t.id} · ${esc(t.category)}</span><b>${esc(t.status)}</b></div><div class="card-sub">${esc(t.message)}</div>`).join("") || '<div class="card-sub">Abhi koi ticket nahi hai.</div>');
+  box.innerHTML = '<h3>My Support Tickets</h3>' + ((r.tickets || []).map(t => `<div class="wd-row"><span>#${t.id} · ${esc(t.category)}</span><b>${esc(t.status)}</b></div><div class="card-sub">${esc(t.message)}</div>${t.reply ? `<div class="card-sub">↩️ <b>Support ka jawab:</b> ${esc(t.reply)}</div>` : ""}`).join("") || '<div class="card-sub">Abhi koi ticket nahi hai.</div>');
 }
 $("support-submit").onclick = async () => {
   const message = $("support-message").value.trim();
