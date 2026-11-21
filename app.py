@@ -251,6 +251,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS support_tickets(
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL,
             category TEXT NOT NULL, message TEXT NOT NULL, status TEXT DEFAULT 'open',
+            reply TEXT DEFAULT '', reply_at REAL,
             created_at REAL NOT NULL, updated_at REAL
         );
         CREATE TABLE IF NOT EXISTS warnings(
@@ -309,6 +310,11 @@ def init_db():
                          ("category", "ALTER TABLE tasks ADD COLUMN category TEXT DEFAULT 'telegram'"),
                          ("verify_mode", "ALTER TABLE tasks ADD COLUMN verify_mode TEXT DEFAULT 'proof'")]:
             if col not in tcols:
+                c.execute(ddl)
+        scols = {r[1] for r in c.execute("PRAGMA table_info(support_tickets)")}
+        for col, ddl in [("reply", "ALTER TABLE support_tickets ADD COLUMN reply TEXT DEFAULT ''"),
+                         ("reply_at", "ALTER TABLE support_tickets ADD COLUMN reply_at REAL")]:
+            if col not in scols:
                 c.execute(ddl)
         wcols = {r[1] for r in c.execute("PRAGMA table_info(withdrawals)")}
         for col, ddl in [("holder_name", "ALTER TABLE withdrawals ADD COLUMN holder_name TEXT DEFAULT ''"),
@@ -1368,7 +1374,7 @@ def user_history():
 @app.get("/api/support/tickets")
 def support_tickets_list():
     with db() as c:
-        rows = c.execute("SELECT id,category,message,status,created_at,updated_at FROM support_tickets WHERE user_id=? ORDER BY id DESC LIMIT 20",
+        rows = c.execute("SELECT id,category,message,status,reply,reply_at,created_at,updated_at FROM support_tickets WHERE user_id=? ORDER BY id DESC LIMIT 20",
                          (uid(),)).fetchall()
         return jsonify({"ok": True, "tickets": [dict(r) for r in rows]})
 
@@ -1389,7 +1395,7 @@ def owner_support_tickets():
     if not _require_owner():
         return jsonify({"ok": False, "msg": "Owner only"}), 403
     with db() as c:
-        rows = c.execute("SELECT id,user_id,category,message,status,created_at FROM support_tickets ORDER BY id DESC LIMIT 100").fetchall()
+        rows = c.execute("SELECT id,user_id,category,message,status,reply,reply_at,created_at FROM support_tickets ORDER BY id DESC LIMIT 100").fetchall()
         tickets = []
         for r in rows:
             d = dict(r)
@@ -1408,6 +1414,21 @@ def owner_support_ticket_close():
         if not cur.rowcount:
             return jsonify({"ok": False, "msg": "Open ticket nahi mila"})
         return jsonify({"ok": True, "msg": "Ticket close ho gaya"})
+
+@app.post("/api/owner/support/tickets/reply")
+def owner_support_ticket_reply():
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    data = request.get_json(silent=True) or {}
+    reply = (data.get("reply") or "").strip()
+    if len(reply) < 1 or len(reply) > 1200:
+        return jsonify({"ok": False, "msg": "Reply 1 se 1200 characters me likho"})
+    with _lock, db() as c:
+        cur = c.execute("UPDATE support_tickets SET reply=?,reply_at=?,updated_at=? WHERE id=? AND status='open'",
+                        (reply, time.time(), time.time(), data.get("id")))
+        if not cur.rowcount:
+            return jsonify({"ok": False, "msg": "Open ticket nahi mila"})
+        return jsonify({"ok": True, "msg": "Reply bhej diya gaya"})
 
 @app.get("/api/owner/stats")
 def owner_stats():
