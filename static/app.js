@@ -357,6 +357,20 @@ window.loadActivity = async () => {
     <div class="card-sub">${esc((x.note || "").slice(0, 110))}${x.ts ? " · " + new Date(x.ts * 1000).toLocaleString("en-IN") : ""}</div>`).join("")
     || `<div class="card-sub">Is player ki abhi koi activity nahi hai.</div>`;
 };
+window.actForUser = async (user_id) => {
+  const asel = $("act-user");
+  if (asel) {
+    if (![...asel.options].some(o => o.value === user_id)) {
+      const o = document.createElement("option");
+      o.value = user_id; o.textContent = user_id;
+      asel.appendChild(o);
+    }
+    asel.value = user_id;
+  }
+  await loadActivity();
+  const el = $("act-summary");
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+};
 window.warnUser = async () => {
   const user_id = $("act-user").value;
   const message = $("warn-text").value.trim();
@@ -487,6 +501,7 @@ async function loadOwner() {
       ${w.txn_id ? `<div class="card-sub">🧾 Txn: ${esc(w.txn_id)}</div>` : ""}
       ${w.utr ? `<div class="card-sub">🏦 UTR: ${esc(w.utr)}</div>` : ""}
       ${w.payment_date ? `<div class="card-sub">📅 Payment Date: ${esc(w.payment_date)}</div>` : ""}
+      <div class="ref-row"><button class="small-btn" onclick="actForUser('${w.user_id}')">🔍 Is Player ki Activity Dekho</button></div>
       ${w.status === "pending" ? `<input id="txn-${w.id}" placeholder="Transaction ID — payment ke baad dalo" style="text-transform:none"><input id="utr-${w.id}" placeholder="UTR / UPI Reference Number" style="text-transform:none"><input id="pdate-${w.id}" type="date"><div class="ref-row"><button onclick="decideWd(${w.id},'paid')">Paid kar diya</button><button onclick="decideWd(${w.id},'reject')">Reject / Failed</button></div>` : ""}
     </div>`).join("");
 }
