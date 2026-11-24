@@ -100,6 +100,55 @@ def ban_guard():
                         "msg": "MULTIPLE ACCOUNTS DETECTED — ye account band hai. Sirf apna main (pehla) account chalao."}), 403
     return None
 
+# ---------------- maintenance mode ----------------
+MAINTENANCE_DEFAULT_MSG = ("SlimeFi abhi maintenance me hai. Hum kuch sudhaar "
+                           "kar rahe hain — jald hi wapas aayenge. Aapke coins "
+                           "aur balance bilkul safe hain.")
+
+def _setting(c, key, default=""):
+    row = c.execute("SELECT value FROM app_settings WHERE key=?", (key,)).fetchone()
+    return row["value"] if row and row["value"] is not None else default
+
+def _set_setting(c, key, value):
+    c.execute("INSERT OR REPLACE INTO app_settings(key, value) VALUES(?, ?)",
+              (key, value))
+
+def maintenance_on():
+    try:
+        with db() as c:
+            return _setting(c, "maintenance", "0") == "1"
+    except Exception:
+        return False
+
+def maintenance_msg():
+    try:
+        with db() as c:
+            return _setting(c, "maintenance_msg", "") or MAINTENANCE_DEFAULT_MSG
+    except Exception:
+        return MAINTENANCE_DEFAULT_MSG
+
+@app.before_request
+def maintenance_guard():
+    """Maintenance ON ho to players ke liye poora app band: sirf GET
+    /api/state notice deta hai, baaki sab 503. Owner (owner key / owner
+    routes) aur public callbacks (health, payouts list, Monetag postback)
+    chalte rehte hain taaki owner panel aur ad credit rukey nahi."""
+    p = request.path
+    if not p.startswith("/api/"):
+        return None
+    if p in ("/api/health", "/api/payouts", "/api/monetag/postback"):
+        return None
+    if p.startswith("/api/owner/"):
+        return None
+    if OWNER_ID and uid() == OWNER_ID:
+        return None
+    if not maintenance_on():
+        return None
+    if p == "/api/state" and request.method == "GET":
+        return None  # state() handler notice return karega
+    return jsonify({"ok": False, "maintenance": True,
+                    "msg": maintenance_msg()}), 503
+
 DB_PATH = __file__.rsplit("/", 1)[0] + "/slimefi.db"
 _lock = threading.Lock()
 
@@ -280,6 +329,9 @@ def init_db():
             win_coins INTEGER DEFAULT 0, win_paise INTEGER DEFAULT 0,
             created_at REAL, cashed_at REAL,
             UNIQUE(user_id, round_id)
+        );
+        CREATE TABLE IF NOT EXISTS app_settings(
+            key TEXT PRIMARY KEY, value TEXT
         );
         """)
         # Earning columns added after the first release: add them to old DBs too.
@@ -484,6 +536,7 @@ def state_payload(c, user):
         "ORDER BY id DESC LIMIT 1", (user["user_id"],)).fetchone()
     return {
         "user_id": user["user_id"],
+        "maintenance": _setting(c, "maintenance", "0") == "1",
         "just_created": bool(getattr(g, "just_created", False)),
         "warning": ({"id": warn["id"], "message": warn["message"], "ts": warn["ts"]} if warn else None),
         "welcome_bonus_coins": WELCOME_BONUS_COINS,
@@ -960,6 +1013,9 @@ def rocket_mybet():
 
 @app.get("/api/state")
 def state():
+    if maintenance_on() and uid() != OWNER_ID:
+        return jsonify({"ok": True, "maintenance": True,
+                        "maintenance_msg": maintenance_msg()})
     with _lock, db() as c:
         u = roll_day(c, get_user(c, uid()))
         _detect_multi_account(c, u)
@@ -2023,6 +2079,25 @@ def _tg_send_message(tg_num, text):
     except Exception:
         return "fail"
 
+
+@app.post("/api/owner/maintenance")
+def owner_maintenance():
+    """Owner maintenance mode ON/OFF. ON ho to sab players ko sirf
+    'Under Maintenance' popup dikhta hai aur koi action nahi chalta;
+    owner ka panel normal chalta rehta hai."""
+    if not _require_owner():
+        return jsonify({"ok": False, "msg": "Owner only"}), 403
+    data = request.get_json(silent=True) or {}
+    on = bool(data.get("on"))
+    msg = (data.get("msg") or "").strip()[:300]
+    with db() as c:
+        _set_setting(c, "maintenance", "1" if on else "0")
+        if msg:
+            _set_setting(c, "maintenance_msg", msg)
+    return jsonify({"ok": True, "maintenance": on,
+                    "msg": ("Maintenance ON — sab players ko sirf Under "
+                            "Maintenance popup dikhega" if on else
+                            "Maintenance OFF — app sabke liye normal chal raha hai")})
 
 @app.post("/api/owner/broadcast")
 def owner_broadcast():
