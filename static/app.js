@@ -30,7 +30,9 @@ async function api(path, body) {
   const opt = { headers: { "X-User-Id": USER, "Content-Type": "application/json", "X-Init-Data": tg ? (tg.initData || "") : "", ...(OKEY ? { "X-Owner-Key": OKEY } : {}) } };
   if (body) { opt.method = "POST"; opt.body = JSON.stringify(body); }
   const r = await fetch(path, opt);
-  return r.json();
+  const j = await r.json();
+  if (j && j.maintenance && path !== "/api/state") showMaintenance(j.msg);
+  return j;
 }
 function toast(msg) {
   const t = $("toast"); t.textContent = msg; t.classList.add("show");
@@ -141,6 +143,19 @@ function showBan(notice) {
   el.querySelector(".ban-text").textContent = notice || "MULTIPLE ACCOUNTS DETECTED";
   document.querySelectorAll(".bottomnav, .tabbar").forEach(n => n.style.display = "none");
 }
+let MAINT_TIMER = 0;
+function showMaintenance(msg) {
+  const mm = document.getElementById("maintenance-msg");
+  if (mm && msg) mm.textContent = msg;
+  const mp = document.getElementById("maintenance-popup");
+  if (mp) mp.style.display = "flex";
+  if (!MAINT_TIMER) MAINT_TIMER = setInterval(() => { load(); }, 30000);
+}
+function hideMaintenance() {
+  const mp = document.getElementById("maintenance-popup");
+  if (mp) mp.style.display = "none";
+  if (MAINT_TIMER) { clearInterval(MAINT_TIMER); MAINT_TIMER = 0; }
+}
 function closeWelcome() {
   const wp = document.getElementById("welcome-popup");
   if (wp) wp.style.display = "none";
@@ -177,7 +192,10 @@ async function load() {
   S = await api("/api/state");
   if (!S || S.ok === false) { if (S && S.msg) toast(S.msg); S = null; return; }
   if (S.banned) { showBan(S.ban_notice); return; }
+  if (S.maintenance && !S.user_id) { showMaintenance(S.maintenance_msg); return; }
+  hideMaintenance();
   render();
+  const mc = $("adm-c-maint"); if (mc) mc.textContent = S.maintenance ? "ON" : "OFF";
   if (S.just_created) {
     try {
       if (!localStorage.getItem("slimefi_wp53")) {
@@ -391,6 +409,16 @@ async function _doBroadcast(testMode) {
 }
 window.sendBroadcast = () => _doBroadcast(false);
 window.sendBroadcastTest = () => _doBroadcast(true);
+window.setMaintenance = async (on) => {
+  const msg = ($("maint-msg").value || "").trim();
+  const r = await api("/api/owner/maintenance", { on, msg });
+  toast(r.msg || "Ho gaya");
+  const mr = $("maint-result"); if (mr) mr.textContent = r.msg || "";
+  if (r.ok) {
+    const mc = $("adm-c-maint"); if (mc) mc.textContent = on ? "ON" : "OFF";
+    if (on) $("maint-msg").value = "";
+  }
+};
 window.banToggle = async () => {
   if (!ACT_PLAYER) { toast("Pehle player ki activity dekho"); return; }
   if (ACT_PLAYER.banned) {

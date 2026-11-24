@@ -104,6 +104,13 @@
     </div>
 
     <div class="card adm-card">
+      <div class="adm-card-head"><span>🔧 Maintenance Mode</span><span class="adm-chip" id="adm-c-maint">–</span></div>
+      <div class="ref-row"><input id="maint-msg" placeholder="Popup me dikhne wala message (khaali = default)" style="text-transform:none"></div>
+      <div class="ref-row"><button class="small-btn danger-btn" onclick="setMaintenance(true)">🔧 Maintenance ON Karo</button><button class="small-btn" onclick="setMaintenance(false)">✅ Maintenance OFF Karo</button></div>
+      <div class="card-sub" id="maint-result">ON karne par sab players ko sirf Under Maintenance popup dikhega — koi game, ad ya task nahi chalega. Tumhara owner panel chalta rahega.</div>
+    </div>
+
+    <div class="card adm-card">
       <div class="adm-card-head"><span>🛟 Support Tickets</span><span class="adm-chip" id="adm-c-support">0</span></div>
       <div id="owner-support-tickets"></div>
     </div>
@@ -443,8 +450,17 @@
   </div>
 </div>
 
+<div id="maintenance-popup" class="wp-overlay" style="display:none;z-index:500">
+  <div class="wp-card">
+    <div class="wp-gift">🔧</div>
+    <div class="wp-title">Under Maintenance</div>
+    <div class="wp-rule" id="maintenance-msg" style="text-transform:none">SlimeFi abhi maintenance me hai. Hum kuch sudhaar kar rahe hain — jald hi wapas aayenge. Aapke coins aur balance bilkul safe hain.</div>
+    <div class="wp-rule" style="text-transform:none;opacity:.75">Thodi der me phir try karo 🙏</div>
+  </div>
+</div>
+
 <script src="/static/three.min.js"></script>
 <script src="/static/slime3d.js?v=2"></script>
-<script src="/static/app.js?v=87"></script>
+<script src="/static/app.js?v=89"></script>
 </body>
 </html>
