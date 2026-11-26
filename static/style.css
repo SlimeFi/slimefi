@@ -543,3 +543,17 @@ body.in-game #view-plinko{padding:0;max-width:none;position:relative}
 body.in-game #view-plinko .game-back{background:rgba(8,12,18,.72);backdrop-filter:blur(5px);box-shadow:0 4px 14px rgba(0,0,0,.35);width:38px;height:38px;border-radius:50%;padding:0;display:grid;place-items:center;font-size:1.05rem}
 body.in-game #view-plinko .game-stage{margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none}
 body.in-game #view-plinko .sr-frame{height:100dvh;min-height:0;border-radius:0}
+/* v91: Colour Prediction fun-only game — Home banner variant + dedicated page,
+   mirroring the Plinko page pattern (v90) for #view-colour */
+.colour-home-banner{margin:0 0 20px;background:linear-gradient(105deg,#2e0a2a,#3a1230 55%,#0e3a2a);border-color:rgba(168,85,247,.4);box-shadow:0 0 18px rgba(168,85,247,.16),inset 0 0 22px rgba(245,197,66,.08)}
+.colour-home-banner .sr-home-art{background:rgba(168,85,247,.16)}
+.colour-home-banner .sr-home-text small{color:#d8b4fe}
+.colour-home-banner strong{background:linear-gradient(180deg,#e9d5ff,#a855f7);color:#2a0a3a}
+#view-colour .game-back{width:auto;padding:8px 13px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--text);font-weight:800;font-size:.75rem}
+#view-colour .game-stage{margin-top:0}
+#view-colour{padding-bottom:24px}
+#view-colour .sr-frame{height:calc(100dvh - 168px);min-height:480px}
+body.in-game #view-colour{padding:0;max-width:none;position:relative}
+body.in-game #view-colour .game-back{background:rgba(8,12,18,.72);backdrop-filter:blur(5px);box-shadow:0 4px 14px rgba(0,0,0,.35);width:38px;height:38px;border-radius:50%;padding:0;display:grid;place-items:center;font-size:1.05rem}
+body.in-game #view-colour .game-stage{margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none}
+body.in-game #view-colour .sr-frame{height:100dvh;min-height:0;border-radius:0}

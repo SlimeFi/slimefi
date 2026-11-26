@@ -710,6 +710,18 @@ function startPlinko(){
   st.innerHTML=`<iframe src="/static/plinko.html?v=90" class="sr-frame" title="Plinko game"></iframe>`;
 }
 
+// ---------- Colour Prediction: fun-only demo game (v91) ----------
+// Same pattern as Plinko: a self-contained page (demo coins live
+// only inside the page — no API, no real coins, no reward of any kind),
+// isolated in an iframe inside its own stage.
+function startColour(){
+  go('colour');
+  document.body.classList.add('in-game');
+  const st=$('colour-stage');
+  st.hidden=false;
+  st.innerHTML=`<iframe src="/static/colour.html?v=91" class="sr-frame" title="Colour Prediction game"></iframe>`;
+}
+
 // ---------- reward history + support ----------
 async function loadHistory() {
   const box = $("history-list"); if (!box) return;
@@ -862,6 +874,9 @@ window.closeGameStage=()=>{rkCancelFlight();const st=$('game-stage');if(st){st.h
 
 // ---------- Plinko page: close/back returns Home ----------
 window.closePlinkoStage=()=>{const st=$('plinko-stage');if(st){st.hidden=true;st.innerHTML='';}go('home');};
+
+// ---------- Colour Prediction page: close/back returns Home ----------
+window.closeColourStage=()=>{const st=$('colour-stage');if(st){st.hidden=true;st.innerHTML='';}go('home');};
 
 // ---------- Rocket Flight: pure fun game — bina kisi inaam ke, sirf mazaa (owner order) ----------
 // Flight math ported from the owner's Rocket Crash build: multiplier = min(20, e^(t*0.105)),

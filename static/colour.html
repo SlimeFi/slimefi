@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:," />
+    <title>Colour Prediction — SlimeFi Fun Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #06120c;
+        --bg-2: #0a1f14;
+        --card: #0d2a1a;
+        --card-2: #103420;
+        --line: rgba(52, 211, 153, 0.28);
+        --gold: #f5c542;
+        --gold-2: #ffd968;
+        --gold-deep: #b8860b;
+        --emerald: #34d399;
+        --emerald-deep: #059669;
+        --text: #eafff3;
+        --muted: #9fd8bb;
+        --red: #ef4444;
+        --red-deep: #991b1b;
+        --green: #22c55e;
+        --green-deep: #166534;
+        --violet: #a855f7;
+        --violet-deep: #6b21a8;
+        --radius: 18px;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+        background:
+          radial-gradient(900px 500px at 50% -120px, rgba(16, 185, 129, 0.22), transparent 60%),
+          radial-gradient(700px 420px at 110% 30%, rgba(245, 197, 66, 0.08), transparent 60%),
+          linear-gradient(180deg, var(--bg-2), var(--bg) 55%);
+        color: var(--text);
+        min-height: 100dvh;
+        -webkit-tap-highlight-color: transparent;
+      }
+      button { font-family: inherit; cursor: pointer; min-height: 44px; }
+      button:disabled { cursor: not-allowed; opacity: 0.55; }
+
+      .wrap {
+        max-width: 520px;
+        margin: 0 auto;
+        padding: 18px 16px 40px;
+      }
+
+      /* ---------- Badge ---------- */
+      .badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin: 4px auto 14px;
+        padding: 12px 18px;
+        max-width: 420px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #ffe082, var(--gold) 55%, #e0a91c);
+        color: #3a2a00;
+        font-family: "Baloo 2", "Nunito", sans-serif;
+        font-weight: 800;
+        font-size: 1.25rem;
+        letter-spacing: 0.14em;
+        text-align: center;
+        border: 2px solid #fff3c4;
+        box-shadow: 0 0 0 3px rgba(245, 197, 66, 0.25), 0 10px 28px rgba(245, 197, 66, 0.28), inset 0 2px 0 rgba(255,255,255,0.65);
+      }
+      .badge .dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        background: #3a2a00; opacity: 0.75; flex: none;
+      }
+
+      h1 {
+        font-family: "Baloo 2", "Nunito", sans-serif;
+        font-size: 1.9rem;
+        font-weight: 800;
+        text-align: center;
+        margin: 0 0 2px;
+        letter-spacing: 0.01em;
+      }
+      .sub {
+        text-align: center;
+        color: var(--muted);
+        font-weight: 700;
+        margin: 0 0 18px;
+        font-size: 0.98rem;
+      }
+
+      /* ---------- Cards ---------- */
+      .card {
+        background: linear-gradient(180deg, var(--card-2), var(--card));
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin-bottom: 14px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+      }
+      .card h2 {
+        font-family: "Baloo 2", "Nunito", sans-serif;
+        font-size: 1.02rem;
+        font-weight: 700;
+        margin: 0 0 12px;
+        color: var(--gold-2);
+        letter-spacing: 0.04em;
+      }
+
+      /* ---------- Balance ---------- */
+      .balance-card {
+        text-align: center;
+        padding: 20px 16px 18px;
+        background:
+          radial-gradient(420px 180px at 50% -40px, rgba(52, 211, 153, 0.35), transparent 65%),
+          linear-gradient(180deg, #14532d, #0b2e1c);
+        border: 1px solid rgba(52, 211, 153, 0.5);
+        box-shadow: 0 14px 34px rgba(0,0,0,0.4), 0 0 24px rgba(16,185,129,0.18), inset 0 1px 0 rgba(255,255,255,0.12);
+      }
+      .balance-label {
+        color: var(--muted);
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+      }
+      .balance-value {
+        font-family: "Baloo 2", "Nunito", sans-serif;
+        font-size: 3rem;
+        font-weight: 800;
+        line-height: 1.05;
+        margin: 4px 0 2px;
+        color: #ffffff;
+        text-shadow: 0 2px 14px rgba(52, 211, 153, 0.45);
+        font-variant-numeric: tabular-nums;
+      }
+      .balance-value.bump { animation: bump 0.35s ease; }
+      @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.09); } 100% { transform: scale(1); } }
+      .balance-note { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+
+      /* ---------- Result stage ---------- */
+      .stage {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 0 2px;
+      }
+      .orb {
+        width: 118px; height: 118px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Baloo 2", "Nunito", sans-serif;
+        font-weight: 800;
+        font-size: 1.35rem;
+        color: #fff;
+        text-shadow: 0 2px 6px rgba(0,0,0,0.45);
+        background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.5), rgba(255,255,255,0) 42%), #1d4d33;
+        border: 3px solid rgba(255,255,255,0.22);
+        box-shadow: 0 16px 32px rgba(0,0,0,0.45), inset 0 -10px 18px rgba(0,0,0,0.3);
+        transition: background 0.15s ease;
+        text-align: center;
+        padding: 8px;
+      }
+      .orb.idle { color: var(--muted); font-size: 1.05rem; }
+      .orb.red    { background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.55), rgba(255,255,255,0) 42%), linear-gradient(180deg, #f87171, var(--red) 55%, var(--red-deep)); }
+      .orb.green  { background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.55), rgba(255,255,255,0) 42%), linear-gradient(180deg, #4ade80, var(--green) 55%, var(--green-deep)); }
+      .orb.violet { background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.55), rgba(255,255,255,0) 42%), linear-gradient(180deg, #c084fc, var(--violet) 55%, var(--violet-deep)); }
+      .orb.spinning { animation: wobble 0.16s linear infinite alternate; }
+      @keyframes wobble { from { transform: rotate(-4deg) scale(0.97); } to { transform: rotate(4deg) scale(1.03); } }
+      .orb.pop { animation: pop 0.4s ease; }
+      @keyframes pop { 0% { transform: scale(0.82); } 55% { transform: scale(1.12); } 100% { transform: scale(1); } }
+
+      .result-msg {
+        min-height: 1.6em;
+        font-family: "Baloo 2", "Nunito", sans-serif;
+        font-size: 1.2rem;
+        font-weight: 800;
+        text-align: center;
+      }
+      .result-msg.win { color: var(--gold-2); }
+      .result-msg.lose { color: #fca5a5; }
+      .result-msg.neutral { color: var(--muted); font-size: 1rem; }
+
+      /* ---------- Last 10 dots ---------- */
+      .dots {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        min-height: 30px;
+        align-items: center;
+      }
+      .rdot {
+        width: 30px; height: 30px; border-radius: 50%; flex: none;
+        border: 2px solid rgba(255,255,255,0.35);
+        box-shadow: inset 0 -4px 8px rgba(0,0,0,0.35), inset 0 3px 5px rgba(255,255,255,0.35), 0 3px 8px rgba(0,0,0,0.35);
+      }
+      .rdot.red { background: var(--red); }
+      .rdot.green { background: var(--green); }
+      .rdot.violet { background: var(--violet); }
+      .rdot.newest { outline: 2px solid var(--gold); outline-offset: 2px; }
+      .dots-empty { color: var(--muted); font-weight: 600; font-size: 0.92rem; }
+
+      /* ---------- Bet chips ---------- */
+      .chip-row { display: flex; gap: 10px; }
+      .chip {
+        flex: 1;
+        border-radius: 14px;
+        border: 2px solid var(--line);
+        background: #0a2416;
+        color: var(--text);
+        font-family: "Baloo 2", "Nunito", sans-serif;
+        font-size: 1.25rem;
+        font-weight: 800;
+        padding: 10px 4px;
+        transition: border-color 0.12s ease, background 0.12s ease, transform 0.08s ease;
+      }
+      .chip small { display: block; font-family: "Nunito", sans-serif; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.12em; color: var(--muted); }
+      .chip:active { transform: scale(0.97); }
+      .chip.selected {
+        border-color: var(--gold);
+        background: linear-gradient(180deg, rgba(245,197,66,0.22), rgba(245,197,66,0.08));
+        box-shadow: 0 0 0 2px rgba(245,197,66,0.25), 0 6px 16px rgba(0,0,0,0.3);
+      }
+      .chip.selected small { color: var(--gold-2); }
+      .chip:disabled { opacity: 0.4; }
+
+      /* ---------- Colour picks ---------- */
+      .pick-row { display: flex; gap: 10px; }
+      .pick {
+        flex: 1;
+        border-radius: 16px;
+        border: 3px solid transparent;
+        color: #fff;
+        font-family: "Baloo 2", "Nunito", sans-serif;
+        font-weight: 800;
+        font-size: 1.12rem;
+        padding: 12px 4px 10px;
+        text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.35), inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -6px 12px rgba(0,0,0,0.25);
+        transition: transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+      }
+      .pick small { display: block; font-family: "Nunito", sans-serif; font-size: 0.74rem; font-weight: 800; opacity: 0.92; letter-spacing: 0.03em; }
+      .pick:active { transform: scale(0.96); }
+      .pick.red { background: linear-gradient(180deg, #f87171, var(--red) 55%, var(--red-deep)); }
+      .pick.green { background: linear-gradient(180deg, #4ade80, var(--green) 55%, var(--green-deep)); }
+      .pick.violet { background: linear-gradient(180deg, #c084fc, var(--violet) 55%, var(--violet-deep)); }
+      .pick.selected {
+        border-color: #fff;
+        box-shadow: 0 0 0 3px var(--gold), 0 12px 24px rgba(0,0,0,0.4), inset 0 2px 0 rgba(255,255,255,0.4);
+        transform: translateY(-2px);
+      }
+
+      /* ---------- Play / Reset ---------- */
+      .play-btn {
+        width: 100%;
+        border: none;
+        border-radius: 16px;
+        padding: 14px;
+        font-family: "Baloo 2", "Nunito", sans-serif;
+        font-size: 1.5rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        color: #3a2a00;
+        background: linear-gradient(180deg, #ffe082, var(--gold) 55%, #dfa512);
+        border-bottom: 5px solid var(--gold-deep);
+        box-shadow: 0 12px 26px rgba(245,197,66,0.25), inset 0 2px 0 rgba(255,255,255,0.7);
+        transition: transform 0.08s ease;
+      }
+      .play-btn:active { transform: translateY(2px); }
+      .play-btn:disabled { filter: grayscale(0.4); }
+
+      .reset-btn {
+        width: 100%;
+        margin-top: 10px;
+        border-radius: 14px;
+        border: 2px solid var(--line);
+        background: transparent;
+        color: var(--emerald);
+        font-family: "Baloo 2", "Nunito", sans-serif;
+        font-size: 1.05rem;
+        font-weight: 700;
+        padding: 10px;
+      }
+      .reset-btn:active { background: rgba(52,211,153,0.12); }
+
+      /* ---------- History ---------- */
+      .history-list { list-style: none; margin: 0; padding: 0; }
+      .history-list li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 2px;
+        border-bottom: 1px solid rgba(52,211,153,0.14);
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
+      .history-list li:last-child { border-bottom: none; }
+      .h-dot { width: 18px; height: 18px; border-radius: 50%; flex: none; border: 2px solid rgba(255,255,255,0.3); box-shadow: inset 0 -3px 5px rgba(0,0,0,0.35), inset 0 2px 3px rgba(255,255,255,0.35); }
+      .h-dot.red { background: var(--red); }
+      .h-dot.green { background: var(--green); }
+      .h-dot.violet { background: var(--violet); }
+      .h-text { flex: 1; min-width: 0; }
+      .h-text .vs { color: var(--muted); font-size: 0.82rem; font-weight: 700; }
+      .h-net { font-family: "Baloo 2", "Nunito", sans-serif; font-weight: 800; font-size: 1.05rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .h-net.plus { color: var(--emerald); }
+      .h-net.minus { color: #f87171; }
+      .history-empty { color: var(--muted); font-weight: 600; font-size: 0.92rem; margin: 0; }
+
+      .rules {
+        color: var(--muted);
+        font-size: 0.88rem;
+        font-weight: 600;
+        line-height: 1.55;
+        margin: 0;
+      }
+      .rules b { color: var(--text); }
+
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: calc(18px + env(safe-area-inset-bottom));
+        transform: translateX(-50%) translateY(20px);
+        background: #123524;
+        border: 1px solid var(--gold);
+        color: var(--gold-2);
+        font-weight: 800;
+        padding: 10px 18px;
+        border-radius: 999px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        z-index: 20;
+        max-width: calc(100vw - 32px);
+        text-align: center;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.45);
+      }
+      .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+      @media (prefers-reduced-motion: reduce) {
+        .orb.spinning, .orb.pop, .balance-value.bump { animation: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <div class="badge" role="note"><span class="dot"></span>DEMO · FUN COINS<span class="dot"></span></div>
+
+      <h1>Colour Prediction</h1>
+      <p class="sub">Rang guess karo, jeeto demo coins!</p>
+
+      <!-- Balance -->
+      <section class="card balance-card" aria-label="Demo balance">
+        <div class="balance-label">Demo Balance</div>
+        <div class="balance-value" id="balanceValue">1,000</div>
+        <div class="balance-note">🪙 Sirf fun coins — asli paisa nahi. Ye game tumhare asli SlimeFi coins ya balance ko kabhi nahi chhoota.</div>
+      </section>
+
+      <!-- Result stage -->
+      <section class="card" aria-label="Result">
+        <div class="stage">
+          <div class="orb idle" id="orb">?</div>
+          <div class="result-msg neutral" id="resultMsg" aria-live="polite">Colour chuno aur PLAY dabao</div>
+        </div>
+        <h2 style="margin-top:14px;">Last 10 Results</h2>
+        <div class="dots" id="dotsRow">
+          <span class="dots-empty">Abhi koi result nahi — pehla round khelo!</span>
+        </div>
+      </section>
+
+      <!-- Bet -->
+      <section class="card" aria-label="Bet chuno">
+        <h2>💰 Bet Chuno</h2>
+        <div class="chip-row" id="betRow">
+          <button type="button" class="chip selected" data-bet="10">10<small>COINS</small></button>
+          <button type="button" class="chip" data-bet="50">50<small>COINS</small></button>
+          <button type="button" class="chip" data-bet="100">100<small>COINS</small></button>
+        </div>
+      </section>
+
+      <!-- Colour pick -->
+      <section class="card" aria-label="Colour chuno">
+        <h2>🎨 Colour Chuno</h2>
+        <div class="pick-row" id="pickRow">
+          <button type="button" class="pick red selected" data-colour="red">RED<small>Jeet = 2x</small></button>
+          <button type="button" class="pick green" data-colour="green">GREEN<small>Jeet = 2x</small></button>
+          <button type="button" class="pick violet" data-colour="violet">VIOLET<small>Jeet = 4.5x</small></button>
+        </div>
+      </section>
+
+      <button type="button" class="play-btn" id="playBtn">▶ PLAY</button>
+      <button type="button" class="reset-btn" id="resetBtn">↺ Reset — 1000 coins wapas</button>
+
+      <!-- History -->
+      <section class="card" aria-label="History" style="margin-top:14px;">
+        <h2>📜 History</h2>
+        <p class="history-empty" id="historyEmpty">Abhi koi round nahi khela.</p>
+        <ul class="history-list" id="historyList"></ul>
+      </section>
+
+      <!-- Rules -->
+      <section class="card" aria-label="Rules">
+        <h2>ℹ️ Rules</h2>
+        <p class="rules">
+          Result har round random aata hai — <b>Red 49%</b>, <b>Green 49%</b>, <b>Violet 2%</b>.<br />
+          Sahi guess par <b>Red/Green = 2x</b>, <b>Violet = 4.5x</b> milta hai.<br />
+          Galat guess par <b>poora bet gaya</b> — balance sach me kam hota hai.
+        </p>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var START_BALANCE = 1000;
+        var MULTIPLIERS = { red: 2, green: 2, violet: 4.5 };
+        var NAMES = { red: "Red", green: "Green", violet: "Violet" };
+        var COLOURS = ["red", "green", "violet"];
+
+        var balance = START_BALANCE;
+        var selectedBet = 10;
+        var selectedColour = "red";
+        var playing = false;
+        var results = [];   // newest first, colour strings
+        var history = [];   // newest first, round records
+
+        var balanceEl = document.getElementById("balanceValue");
+        var orbEl = document.getElementById("orb");
+        var msgEl = document.getElementById("resultMsg");
+        var dotsEl = document.getElementById("dotsRow");
+        var playBtn = document.getElementById("playBtn");
+        var resetBtn = document.getElementById("resetBtn");
+        var historyList = document.getElementById("historyList");
+        var historyEmpty = document.getElementById("historyEmpty");
+        var toastEl = document.getElementById("toast");
+        var toastTimer = null;
+
+        var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        function fmt(n) {
+          return n.toLocaleString("en-IN");
+        }
+
+        function showToast(text) {
+          toastEl.textContent = text;
+          toastEl.classList.add("show");
+          if (toastTimer) clearTimeout(toastTimer);
+          toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2200);
+        }
+
+        function renderBalance(bump) {
+          balanceEl.textContent = fmt(balance);
+          if (bump && !reduceMotion) {
+            balanceEl.classList.remove("bump");
+            void balanceEl.offsetWidth;
+            balanceEl.classList.add("bump");
+          }
+          refreshPlayState();
+        }
+
+        function refreshPlayState() {
+          var chips = document.querySelectorAll("#betRow .chip");
+          for (var i = 0; i < chips.length; i++) {
+            var b = parseInt(chips[i].getAttribute("data-bet"), 10);
+            chips[i].disabled = playing || b > balance;
+          }
+          playBtn.disabled = playing || balance < 10;
+          playBtn.textContent = playing ? "⏳ Ruko…" : "▶ PLAY";
+        }
+
+        function drawResult() {
+          var r = Math.random() * 100;
+          if (r < 49) return "red";
+          if (r < 98) return "green";
+          return "violet";
+        }
+
+        function renderDots() {
+          dotsEl.innerHTML = "";
+          if (results.length === 0) {
+            var s = document.createElement("span");
+            s.className = "dots-empty";
+            s.textContent = "Abhi koi result nahi — pehla round khelo!";
+            dotsEl.appendChild(s);
+            return;
+          }
+          var show = results.slice(0, 10);
+          for (var i = 0; i < show.length; i++) {
+            var d = document.createElement("span");
+            d.className = "rdot " + show[i] + (i === 0 ? " newest" : "");
+            d.title = NAMES[show[i]];
+            d.setAttribute("aria-label", NAMES[show[i]]);
+            dotsEl.appendChild(d);
+          }
+        }
+
+        function renderHistory() {
+          historyList.innerHTML = "";
+          historyEmpty.style.display = history.length === 0 ? "" : "none";
+          var show = history.slice(0, 8);
+          for (var i = 0; i < show.length; i++) {
+            var h = show[i];
+            var li = document.createElement("li");
+
+            var dot = document.createElement("span");
+            dot.className = "h-dot " + h.result;
+            li.appendChild(dot);
+
+            var text = document.createElement("span");
+            text.className = "h-text";
+            var main = document.createElement("span");
+            main.textContent = (h.won ? "Jeet! " : "Haar. ") + NAMES[h.result] + " aaya";
+            var vs = document.createElement("span");
+            vs.className = "vs";
+            vs.textContent = " · tumne " + NAMES[h.pick] + " · bet " + h.bet;
+            text.appendChild(main);
+            text.appendChild(vs);
+            li.appendChild(text);
+
+            var net = document.createElement("span");
+            net.className = "h-net " + (h.net >= 0 ? "plus" : "minus");
+            net.textContent = (h.net >= 0 ? "+" : "−") + fmt(Math.abs(h.net));
+            li.appendChild(net);
+
+            historyList.appendChild(li);
+          }
+        }
+
+        function setMsg(text, cls) {
+          msgEl.textContent = text;
+          msgEl.className = "result-msg " + cls;
+        }
+
+        function finishRound(result) {
+          var bet = selectedBet;
+          var pick = selectedColour;
+          var won = pick === result;
+          var net;
+          if (won) {
+            var payout = Math.round(bet * MULTIPLIERS[result]);
+            balance += payout;
+            net = payout - bet;
+          } else {
+            net = -bet;
+          }
+
+          results.unshift(result);
+          history.unshift({ pick: pick, result: result, bet: bet, won: won, net: net });
+
+          orbEl.classList.remove("spinning");
+          orbEl.className = "orb " + result + (reduceMotion ? "" : " pop");
+          orbEl.textContent = NAMES[result];
+
+          if (won) {
+            setMsg("🎉 Jeet gaye! +" + fmt(net) + " coins", "win");
+          } else {
+            setMsg("😢 Haar gaye! −" + fmt(bet) + " coins", "lose");
+          }
+
+          playing = false;
+          renderBalance(true);
+          renderDots();
+          renderHistory();
+
+          if (balance < 10) {
+            setTimeout(function () {
+              setMsg("Coins khatam! Reset karke 1000 wapas lo.", "neutral");
+              showToast("Balance khatam — Reset dabao!");
+            }, 500);
+          }
+        }
+
+        function play() {
+          if (playing) return;
+          if (balance < selectedBet) {
+            // Auto-pick the biggest affordable bet, or tell the player to reset.
+            if (balance >= 10) {
+              var affordable = balance >= 100 ? 100 : (balance >= 50 ? 50 : 10);
+              selectBet(affordable);
+              showToast("Balance kam hai — bet " + affordable + " kar diya");
+            } else {
+              showToast("Coins khatam! Reset dabao");
+              setMsg("Coins khatam! Reset karke 1000 wapas lo.", "neutral");
+              return;
+            }
+          }
+
+          playing = true;
+          balance -= selectedBet; // bet cut pehle — haar par ye wapas nahi aayega
+          renderBalance(false);
+          setMsg("Result aa raha hai…", "neutral");
+          orbEl.className = "orb idle" + (reduceMotion ? "" : " spinning");
+          orbEl.textContent = "?";
+
+          var result = drawResult();
+
+          if (reduceMotion) {
+            finishRound(result);
+            return;
+          }
+
+          // Quick colour shuffle, then settle on the real result.
+          var ticks = 0;
+          var shuffle = setInterval(function () {
+            ticks++;
+            var c = COLOURS[ticks % 3];
+            orbEl.className = "orb " + c + " spinning";
+            orbEl.textContent = NAMES[c];
+            if (ticks >= 7) {
+              clearInterval(shuffle);
+              finishRound(result);
+            }
+          }, 85);
+        }
+
+        function selectBet(bet) {
+          selectedBet = bet;
+          var chips = document.querySelectorAll("#betRow .chip");
+          for (var i = 0; i < chips.length; i++) {
+            chips[i].classList.toggle("selected", parseInt(chips[i].getAttribute("data-bet"), 10) === bet);
+          }
+          refreshPlayState();
+        }
+
+        function selectColour(colour) {
+          selectedColour = colour;
+          var picks = document.querySelectorAll("#pickRow .pick");
+          for (var i = 0; i < picks.length; i++) {
+            picks[i].classList.toggle("selected", picks[i].getAttribute("data-colour") === colour);
+          }
+        }
+
+        document.getElementById("betRow").addEventListener("click", function (e) {
+          var btn = e.target.closest(".chip");
+          if (btn && !btn.disabled) selectBet(parseInt(btn.getAttribute("data-bet"), 10));
+        });
+
+        document.getElementById("pickRow").addEventListener("click", function (e) {
+          var btn = e.target.closest(".pick");
+          if (btn && !playing) selectColour(btn.getAttribute("data-colour"));
+        });
+
+        playBtn.addEventListener("click", play);
+
+        resetBtn.addEventListener("click", function () {
+          if (playing) return;
+          balance = START_BALANCE;
+          results = [];
+          history = [];
+          orbEl.className = "orb idle";
+          orbEl.textContent = "?";
+          setMsg("Colour chuno aur PLAY dabao", "neutral");
+          if (selectedBet > balance) selectBet(10);
+          renderBalance(true);
+          renderDots();
+          renderHistory();
+          showToast("Reset ho gaya — 1000 coins wapas!");
+        });
+
+        renderBalance(false);
+        renderDots();
+        renderHistory();
+      })();
+    </script>
+  </body>
+</html>
