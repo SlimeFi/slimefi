@@ -698,6 +698,18 @@ function startSlimeRocket(){
   st.innerHTML=`<iframe src="/static/slime-rocket.html?v=82" class="sr-frame" title="Slime Rocket game"></iframe>`;
 }
 
+// ---------- Plinko: fun-only demo game (v90) ----------
+// Same pattern as Slime Rocket: a self-contained page (demo coins live
+// only inside the page — no API, no real coins, no reward of any kind),
+// isolated in an iframe inside its own stage.
+function startPlinko(){
+  go('plinko');
+  document.body.classList.add('in-game');
+  const st=$('plinko-stage');
+  st.hidden=false;
+  st.innerHTML=`<iframe src="/static/plinko.html?v=90" class="sr-frame" title="Plinko game"></iframe>`;
+}
+
 // ---------- reward history + support ----------
 async function loadHistory() {
   const box = $("history-list"); if (!box) return;
@@ -847,6 +859,9 @@ document.querySelectorAll(".chip[data-cat]").forEach(ch => ch.onclick = () => {
 
 // ---------- Slime Rocket page: close/back returns Home ----------
 window.closeGameStage=()=>{rkCancelFlight();const st=$('game-stage');if(st){st.hidden=true;st.innerHTML='';}go('home');};
+
+// ---------- Plinko page: close/back returns Home ----------
+window.closePlinkoStage=()=>{const st=$('plinko-stage');if(st){st.hidden=true;st.innerHTML='';}go('home');};
 
 // ---------- Rocket Flight: pure fun game — bina kisi inaam ke, sirf mazaa (owner order) ----------
 // Flight math ported from the owner's Rocket Crash build: multiplier = min(20, e^(t*0.105)),

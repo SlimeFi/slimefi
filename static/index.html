@@ -43,6 +43,8 @@
 
   <button class="sr-home-banner" onclick="startSlimeRocket()"><span class="sr-home-art">🛫</span><span class="sr-home-text"><small>NEW GAME · JUST FOR FUN</small><b>Slime Rocket</b><em>Plane udao, multiplier badhao — crash se pehle Cash Out karo!</em></span><strong>PLAY ↗</strong></button>
 
+  <button class="sr-home-banner plinko-home-banner" onclick="startPlinko()"><span class="sr-home-art">🎯</span><span class="sr-home-text"><small>FUN GAME · DEMO COINS ONLY</small><b>Plinko</b><em>Slime ball girayein, pegs se bounce karwayein — 10x tak jeeto, sirf mazaa ke liye!</em></span><strong>PLAY ↗</strong></button>
+
   <div class="section-heading"><div><small>MAKE TODAY COUNT</small><h2>Quick missions</h2></div><span class="section-spark">✦</span></div>
   <div class="mission-grid">
     <button class="mission-tile mission-ads" onclick="go('ads')"><span class="mission-icon">▶</span><span class="mission-name">Watch ads</span><small>Sponsored rewards</small><b>START ↗</b></button>
@@ -168,6 +170,12 @@
 <section id="view-game" class="view">
   <div class="game-page-head"><button class="game-back" onclick="closeGameStage()" aria-label="Back">←</button><b>Slime Rocket 🛫</b></div>
   <div id="game-stage" class="game-stage" hidden></div>
+</section>
+
+<!-- ================= PLINKO GAME PAGE (v90, fun-only) ================= -->
+<section id="view-plinko" class="view">
+  <div class="game-page-head"><button class="game-back" onclick="closePlinkoStage()" aria-label="Back">←</button><b>Plinko 🎯</b></div>
+  <div id="plinko-stage" class="game-stage" hidden></div>
 </section>
 
 <section id="view-leaderboard" class="view">
@@ -461,6 +469,6 @@
 
 <script src="/static/three.min.js"></script>
 <script src="/static/slime3d.js?v=2"></script>
-<script src="/static/app.js?v=89"></script>
+<script src="/static/app.js?v=90"></script>
 </body>
 </html>

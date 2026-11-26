@@ -528,3 +528,18 @@ body.in-game #view-game .game-back{width:38px;height:38px;border-radius:50%;padd
 #convert-popup .conv-cancel{background:var(--panel2);color:var(--text);margin-top:8px;box-shadow:none}
 /* v78: broadcast textarea (Admin Panel) */
 .adm-card textarea{flex:1;width:100%;box-sizing:border-box;background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px;font:inherit;resize:vertical}
+
+/* v90: Plinko fun-only game — Home banner variant + dedicated page,
+   mirroring the Slime Rocket page pattern (v63–v68) for #view-plinko */
+.plinko-home-banner{margin:0 0 20px;background:linear-gradient(105deg,#0a2e22,#123a4a 55%,#0e4a3a);border-color:rgba(60,230,143,.4);box-shadow:0 0 18px rgba(34,192,122,.16),inset 0 0 22px rgba(125,215,245,.10)}
+.plinko-home-banner .sr-home-art{background:rgba(60,230,143,.16)}
+.plinko-home-banner .sr-home-text small{color:#7fe7b6}
+.plinko-home-banner strong{background:linear-gradient(180deg,#5eeaa0,#22c07a);color:#03240f}
+#view-plinko .game-back{width:auto;padding:8px 13px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--text);font-weight:800;font-size:.75rem}
+#view-plinko .game-stage{margin-top:0}
+#view-plinko{padding-bottom:24px}
+#view-plinko .sr-frame{height:calc(100dvh - 168px);min-height:480px}
+body.in-game #view-plinko{padding:0;max-width:none;position:relative}
+body.in-game #view-plinko .game-back{background:rgba(8,12,18,.72);backdrop-filter:blur(5px);box-shadow:0 4px 14px rgba(0,0,0,.35);width:38px;height:38px;border-radius:50%;padding:0;display:grid;place-items:center;font-size:1.05rem}
+body.in-game #view-plinko .game-stage{margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none}
+body.in-game #view-plinko .sr-frame{height:100dvh;min-height:0;border-radius:0}

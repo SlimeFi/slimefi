@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:," />
+    <title>Plinko — SlimeFi Fun Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #04120b;
+        --bg-2: #071c10;
+        --card: #0a2317;
+        --card-2: #0d2c1d;
+        --line: #1d4a32;
+        --emerald: #22c07a;
+        --emerald-bright: #3ce68f;
+        --emerald-dim: #14532d;
+        --gold: #f2c14e;
+        --gold-deep: #d99a1f;
+        --slime: #7dd7f5;
+        --slime-deep: #38a8d8;
+        --text: #eefaf2;
+        --muted: #9dc3ab;
+        --danger: #ff8a7a;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+        background:
+          radial-gradient(120% 60% at 50% -10%, #0d3320 0%, transparent 55%),
+          linear-gradient(180deg, var(--bg-2), var(--bg) 40%);
+        color: var(--text);
+        min-height: 100dvh;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .wrap {
+        max-width: 460px;
+        margin: 0 auto;
+        padding: 18px 14px 34px;
+      }
+
+      /* ---------- Header ---------- */
+      .demo-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: linear-gradient(180deg, #ffd968, var(--gold));
+        color: #3a2a02;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        font-size: 13px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        box-shadow: 0 4px 18px rgba(242, 193, 78, 0.35), inset 0 1px 0 rgba(255,255,255,0.6);
+        text-align: center;
+      }
+      .demo-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #3a2a02; opacity: 0.55; flex: none; }
+      .fun-line {
+        text-align: center;
+        color: var(--muted);
+        font-size: 13.5px;
+        line-height: 1.5;
+        margin: 10px 6px 0;
+        font-weight: 600;
+      }
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .slime { flex: none; filter: drop-shadow(0 6px 10px rgba(56, 168, 216, 0.35)); }
+      h1 {
+        margin: 0;
+        font-size: 30px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        line-height: 1.05;
+      }
+      h1 .gold { color: var(--gold); }
+      .subtitle { margin: 3px 0 0; color: var(--muted); font-size: 13.5px; font-weight: 600; }
+
+      /* ---------- Cards ---------- */
+      .card {
+        background: linear-gradient(180deg, var(--card-2), var(--card));
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 16px;
+        margin-top: 14px;
+        box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+      }
+
+      /* ---------- Balance ---------- */
+      .balance-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .balance-label { font-size: 12px; font-weight: 800; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+      .balance-value {
+        font-size: 30px;
+        font-weight: 800;
+        line-height: 1.1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .coin {
+        width: 26px; height: 26px; border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, #ffe9a3, var(--gold) 55%, var(--gold-deep));
+        box-shadow: inset 0 -2px 4px rgba(120, 72, 0, 0.45), 0 2px 6px rgba(0,0,0,0.4);
+        display: inline-flex; align-items: center; justify-content: center;
+        color: #6b4a00; font-size: 14px; font-weight: 800; flex: none;
+      }
+      .balance-value.bump { animation: bump 0.45s ease; }
+      @keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.12); color: var(--gold); } 100% { transform: scale(1); } }
+      .reset-btn {
+        flex: none;
+        border: 1px solid var(--line);
+        background: #0a1f13;
+        color: var(--muted);
+        font-family: inherit;
+        font-weight: 700;
+        font-size: 13px;
+        padding: 10px 14px;
+        min-height: 44px;
+        border-radius: 12px;
+        cursor: pointer;
+      }
+      .reset-btn:active { background: #123524; color: var(--text); }
+
+      /* ---------- Board ---------- */
+      .board-card { padding: 14px 10px 12px; }
+      .board-wrap { position: relative; width: 100%; }
+      canvas#board { display: block; width: 100%; }
+      canvas#fx {
+        position: absolute; inset: 0; width: 100%; height: 100%;
+        pointer-events: none;
+      }
+      .slots {
+        display: flex;
+        width: 90%;
+        margin: 2px auto 0;
+        gap: 3px;
+      }
+      .slot {
+        flex: 1;
+        text-align: center;
+        font-weight: 800;
+        font-size: clamp(11px, 3.4vw, 14px);
+        padding: 9px 0 8px;
+        border-radius: 9px;
+        color: #06230f;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        box-shadow: inset 0 -3px 0 rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.35);
+      }
+      .slot small { display: block; font-size: 9px; font-weight: 800; letter-spacing: 0.04em; opacity: 0.75; }
+      .slot[data-tier="jackpot"] { background: linear-gradient(180deg, #ffd968, var(--gold-deep)); }
+      .slot[data-tier="big"]     { background: linear-gradient(180deg, #ffb347, #f08c1e); }
+      .slot[data-tier="mid"]     { background: linear-gradient(180deg, #3ce68f, #17a35e); }
+      .slot[data-tier="even"]    { background: linear-gradient(180deg, #57c98a, #2b8a57); color: #eafff2; }
+      .slot[data-tier="low"]     { background: linear-gradient(180deg, #2f6b4c, #1e4d34); color: #cfe9d8; }
+      .slot[data-tier="bust"]    { background: linear-gradient(180deg, #a03a2e, #6e231b); color: #ffd9d2; }
+      .slot.hit { transform: translateY(3px) scale(1.06); box-shadow: 0 0 0 2px #fff, 0 0 22px rgba(242,193,78,0.8); z-index: 1; }
+
+      /* ---------- Controls ---------- */
+      .bet-label { font-size: 12px; font-weight: 800; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
+      .bet-row { display: flex; gap: 10px; }
+      .bet-btn {
+        flex: 1;
+        font-family: inherit;
+        font-size: 17px;
+        font-weight: 800;
+        padding: 12px 0;
+        min-height: 50px;
+        border-radius: 14px;
+        border: 2px solid var(--line);
+        background: #081b10;
+        color: var(--text);
+        cursor: pointer;
+        transition: border-color 0.12s ease, background 0.12s ease, transform 0.08s ease;
+      }
+      .bet-btn .coin { width: 18px; height: 18px; font-size: 10px; vertical-align: -3px; margin-right: 5px; }
+      .bet-btn.selected {
+        border-color: var(--gold);
+        background: linear-gradient(180deg, #3a2c07, #241b04);
+        color: var(--gold);
+        box-shadow: 0 0 0 1px var(--gold), 0 6px 16px rgba(242,193,78,0.18);
+      }
+      .bet-btn:active { transform: scale(0.97); }
+      .bet-btn:disabled { opacity: 0.45; cursor: default; }
+
+      .drop-btn {
+        width: 100%;
+        margin-top: 14px;
+        font-family: inherit;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        padding: 16px 0;
+        min-height: 58px;
+        border: none;
+        border-radius: 16px;
+        background: linear-gradient(180deg, var(--emerald-bright), var(--emerald) 55%, #159a5c);
+        color: #03240f;
+        cursor: pointer;
+        box-shadow: 0 8px 22px rgba(34, 192, 122, 0.4), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -3px 0 rgba(0,0,0,0.18);
+        transition: transform 0.08s ease, filter 0.12s ease;
+      }
+      .drop-btn:active { transform: scale(0.98); }
+      .drop-btn:disabled { filter: grayscale(0.35) brightness(0.75); cursor: default; box-shadow: none; }
+      .drop-btn.shake { animation: shake 0.4s ease; }
+      @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+      .result-line {
+        margin-top: 14px;
+        min-height: 24px;
+        text-align: center;
+        font-size: 15.5px;
+        font-weight: 700;
+        line-height: 1.45;
+      }
+      .result-line.win  { color: var(--emerald-bright); }
+      .result-line.big  { color: var(--gold); }
+      .result-line.loss { color: var(--muted); }
+      .result-line.error { color: var(--danger); }
+
+      /* ---------- History ---------- */
+      .history-head { display: flex; align-items: baseline; justify-content: space-between; }
+      .history-title { font-size: 12px; font-weight: 800; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+      .history-empty { color: var(--muted); font-size: 13.5px; font-weight: 600; margin: 10px 0 2px; }
+      .history-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+      .history-list li {
+        font-size: 13px; font-weight: 800;
+        padding: 7px 11px; border-radius: 999px;
+        border: 1px solid var(--line); background: #081b10;
+      }
+      .history-list li.win  { color: var(--emerald-bright); border-color: var(--emerald-dim); }
+      .history-list li.big  { color: var(--gold); border-color: #6b5518; }
+      .history-list li.loss { color: var(--muted); }
+
+      .foot-note {
+        text-align: center; color: var(--muted);
+        font-size: 12.5px; font-weight: 600; line-height: 1.55;
+        margin: 16px 8px 0;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .balance-value.bump, .drop-btn.shake { animation: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <div class="demo-badge"><span class="dot"></span>DEMO · FUN COINS<span class="dot"></span></div>
+      <p class="fun-line">Just for fun — demo coins only, no real money. This game never touches your SlimeFi coins or balance, and nothing here is saved or sent anywhere.</p>
+
+      <div class="title-row">
+        <svg class="slime" width="62" height="54" viewBox="0 0 62 54" aria-hidden="true">
+          <defs>
+            <radialGradient id="slimeBody" cx="38%" cy="28%" r="80%">
+              <stop offset="0%" stop-color="#d8f6ff" />
+              <stop offset="45%" stop-color="#7dd7f5" />
+              <stop offset="100%" stop-color="#38a8d8" />
+            </radialGradient>
+          </defs>
+          <path d="M31 3c13 0 26 12.6 26 27.4 0 4.2-1.4 7.1-4.2 9.2C47.4 43.6 39.4 45 31 45s-16.4-1.4-21.8-5.4C6.4 37.5 5 34.6 5 30.4 5 15.6 18 3 31 3z" fill="url(#slimeBody)" />
+          <ellipse cx="20" cy="14" rx="7.5" ry="4.6" fill="#ffffff" opacity="0.75" transform="rotate(-18 20 14)" />
+          <circle cx="24" cy="26" r="3.4" fill="#0b2a3a" />
+          <circle cx="38" cy="26" r="3.4" fill="#0b2a3a" />
+          <circle cx="25.2" cy="24.8" r="1.2" fill="#ffffff" />
+          <circle cx="39.2" cy="24.8" r="1.2" fill="#ffffff" />
+          <path d="M26.5 33.5c1.4 1.8 3 2.6 4.5 2.6s3.1-.8 4.5-2.6" fill="none" stroke="#0b2a3a" stroke-width="2" stroke-linecap="round" />
+          <ellipse cx="17.5" cy="31.5" rx="3.4" ry="2" fill="#ffb3d9" opacity="0.65" />
+          <ellipse cx="44.5" cy="31.5" rx="3.4" ry="2" fill="#ffb3d9" opacity="0.65" />
+          <ellipse cx="31" cy="49.5" rx="17" ry="3.4" fill="#000000" opacity="0.28" />
+        </svg>
+        <div>
+          <h1>SlimeFi <span class="gold">Plinko</span></h1>
+          <p class="subtitle">Drop the slime ball, bounce the pegs, chase the 10x.</p>
+        </div>
+      </div>
+
+      <section class="card balance-card" aria-label="Demo balance">
+        <div>
+          <div class="balance-label">Demo balance</div>
+          <div class="balance-value" id="balanceValue"><span class="coin">S</span><span id="balanceNum">1,000</span></div>
+        </div>
+        <button class="reset-btn" id="resetBtn" type="button">↺ Reset to 1,000</button>
+      </section>
+
+      <section class="card board-card" aria-label="Plinko board">
+        <div class="board-wrap">
+          <canvas id="board"></canvas>
+          <canvas id="fx"></canvas>
+        </div>
+        <div class="slots" id="slots"></div>
+      </section>
+
+      <section class="card" aria-label="Controls">
+        <div class="bet-label">Your bet (demo coins)</div>
+        <div class="bet-row" id="betRow">
+          <button class="bet-btn" type="button" data-bet="10"><span class="coin">S</span>10</button>
+          <button class="bet-btn selected" type="button" data-bet="50"><span class="coin">S</span>50</button>
+          <button class="bet-btn" type="button" data-bet="100"><span class="coin">S</span>100</button>
+        </div>
+        <button class="drop-btn" id="dropBtn" type="button">DROP&nbsp; ●</button>
+        <p class="result-line" id="resultLine" aria-live="polite">Pick a bet and tap DROP — good luck!</p>
+      </section>
+
+      <section class="card" aria-label="Recent drops">
+        <div class="history-head"><span class="history-title">Last drops</span></div>
+        <p class="history-empty" id="historyEmpty">No drops yet — your last few results will show up here.</p>
+        <ul class="history-list" id="historyList"></ul>
+      </section>
+
+      <p class="foot-note">Demo game for fun only. The ball's path is random every drop, but the middle slots pay back less than your bet — roughly 3 out of 4 drops lose coins, and the 10x edges are rare. Demo coins have no value.</p>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var ROWS = 8;
+        // 9 slots for 8 rows — edges pay the most, centre the least.
+        // The three middle slots (0.5x / 0.2x / 0.5x) pay back less than the
+        // bet, and the weights below send 150 of every 200 drops there —
+        // so about 75% of drops lose coins, and the 10x edges stay rare.
+        var MULTIPLIERS = [10, 3, 1.5, 0.5, 0.2, 0.5, 1.5, 3, 10];
+        var WEIGHTS = [2, 8, 15, 40, 70, 40, 15, 8, 2];
+        var TIERS = ["jackpot", "big", "mid", "low", "bust", "low", "mid", "big", "jackpot"];
+        var START_BALANCE = 1000;
+
+        var balance = START_BALANCE;
+        var bet = 50;
+        var dropping = false;
+
+        var board = document.getElementById("board");
+        var fx = document.getElementById("fx");
+        var bctx = board.getContext("2d");
+        var fctx = fx.getContext("2d");
+        var slotsEl = document.getElementById("slots");
+        var balanceNum = document.getElementById("balanceNum");
+        var balanceValue = document.getElementById("balanceValue");
+        var resultLine = document.getElementById("resultLine");
+        var dropBtn = document.getElementById("dropBtn");
+        var resetBtn = document.getElementById("resetBtn");
+        var betRow = document.getElementById("betRow");
+        var historyList = document.getElementById("historyList");
+        var historyEmpty = document.getElementById("historyEmpty");
+
+        // Build slot tiles
+        var slotEls = MULTIPLIERS.map(function (m, i) {
+          var d = document.createElement("div");
+          d.className = "slot";
+          d.setAttribute("data-tier", TIERS[i]);
+          d.innerHTML = formatMult(m) + "<small>MULT</small>";
+          slotsEl.appendChild(d);
+          return d;
+        });
+
+        function formatMult(m) {
+          return (m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)) + "x";
+        }
+        function fmt(n) {
+          return n.toLocaleString("en-IN");
+        }
+
+        // ---------- Board geometry ----------
+        var W = 0, H = 0, DPR = 1;
+        var geo = null; // {sx, topY, rowGap, pegR, ballR, landY}
+
+        function layout() {
+          var wrapW = board.parentElement.clientWidth;
+          DPR = Math.min(window.devicePixelRatio || 1, 2);
+          W = wrapW;
+          var sx = W / 10;
+          var rowGap = Math.max(30, W * 0.088);
+          var topY = 30;
+          H = topY + rowGap * ROWS + 26;
+          geo = {
+            sx: sx,
+            topY: topY,
+            rowGap: rowGap,
+            pegR: Math.max(3.5, W * 0.011),
+            ballR: Math.max(8, W * 0.026),
+            landY: topY + rowGap * ROWS + 12
+          };
+          [board, fx].forEach(function (c) {
+            c.width = Math.round(W * DPR);
+            c.height = Math.round(H * DPR);
+          });
+          board.style.height = H + "px";
+          fx.style.height = H + "px";
+          drawBoard(null);
+        }
+
+        function pegPos(row, j) {
+          // row 0..7 has row+3 pegs, centred
+          var count = row + 3;
+          var x = W / 2 + (j - (count - 1) / 2) * geo.sx;
+          var y = geo.topY + row * geo.rowGap;
+          return { x: x, y: y };
+        }
+
+        function drawBoard(hitPeg) {
+          bctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+          bctx.clearRect(0, 0, W, H);
+
+          // soft glow behind the triangle
+          var g = bctx.createRadialGradient(W / 2, H * 0.42, 10, W / 2, H * 0.42, W * 0.62);
+          g.addColorStop(0, "rgba(34,192,122,0.14)");
+          g.addColorStop(1, "rgba(34,192,122,0)");
+          bctx.fillStyle = g;
+          bctx.fillRect(0, 0, W, H);
+
+          for (var r = 0; r < ROWS; r++) {
+            for (var j = 0; j < r + 3; j++) {
+              var p = pegPos(r, j);
+              var isHit = hitPeg && hitPeg.row === r && hitPeg.j === j;
+              bctx.beginPath();
+              bctx.arc(p.x, p.y, isHit ? geo.pegR * 1.7 : geo.pegR, 0, Math.PI * 2);
+              if (isHit) {
+                bctx.fillStyle = "#f2c14e";
+                bctx.shadowColor = "rgba(242,193,78,0.9)";
+                bctx.shadowBlur = 14;
+              } else {
+                bctx.fillStyle = "#e8f5ec";
+                bctx.shadowColor = "rgba(0,0,0,0.5)";
+                bctx.shadowBlur = 3;
+              }
+              bctx.fill();
+              bctx.shadowBlur = 0;
+            }
+          }
+        }
+
+        function drawBall(x, y) {
+          var r = geo.ballR;
+          bctx.beginPath();
+          bctx.arc(x, y + r * 0.9, r * 0.95, 0, Math.PI * 2);
+          bctx.fillStyle = "rgba(0,0,0,0.3)";
+          bctx.fill();
+
+          var g = bctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.15, x, y, r * 1.15);
+          g.addColorStop(0, "#eafaff");
+          g.addColorStop(0.45, "#7dd7f5");
+          g.addColorStop(1, "#2b93c4");
+          bctx.beginPath();
+          bctx.arc(x, y, r, 0, Math.PI * 2);
+          bctx.fillStyle = g;
+          bctx.fill();
+          bctx.lineWidth = 1.4;
+          bctx.strokeStyle = "rgba(190,240,255,0.85)";
+          bctx.stroke();
+
+          // eyes + smile so the ball reads as a little slime
+          bctx.fillStyle = "#0b2a3a";
+          bctx.beginPath(); bctx.arc(x - r * 0.32, y - r * 0.05, r * 0.13, 0, Math.PI * 2); bctx.fill();
+          bctx.beginPath(); bctx.arc(x + r * 0.32, y - r * 0.05, r * 0.13, 0, Math.PI * 2); bctx.fill();
+          bctx.beginPath();
+          bctx.arc(x, y + r * 0.18, r * 0.34, 0.15 * Math.PI, 0.85 * Math.PI);
+          bctx.lineWidth = 1.6;
+          bctx.strokeStyle = "#0b2a3a";
+          bctx.stroke();
+          // glossy highlight
+          bctx.beginPath();
+          bctx.ellipse(x - r * 0.38, y - r * 0.52, r * 0.3, r * 0.16, -0.5, 0, Math.PI * 2);
+          bctx.fillStyle = "rgba(255,255,255,0.85)";
+          bctx.fill();
+        }
+
+        // ---------- Confetti / sparkles ----------
+        var particles = [];
+        var fxRunning = false;
+        function burst(cx, cy) {
+          var colors = ["#f2c14e", "#3ce68f", "#7dd7f5", "#ffffff", "#ffd968"];
+          for (var i = 0; i < 70; i++) {
+            var a = Math.random() * Math.PI * 2;
+            var sp = 1.2 + Math.random() * 3.6;
+            particles.push({
+              x: cx, y: cy,
+              vx: Math.cos(a) * sp,
+              vy: Math.sin(a) * sp - 2.2,
+              life: 1,
+              decay: 0.008 + Math.random() * 0.012,
+              size: 2 + Math.random() * 3.5,
+              color: colors[i % colors.length],
+              star: Math.random() < 0.4
+            });
+          }
+          if (!fxRunning) { fxRunning = true; requestAnimationFrame(fxTick); }
+        }
+        function fxTick() {
+          fctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+          fctx.clearRect(0, 0, W, H);
+          particles = particles.filter(function (p) { return p.life > 0; });
+          particles.forEach(function (p) {
+            p.x += p.vx; p.y += p.vy; p.vy += 0.07; p.vx *= 0.99; p.life -= p.decay;
+            fctx.globalAlpha = Math.max(p.life, 0);
+            fctx.fillStyle = p.color;
+            if (p.star) {
+              fctx.save();
+              fctx.translate(p.x, p.y);
+              fctx.beginPath();
+              for (var k = 0; k < 8; k++) {
+                var ang = (k * Math.PI) / 4;
+                var rad = k % 2 === 0 ? p.size * 1.5 : p.size * 0.55;
+                fctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad);
+              }
+              fctx.closePath(); fctx.fill();
+              fctx.restore();
+            } else {
+              fctx.beginPath();
+              fctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+              fctx.fill();
+            }
+          });
+          fctx.globalAlpha = 1;
+          if (particles.length) { requestAnimationFrame(fxTick); }
+          else { fxRunning = false; fctx.clearRect(0, 0, W, H); }
+        }
+
+        // ---------- Game flow ----------
+        function setControlsEnabled(on) {
+          dropBtn.disabled = !on;
+          betRow.querySelectorAll(".bet-btn").forEach(function (b) { b.disabled = !on; });
+        }
+
+        function setResult(text, cls) {
+          resultLine.textContent = text;
+          resultLine.className = "result-line" + (cls ? " " + cls : "");
+        }
+
+        function updateBalance(animate) {
+          balanceNum.textContent = fmt(balance);
+          if (animate) {
+            balanceValue.classList.remove("bump");
+            void balanceValue.offsetWidth;
+            balanceValue.classList.add("bump");
+          }
+        }
+
+        function addHistory(mult, net) {
+          historyEmpty.style.display = "none";
+          var li = document.createElement("li");
+          var cls = mult >= 5 ? "big" : mult >= 1 ? "win" : "loss";
+          li.className = cls;
+          li.textContent = formatMult(mult) + " · " + (net >= 0 ? "+" : "−") + fmt(Math.abs(net));
+          historyList.insertBefore(li, historyList.firstChild);
+          while (historyList.children.length > 8) {
+            historyList.removeChild(historyList.lastChild);
+          }
+        }
+
+        function drop() {
+          if (dropping) return;
+          if (balance < bet) {
+            setResult("Not enough demo coins for a " + fmt(bet) + " bet — lower your bet or tap Reset to top back up to 1,000.", "error");
+            dropBtn.classList.remove("shake");
+            void dropBtn.offsetWidth;
+            dropBtn.classList.add("shake");
+            return;
+          }
+          dropping = true;
+          setControlsEnabled(false);
+          slotEls.forEach(function (s) { s.classList.remove("hit"); });
+          setResult("Dropping…", "");
+
+          balance -= bet;
+          updateBalance(false);
+
+          // Pick the landing slot by weight (middle loss slots take ~75%),
+          // then build a bounce path with exactly that many rightward hops,
+          // shuffled so every drop still looks like a fair bounce.
+          var totalW = 0;
+          for (var wi = 0; wi < WEIGHTS.length; wi++) totalW += WEIGHTS[wi];
+          var roll = Math.random() * totalW;
+          var slotIndex = 0;
+          while (roll >= WEIGHTS[slotIndex]) { roll -= WEIGHTS[slotIndex]; slotIndex++; }
+          var mult = MULTIPLIERS[slotIndex];
+
+          var dirs = [];
+          for (var i = 0; i < ROWS; i++) dirs.push(i < slotIndex);
+          for (var s = dirs.length - 1; s > 0; s--) {
+            var swap = Math.floor(Math.random() * (s + 1));
+            var tmp = dirs[s]; dirs[s] = dirs[swap]; dirs[swap] = tmp;
+          }
+
+          // Waypoints: start above the top-centre peg, then one hop per row.
+          var points = [{ x: W / 2, y: geo.topY - geo.rowGap - 6, peg: null }];
+          var x = W / 2;
+          var pegJ = 1; // middle peg of the top row (3 pegs: j = 0,1,2)
+          for (var r = 0; r < ROWS; r++) {
+            var hitJ = pegJ;
+            points.push({ x: x, y: geo.topY + r * geo.rowGap - geo.ballR - geo.pegR + 2, peg: { row: r, j: hitJ } });
+            x += (dirs[r] ? 1 : -1) * geo.sx / 2;
+            pegJ = pegJ + (dirs[r] ? 1 : 0);
+            // clamp peg index for the next row's peg count (visual flash only)
+            if (pegJ > r + 3) pegJ = r + 3;
+            if (pegJ < 0) pegJ = 0;
+          }
+          var finalX = W / 2 + (slotIndex - 4) * geo.sx;
+          points.push({ x: finalX, y: geo.landY, peg: null });
+
+          var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          var segMs = reduceMotion ? 40 : 150;
+          var totalMs = segMs * (points.length - 1);
+          var startT = null;
+
+          function frame(now) {
+            if (!startT) startT = now;
+            var t = Math.min((now - startT) / totalMs, 1);
+            var segFloat = t * (points.length - 1);
+            var seg = Math.min(Math.floor(segFloat), points.length - 2);
+            var st = segFloat - seg;
+            var a = points[seg], b = points[seg + 1];
+            var px = a.x + (b.x - a.x) * st;
+            // hop arc within each segment + gravity ease on the fall
+            var py = a.y + (b.y - a.y) * (st * st * 0.4 + st * 0.6) - Math.sin(st * Math.PI) * 5;
+            drawBoard(st < 0.35 ? b.peg : null);
+            drawBall(px, py);
+            if (t < 1) { requestAnimationFrame(frame); }
+            else { land(slotIndex, mult, finalX); }
+          }
+          requestAnimationFrame(frame);
+        }
+
+        function land(slotIndex, mult, finalX) {
+          var payout = Math.round(bet * mult);
+          var net = payout - bet;
+          balance += payout;
+          updateBalance(true);
+          slotEls[slotIndex].classList.add("hit");
+          drawBoard(null);
+          drawBall(finalX, geo.landY);
+
+          if (mult >= 5) {
+            setResult("Jackpot bounce! Ball landed on " + formatMult(mult) + " — won " + fmt(payout) + " demo coins!", "big");
+            burst(finalX, geo.landY);
+          } else if (mult > 1) {
+            setResult("Ball landed on " + formatMult(mult) + " — won " + fmt(payout) + " demo coins.", "win");
+          } else if (mult === 1) {
+            setResult("Ball landed on 1x — your " + fmt(bet) + " demo coins come straight back.", "win");
+          } else if (payout > 0) {
+            setResult("Ball landed on " + formatMult(mult) + " — got " + fmt(payout) + " demo coins back (lost " + fmt(bet - payout) + ").", "loss");
+          } else {
+            setResult("Ball landed on " + formatMult(mult) + " — that drop lost " + fmt(bet) + " demo coins.", "loss");
+          }
+          addHistory(mult, net);
+          dropping = false;
+          setControlsEnabled(true);
+          if (balance < 10) {
+            setResult(resultLine.textContent + " Balance is empty — tap Reset to play again.", resultLine.className.replace("result-line ", ""));
+          }
+        }
+
+        // ---------- Wiring ----------
+        betRow.addEventListener("click", function (e) {
+          var btn = e.target.closest(".bet-btn");
+          if (!btn || dropping) return;
+          bet = parseInt(btn.getAttribute("data-bet"), 10);
+          betRow.querySelectorAll(".bet-btn").forEach(function (b) {
+            b.classList.toggle("selected", b === btn);
+          });
+        });
+
+        dropBtn.addEventListener("click", drop);
+
+        resetBtn.addEventListener("click", function () {
+          if (dropping) return;
+          balance = START_BALANCE;
+          updateBalance(true);
+          historyList.innerHTML = "";
+          historyEmpty.style.display = "";
+          slotEls.forEach(function (s) { s.classList.remove("hit"); });
+          drawBoard(null);
+          setResult("Demo balance reset to 1,000. Pick a bet and tap DROP!", "");
+        });
+
+        var resizeTimer = null;
+        window.addEventListener("resize", function () {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(layout, 120);
+        });
+
+        layout();
+        updateBalance(false);
+      })();
+    </script>
+  </body>
+</html>
